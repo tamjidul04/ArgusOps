@@ -1,19 +1,10 @@
 {
-  "version": "v1.4.0",
-  "updatedAt": "2026-10-30T05:49:33.297Z",
-  "daemonPid": 60228,
+  "version": "v1.5.0",
+  "updatedAt": "2026-10-30T11:39:53.429Z",
+  "daemonPid": 23728,
   "zeroTrustLocalCode": true,
-  "activeLocksCount": 3,
+  "activeLocksCount": 2,
   "locks": [
-    {
-      "id": "lck-01",
-      "filePath": "src/app/dashboard/page.tsx",
-      "holderAgent": "Antigravity",
-      "holderPid": 4821,
-      "status": "LOCKED",
-      "acquiredAt": "2026-10-30T05:34:08.005Z",
-      "collisionInterceptMs": 18
-    },
     {
       "id": "lck-02",
       "filePath": "src/lib/loop-detector.ts",

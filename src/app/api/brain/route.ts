@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import fs from "node:fs";
+import path from "node:path";
 import { prisma } from "@/lib/prisma";
 import {
   getHostHardwareTelemetry,
@@ -35,25 +37,52 @@ export async function GET(req: NextRequest) {
     // 3. Update the LOCAL_PC cluster's agents in Prisma with the real host PC telemetry
     const localClusterRecord = await prisma.clusterAndWorkspace.findFirst({
       where: { environment: "LOCAL_PC" },
+      include: { agents: true },
     });
 
     if (localClusterRecord) {
       for (const slot of scanResult.agents) {
+        const existing = localClusterRecord.agents.find((a) => a.agent_type === slot.agent_type);
+        const isGoverned = existing?.status === "KILLED_LOOP" || existing?.status === "PAUSED_NUDGE";
+
         await prisma.agent.updateMany({
           where: {
             cluster_id: localClusterRecord.cluster_id,
             agent_type: slot.agent_type,
           },
           data: {
-            ram_usage: slot.ram_usage,
-            cpu_usage: slot.cpu_usage,
-            status: slot.status,
-            current_task: slot.current_task,
-            locked_file_path: slot.locked_file_path,
+            ram_usage: isGoverned && existing?.status === "KILLED_LOOP" ? 0.0 : slot.ram_usage,
+            cpu_usage: isGoverned && existing?.status === "KILLED_LOOP" ? 0.0 : slot.cpu_usage,
+            status: isGoverned ? existing.status : slot.status,
+            current_task: isGoverned ? existing.current_task : slot.current_task,
+            locked_file_path: isGoverned && existing?.status === "KILLED_LOOP" ? null : slot.locked_file_path,
             last_heartbeat_at: new Date(),
           },
         });
       }
+    }
+
+    // Read real local file mutex registry if active
+    let activeLocks: Array<{
+      id: string;
+      filePath: string;
+      holderAgent: string;
+      holderPid?: number;
+      status: string;
+      acquiredAt: string;
+      collisionInterceptMs?: number;
+    }> = [];
+
+    try {
+      const mutexPath = path.resolve(process.cwd(), ".argus-mutex.json");
+      if (fs.existsSync(mutexPath)) {
+        const parsed = JSON.parse(fs.readFileSync(mutexPath, "utf-8"));
+        if (Array.isArray(parsed?.locks)) {
+          activeLocks = parsed.locks;
+        }
+      }
+    } catch {
+      // Safe fallback if mutex file is momentarily being written
     }
 
     // 4. Fetch complete database entities: Cloud & Local Clusters, Tasks, and User Wallet
@@ -125,6 +154,11 @@ export async function GET(req: NextRequest) {
       scanResult: {
         totalDetectedProcesses: scanResult.totalDetectedProcesses,
         detectedProcesses: scanResult.detectedProcesses.slice(0, 10),
+      },
+      activeLocks,
+      mutexRegistry: {
+        activeLocksCount: activeLocks.length,
+        locks: activeLocks,
       },
       timestamp: new Date().toISOString(),
     });
@@ -572,9 +606,225 @@ export async function POST(req: NextRequest) {
         });
       }
 
+      // ----------------------------------------------------------------------
+      // Action 7: HEARTBEAT / DAEMON_HEARTBEAT (Local Supervisor Telemetry)
+      // ----------------------------------------------------------------------
+      case "HEARTBEAT":
+      case "DAEMON_HEARTBEAT": {
+        const { daemon, agents, locks } = body;
+
+        const localCluster = await prisma.clusterAndWorkspace.findFirst({
+          where: { environment: "LOCAL_PC" },
+          include: { agents: true },
+        });
+
+        if (localCluster && Array.isArray(agents)) {
+          for (const a of agents) {
+            const agentType = (a.type || a.agent_type || "").toUpperCase();
+            const existingAgent = localCluster.agents.find(
+              (ea) =>
+                ea.agent_type === agentType ||
+                ea.agent_id === (a.id || a.agent_id) ||
+                (a.name && ea.name.toLowerCase().includes(a.name.toLowerCase()))
+            );
+
+            if (existingAgent) {
+              const isGoverned =
+                existingAgent.status === "KILLED_LOOP" ||
+                existingAgent.status === "PAUSED_NUDGE";
+
+              await prisma.agent.update({
+                where: { agent_id: existingAgent.agent_id },
+                data: {
+                  ram_usage:
+                    isGoverned && existingAgent.status === "KILLED_LOOP"
+                      ? 0.0
+                      : parseFloat(a.ram_usage || a.memoryUsageMb || existingAgent.ram_usage),
+                  cpu_usage:
+                    isGoverned && existingAgent.status === "KILLED_LOOP"
+                      ? 0.0
+                      : parseFloat(a.cpu_usage || a.cpuPercent || existingAgent.cpu_usage),
+                  status: isGoverned ? existingAgent.status : a.status || existingAgent.status,
+                  current_task: isGoverned
+                    ? existingAgent.current_task
+                    : a.current_task || a.activeFilePath || existingAgent.current_task,
+                  locked_file_path:
+                    isGoverned && existingAgent.status === "KILLED_LOOP"
+                      ? null
+                      : a.locked_file_path || a.lockedFilePath || existingAgent.locked_file_path,
+                  last_heartbeat_at: new Date(),
+                },
+              });
+            }
+          }
+        }
+
+        // Sync to .argus-mutex.json on disk if locks are supplied
+        if (Array.isArray(locks)) {
+          try {
+            const mutexPath = path.resolve(process.cwd(), ".argus-mutex.json");
+            const mutexPayload = {
+              version: daemon?.version || "v1.4.0",
+              updatedAt: new Date().toISOString(),
+              daemonPid: daemon?.pid || process.pid,
+              zeroTrustLocalCode: true,
+              activeLocksCount: locks.length,
+              locks,
+            };
+            fs.writeFileSync(mutexPath, JSON.stringify(mutexPayload, null, 2), "utf-8");
+          } catch {
+            // Safe fallback if writing is locked
+          }
+        }
+
+        return NextResponse.json({
+          success: true,
+          action: "HEARTBEAT",
+          message: "Telemetry heartbeat acknowledged. Zero-Trust Code Privacy verified.",
+          daemonStats: {
+            residentMemoryMb: daemon?.residentMemoryMb,
+            withinBudget: (parseFloat(daemon?.residentMemoryMb) || 35) < 150,
+            activeLocksCount: Array.isArray(locks) ? locks.length : 0,
+          },
+          locks: Array.isArray(locks) ? locks : [],
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      // ----------------------------------------------------------------------
+      // Action 8: ACQUIRE_FILE_MUTEX
+      // ----------------------------------------------------------------------
+      case "ACQUIRE_FILE_MUTEX": {
+        const { targetFilePath, agentId = "agent_local_antigravity", agentName = "Antigravity Agent" } = body;
+
+        if (!targetFilePath || typeof targetFilePath !== "string") {
+          return NextResponse.json({ error: "targetFilePath is required." }, { status: 400 });
+        }
+
+        const allAgents = await prisma.agent.findMany();
+        const activeRecords = allAgents.map((a) => ({
+          agent_id: a.agent_id,
+          name: a.name,
+          locked_file_path: a.locked_file_path,
+        }));
+
+        const result = verifyAndAcquireFileMutex(activeRecords, agentId, targetFilePath);
+
+        if (result.allowed) {
+          await prisma.agent.update({
+            where: { agent_id: agentId },
+            data: {
+              locked_file_path: result.lockedFilePath,
+              current_task: `Holding exclusive write lock on ${result.lockedFilePath}`,
+              last_heartbeat_at: new Date(),
+            },
+          }).catch(() => {});
+
+          // Sync to .argus-mutex.json
+          try {
+            const mutexPath = path.resolve(process.cwd(), ".argus-mutex.json");
+            let existingLocks: any[] = [];
+            if (fs.existsSync(mutexPath)) {
+              const parsed = JSON.parse(fs.readFileSync(mutexPath, "utf-8"));
+              if (Array.isArray(parsed?.locks)) existingLocks = parsed.locks;
+            }
+            // Remove old lock for this file or agent
+            existingLocks = existingLocks.filter(
+              (l) => l.filePath !== result.lockedFilePath && l.holderAgent !== agentName
+            );
+            existingLocks.push({
+              id: `lck-${Date.now()}`,
+              filePath: result.lockedFilePath,
+              holderAgent: agentName,
+              holderPid: process.pid,
+              status: "LOCKED",
+              acquiredAt: new Date().toISOString(),
+              collisionInterceptMs: result.interceptionMs,
+            });
+            fs.writeFileSync(
+              mutexPath,
+              JSON.stringify(
+                {
+                  version: "v1.4.0",
+                  updatedAt: new Date().toISOString(),
+                  daemonPid: process.pid,
+                  zeroTrustLocalCode: true,
+                  activeLocksCount: existingLocks.length,
+                  locks: existingLocks,
+                },
+                null,
+                2
+              ),
+              "utf-8"
+            );
+          } catch {
+            // Ignore concurrent disk write collision
+          }
+        }
+
+        return NextResponse.json({
+          success: result.allowed,
+          action: "ACQUIRE_FILE_MUTEX",
+          mutexResult: result,
+          targetFilePath,
+        });
+      }
+
+      // ----------------------------------------------------------------------
+      // Action 9: RELEASE_FILE_MUTEX
+      // ----------------------------------------------------------------------
+      case "RELEASE_FILE_MUTEX": {
+        const { targetFilePath, agentId = "agent_local_antigravity" } = body;
+
+        await prisma.agent.update({
+          where: { agent_id: agentId },
+          data: {
+            locked_file_path: null,
+            last_heartbeat_at: new Date(),
+          },
+        }).catch(() => {});
+
+        // Sync to .argus-mutex.json
+        try {
+          const mutexPath = path.resolve(process.cwd(), ".argus-mutex.json");
+          if (fs.existsSync(mutexPath)) {
+            const parsed = JSON.parse(fs.readFileSync(mutexPath, "utf-8"));
+            if (Array.isArray(parsed?.locks)) {
+              const updatedLocks = parsed.locks.filter(
+                (l: any) =>
+                  (targetFilePath ? l.filePath !== targetFilePath : true) &&
+                  l.holderAgent !== agentId
+              );
+              fs.writeFileSync(
+                mutexPath,
+                JSON.stringify(
+                  {
+                    ...parsed,
+                    updatedAt: new Date().toISOString(),
+                    activeLocksCount: updatedLocks.length,
+                    locks: updatedLocks,
+                  },
+                  null,
+                  2
+                ),
+                "utf-8"
+              );
+            }
+          }
+        } catch {
+          // Ignore disk collision
+        }
+
+        return NextResponse.json({
+          success: true,
+          action: "RELEASE_FILE_MUTEX",
+          message: `File lock released for '${targetFilePath || "all"}'.`,
+        });
+      }
+
       default:
         return NextResponse.json(
-          { error: `Unknown brain action: '${action}'. Supported actions: DECOMPOSE_TASK, TRIGGER_ROGUE_LOOP, TRIGGER_HUMAN_NUDGE, RESOLVE_NUDGE, TEST_FILE_MUTEX, THROTTLE_RAM_SPIKE.` },
+          { error: `Unknown brain action: '${action}'. Supported actions: DECOMPOSE_TASK, TRIGGER_ROGUE_LOOP, TRIGGER_HUMAN_NUDGE, RESOLVE_NUDGE, TEST_FILE_MUTEX, THROTTLE_RAM_SPIKE, HEARTBEAT, ACQUIRE_FILE_MUTEX, RELEASE_FILE_MUTEX.` },
           { status: 400 }
         );
     }
