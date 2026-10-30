@@ -1,0 +1,143 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                 String                    @id @default(cuid())
+  email              String                    @unique
+  name               String
+  password_hash      String
+  role               String                    @default("USER") // "USER" | "ADMIN"
+  status             String                    @default("ACTIVE") // "ACTIVE" | "BANNED"
+  two_factor_enabled Boolean                   @default(false)
+  created_at         DateTime                  @default(now())
+
+  subscription       SubscriptionAndWallet?
+  clusters           ClusterAndWorkspace[]
+  transactions       TransactionApprovalQueue[]
+  api_keys           ApiKey[]
+
+  @@map("Users")
+}
+
+model SubscriptionAndWallet {
+  id              String      @id @default(cuid())
+  user_id         String      @unique
+  plan_id         String
+  free_tokens     Int         @default(50000)
+  paid_tokens     Int         @default(0)
+  max_agents      Int         @default(3)
+  purchase_status String      @default("NONE") // "NONE" | "PENDING" | "APPROVED" | "REJECTED"
+  updated_at      DateTime    @updatedAt
+
+  user            User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  plan            PricingPlan @relation(fields: [plan_id], references: [plan_id])
+
+  @@map("Subscriptions_And_Wallets")
+}
+
+model PricingPlan {
+  plan_id                 String                  @id @default(cuid())
+  name                    String                  @unique
+  price                   Float
+  agent_limit             Int
+  included_tokens         Int
+  is_public               Boolean                 @default(true)
+  requires_admin_approval Boolean                 @default(false)
+  description             String
+
+  subscriptions           SubscriptionAndWallet[]
+
+  @@map("Pricing_Plans")
+}
+
+model ClusterAndWorkspace {
+  cluster_id          String       @id @default(cuid())
+  user_id             String
+  name                String
+  environment         String       // "CLOUD" | "LOCAL_PC"
+  active_agents       Int          @default(0)
+  hibernated_agents   Int          @default(0)
+  cached_context_hash String?
+  cache_tokens_saved  Int          @default(0)
+  zero_trust_local    Boolean      @default(true)
+  created_at          DateTime     @default(now())
+
+  user                User         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  agents              Agent[]
+  tasks               TaskAndLog[]
+
+  @@map("Clusters_And_Workspaces")
+}
+
+model Agent {
+  agent_id           String              @id @default(cuid())
+  cluster_id         String
+  name               String
+  agent_type         String              // "ANTIGRAVITY" | "CLAUDE" | "HERMES" | "CLOUD_WORKER"
+  status             String              @default("ACTIVE") // "ACTIVE" | "HIBERNATED" | "PAUSED_NUDGE" | "KILLED_LOOP"
+  model_tier         String              @default("FRONTIER") // "FRONTIER" | "DOWNGRADED_FAST"
+  ram_usage          Float               @default(0)
+  cpu_usage          Float               @default(0)
+  tokens_used        Int                 @default(0)
+  current_task       String?
+  locked_file_path   String?
+  loop_score         Float               @default(0)
+  last_heartbeat_at  DateTime            @default(now())
+
+  cluster            ClusterAndWorkspace @relation(fields: [cluster_id], references: [cluster_id], onDelete: Cascade)
+
+  @@map("Agents")
+}
+
+model TaskAndLog {
+  task_id          String              @id @default(cuid())
+  cluster_id       String
+  prompt_summary   String
+  complexity_score Int
+  assigned_agents  Int
+  hibernated_count Int
+  tokens_saved     Int
+  loop_incidents   Int                 @default(0)
+  interception_ms  Int
+  status           String              // "RUNNING" | "PAUSED_NUDGE" | "KILLED_LOOP" | "COMPLETED"
+  created_at       DateTime            @default(now())
+
+  cluster          ClusterAndWorkspace @relation(fields: [cluster_id], references: [cluster_id], onDelete: Cascade)
+
+  @@map("Tasks_And_Logs")
+}
+
+model TransactionApprovalQueue {
+  tx_id          String    @id @default(cuid())
+  user_id        String
+  requested_plan String
+  amount         Float
+  admin_status   String    @default("PENDING") // "PENDING" | "APPROVED" | "REJECTED"
+  created_at     DateTime  @default(now())
+  reviewed_at    DateTime?
+
+  user           User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("Transactions_Approval_Queue")
+}
+
+model ApiKey {
+  id           String    @id @default(cuid())
+  user_id      String
+  label        String
+  key_prefix   String
+  key_hash     String    @unique
+  last_used_at DateTime?
+  created_at   DateTime  @default(now())
+
+  user         User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("Api_Keys")
+}
+

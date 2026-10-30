@@ -1,0 +1,36 @@
+{
+  "version": "v1.4.0",
+  "updatedAt": "2026-10-30T05:49:33.297Z",
+  "daemonPid": 60228,
+  "zeroTrustLocalCode": true,
+  "activeLocksCount": 3,
+  "locks": [
+    {
+      "id": "lck-01",
+      "filePath": "src/app/dashboard/page.tsx",
+      "holderAgent": "Antigravity",
+      "holderPid": 4821,
+      "status": "LOCKED",
+      "acquiredAt": "2026-10-30T05:34:08.005Z",
+      "collisionInterceptMs": 18
+    },
+    {
+      "id": "lck-02",
+      "filePath": "src/lib/loop-detector.ts",
+      "holderAgent": "Claude",
+      "holderPid": 5120,
+      "status": "LOCKED",
+      "acquiredAt": "2026-10-30T05:34:40.005Z",
+      "collisionInterceptMs": 24
+    },
+    {
+      "id": "lck-03",
+      "filePath": "src/tests/billing.spec.ts",
+      "holderAgent": "Hermes",
+      "holderPid": 6390,
+      "status": "LOCKED",
+      "acquiredAt": "2026-10-30T05:33:14.005Z",
+      "collisionInterceptMs": 14
+    }
+  ]
+}

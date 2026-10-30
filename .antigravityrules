@@ -1,0 +1,68 @@
+# ArgusOps Engineering & UI Design Standards
+
+ArgusOps v1.1 is an intelligent AI Agent Cluster Management, Orchestration, and Cost-Optimization Platform designed for enterprise cloud swarms and local PC multi-agent environments (Claude, Antigravity, and Hermes).
+
+Every component, route, service, and script in this codebase MUST strictly comply with these rules.
+
+---
+
+## 1. Visual & Design System Standards
+
+### 1.1 Enterprise SaaS Aesthetic
+- **Light-Mode Foundation**: ArgusOps enforces a clean, high-trust, light-mode enterprise SaaS aesthetic.
+- **Core Color Tokens**:
+  - Main App / Canvas Canvas: `bg-slate-50`
+  - Cards, Modals & Surface Panels: `bg-white`
+  - Structural Borders & Separators: `border-slate-200`
+  - Primary Typography: `text-slate-900`
+  - Secondary & Supporting Text: `text-slate-500`
+  - Muted Text & Icons: `text-slate-400`
+  - Subtle Surface Hovers: `hover:bg-slate-100` / `hover:border-slate-300`
+
+### 1.2 Status Badge Color Tokens
+Agent lifecycle and system status badges must use these exact utility combinations across all dashboard, cluster, and log tables:
+- **ACTIVE**: Emerald
+  - Badge: `bg-emerald-50 text-emerald-700 border-emerald-200`
+  - Pulse / Status Dot: `bg-emerald-500`
+  - State: Agent actively processing assigned sub-tasks within allocated quota.
+- **HIBERNATED (Zero-Token)**: Slate
+  - Badge: `bg-slate-100 text-slate-600 border-slate-200`
+  - Status Dot: `bg-slate-400`
+  - State: Standby agent suspended by Master Hypervisor to prevent over-provisioning token burn.
+- **PAUSED_NUDGE**: Amber
+  - Badge: `bg-amber-50 text-amber-700 border-amber-200`
+  - Status Dot: `bg-amber-500`
+  - State: Agent temporarily paused for human-in-the-loop review, clarification, or retry approval.
+- **KILLED_LOOP**: Rose
+  - Badge: `bg-rose-50 text-rose-700 border-rose-200`
+  - Status Dot: `bg-rose-500`
+  - State: Circuit breaker triggered; rogue agent terminated due to repetitive error loops or runaway RAM/token drain.
+
+### 1.3 Strict Dashboard Shell Geometry
+To prevent layout clipping, unexpected horizontal scrolling, or broken viewport responsiveness:
+- **Root Shell Container**: `flex h-screen w-screen overflow-hidden bg-slate-50`
+- **Fixed Left Sidebar**: `w-64 shrink-0 border-r border-slate-200 bg-white flex flex-col`
+- **Sticky Top Header**: `h-16 shrink-0 sticky top-0 z-30 bg-white border-b border-slate-200 flex items-center justify-between px-6`
+- **Main Content Area**: `flex-1 min-w-0 overflow-y-auto overflow-x-hidden p-6 space-y-6`
+- **Safety Rule**: Every flex child containing tables, pre/code blocks, or long metric strings must include `min-w-0` to maintain strict boundary constraints.
+
+---
+
+## 2. Engineering & Architecture Standards
+
+### 2.1 Technology Stack & Conventions
+- **Framework**: Next.js App Router (TypeScript, React 19).
+- **Styling**: Tailwind CSS v4, utilizing `cn()` from `@/lib/utils` for conditional class joining.
+- **Database**: SQLite with Prisma ORM (`file:./dev.db`).
+- **Icons**: `lucide-react` for clean, professional enterprise iconography.
+- **Formatters**: Use centralized utility functions (`formatTokens`, `formatCurrency`) in `src/lib/utils.ts` for all financial and token representations.
+
+### 2.2 Local PC Background Daemon (<150MB RAM)
+- Daemon code resides in `/daemon`.
+- Must run as an ultra-lightweight background process consuming `<150MB RAM`.
+- Provides low-latency interception (`<100ms`) of local agent tool calls and file lock synchronization across Claude, Antigravity, and Hermes.
+
+### 2.3 Implementation & Quality Assurance
+- **Zero TODO Policy**: No placeholder comments (`// TODO`, `// FIXME`) or incomplete mock stubs. All implemented interfaces, forms, and services must be fully functional and robust.
+- **Defensive Error Handling**: All API routes, background workers, and UI forms must implement explicit validation and actionable error states.
+
