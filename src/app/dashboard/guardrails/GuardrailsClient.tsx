@@ -27,6 +27,34 @@ import {
 } from "lucide-react";
 import { cn, formatTokens, getStatusBadgeClasses, STATUS_STYLES, AgentStatus } from "@/lib/utils";
 import type { GuardrailPolicy, StreamEvent } from "@/lib/control-plane-core";
+import { Badge, DashHeader, EmptyState, Panel, buttonClasses } from "@/components/ui";
+
+/** One labelled range input with its current value and a hint line. */
+function PolicySlider({
+  id, label, value, valueText, min, max, step, hint, onChange,
+}: {
+  id: string; label: string; value: number; valueText: string; min: string; max: string; step: string; hint: string; onChange: (v: number) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-baseline justify-between gap-3">
+        <label htmlFor={id} className="text-sm font-medium text-slate-900">{label}</label>
+        <span className="shrink-0 font-mono text-xs font-semibold text-slate-900">{valueText}</span>
+      </div>
+      <input
+        id={id}
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-slate-900/10 accent-slate-900"
+      />
+      <p className="text-xs text-slate-500">{hint}</p>
+    </div>
+  );
+}
 
 /** Event times arrive as ISO strings from the incident log. */
 function formatEventTime(ts: string): string {
@@ -247,47 +275,29 @@ export function GuardrailsClient({
 
   return (
     <div className="space-y-6">
-      {/* ================= PAGE TITLE & SLA BANNER ================= */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
-              24/7 Loop Detection &amp; Resource Guardrails
-            </h1>
-            <span className="font-mono text-xs font-semibold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded border border-emerald-200">
-              Autonomous Hypervisor
-            </span>
-          </div>
-          <p className="text-xs text-slate-500 mt-1">
-            Real-time AST stream inspection, cosine semantic reasoning loop detection, and RAM/CPU cgroup governance.
-          </p>
-        </div>
-
-        {/* Live SLA Badges */}
-        <div className="flex items-center gap-2 font-mono text-xs">
-          <div className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 shadow-2xs flex items-center gap-2">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-            </span>
-            <span className="text-slate-500">Latency:</span>
-            <strong className="text-slate-900 font-bold">{latency.avg > 0 ? `${latency.avg}ms avg` : "no incidents yet"}</strong>
-          </div>
-
-          <div className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 shadow-2xs text-slate-700 font-semibold">
-            P99: {latency.p99 > 0 ? `${latency.p99}ms` : "—"}
-          </div>
-        </div>
-      </div>
+      <DashHeader
+        title="Loop detection & guardrails"
+        description="Watch incidents as they happen, set when agents are paused, and review the ones that need you."
+        actions={
+          <>
+            <Badge tone="green">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              Latency: {latency.avg > 0 ? `${latency.avg}ms avg` : "no incidents yet"}
+            </Badge>
+            <Badge>P99: {latency.p99 > 0 ? `${latency.p99}ms` : "—"}</Badge>
+          </>
+        }
+      />
 
       {/* Action Notification Toast */}
       {feedback && (
         <div
+          role="status"
           className={cn(
-            "p-3 rounded-lg text-xs flex items-center justify-between border animate-in fade-in duration-150",
-            feedback.type === "success" && "bg-emerald-50 text-emerald-900 border-emerald-200",
-            feedback.type === "error" && "bg-rose-50 text-rose-900 border-rose-200",
-            feedback.type === "info" && "bg-slate-100 text-slate-800 border-slate-200"
+            "flex items-center justify-between rounded-xl px-4 py-3 text-sm ring-1",
+            feedback.type === "success" && "bg-emerald-50 text-emerald-900 ring-emerald-600/20",
+            feedback.type === "error" && "bg-red-50 text-red-900 ring-red-600/20",
+            feedback.type === "info" && "bg-slate-900/[0.04] text-slate-800 ring-slate-900/10"
           )}
         >
           <div className="flex items-center gap-2">
@@ -296,7 +306,7 @@ export function GuardrailsClient({
             {feedback.type === "info" && <RefreshCw className="h-4 w-4 text-slate-600 animate-spin shrink-0" />}
             <span className="font-medium">{feedback.text}</span>
           </div>
-          <button type="button" onClick={() => setFeedback(null)} className="text-slate-400 hover:text-slate-700">
+          <button type="button" onClick={() => setFeedback(null)} aria-label="Dismiss message" className="rounded-md p-1 text-slate-500 hover:text-slate-800">
             <X className="h-3.5 w-3.5" />
           </button>
         </div>
@@ -305,413 +315,314 @@ export function GuardrailsClient({
       {/* ================= SECTION 1: LIVE STREAM INSPECTOR & POLICY SLIDERS ================= */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column (2/3): Live Stream Inspector */}
-        <div className="lg:col-span-2 rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft p-5 space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <div className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              <h2 className="font-bold text-sm text-slate-900 uppercase tracking-wider">
-                Live Loop Detection Stream Inspector
-              </h2>
-            </div>
-            <span className="font-mono text-[11px] text-slate-400">Stream Buffer: Active</span>
-          </div>
+        <Panel
+          className="lg:col-span-2"
+          title="Live Loop Detection Stream Inspector"
+          description="Every loop ArgusOps catches, newest first."
+          action={<Badge tone="green"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />Stream active</Badge>}
+        >
+          {events.length === 0 ? (
+            <EmptyState icon={Activity} title="No loops caught yet">
+              When an agent repeats itself, the incident shows up here with the pattern, the action taken and how fast it was caught.
+            </EmptyState>
+          ) : (
+            <ul className="space-y-3">
+              {events.map((evt) => {
+                const isExact = evt.eventType === "EXACT_TOOL_LOOP";
+                const isSemantic = evt.eventType === "SEMANTIC_REASONING_LOOP";
 
-          <div className="space-y-3 font-mono text-xs">
-            {events.map((evt) => {
-              const isExact = evt.eventType === "EXACT_TOOL_LOOP";
-              const isSemantic = evt.eventType === "SEMANTIC_REASONING_LOOP";
+                return (
+                  <li
+                    key={evt.id}
+                    className={cn(
+                      "space-y-2 rounded-xl p-4 ring-1",
+                      isExact && "bg-red-50/50 ring-red-600/15",
+                      isSemantic && "bg-amber-50/50 ring-amber-600/20",
+                      !isExact && !isSemantic && "bg-slate-900/[0.025] ring-slate-900/[0.07]"
+                    )}
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <time className="font-mono text-xs text-slate-500">{formatEventTime(evt.timestamp)}</time>
+                        <strong className="text-sm font-semibold text-slate-900">{evt.agentName}</strong>
+                        <Badge tone={isExact ? "red" : isSemantic ? "amber" : "neutral"}>{evt.eventType.replace(/_/g, " ")}</Badge>
+                      </div>
 
-              return (
-                <div
-                  key={evt.id}
-                  className={cn(
-                    "p-3.5 rounded-lg border space-y-2 transition-colors",
-                    isExact && "border-rose-200 bg-rose-50/40",
-                    isSemantic && "border-amber-200 bg-amber-50/40",
-                    !isExact && !isSemantic && "border-slate-200 bg-slate-50/60"
-                  )}
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[11px] text-slate-400 font-normal">[{formatEventTime(evt.timestamp)}]</span>
-                      <strong className="text-slate-900 font-bold">{evt.agentName}</strong>
-                      <span
-                        className={cn(
-                          "px-2 py-0.5 rounded text-[10px] font-bold border",
-                          isExact && "bg-rose-100 text-rose-800 border-rose-300",
-                          isSemantic && "bg-amber-100 text-amber-800 border-amber-300",
-                          !isExact && !isSemantic && "bg-slate-200 text-slate-700 border-slate-300"
-                        )}
-                      >
-                        {evt.eventType.replace(/_/g, " ")}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <Badge tone="green">{evt.latencyMs}ms Latency</Badge>
+                        <span
+                          className={cn(
+                            "rounded-full px-2.5 py-0.5 text-[11px] font-medium",
+                            evt.actionTaken === "KILLED_LOOP" && "bg-red-700 text-white",
+                            evt.actionTaken === "PAUSED_NUDGE" && "bg-amber-600 text-white",
+                            evt.actionTaken === "THROTTLED" && "bg-slate-800 text-white",
+                            evt.actionTaken === "FLAGGED" && "bg-slate-900/10 text-slate-800"
+                          )}
+                        >
+                          {evt.actionTaken}
+                        </span>
+                      </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                        {evt.latencyMs}ms Latency
-                      </span>
-                      <span
-                        className={cn(
-                          "px-1.5 py-0.5 rounded text-[10px] font-bold",
-                          evt.actionTaken === "KILLED_LOOP" && "bg-rose-600 text-white",
-                          evt.actionTaken === "PAUSED_NUDGE" && "bg-amber-600 text-white",
-                          evt.actionTaken === "THROTTLED" && "bg-slate-800 text-white",
-                          evt.actionTaken === "FLAGGED" && "bg-slate-200 text-slate-800"
+                    <p className="text-sm leading-relaxed text-slate-700">{evt.summary}</p>
+
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-slate-900/5 pt-2 text-xs text-slate-600">
+                      {evt.toolName && (
+                        <span>
+                          Tool: <code className="font-mono font-semibold text-slate-900">{evt.toolName}</code>
+                        </span>
+                      )}
+                      {evt.similarityScore !== undefined && (
+                        <span>
+                          Cosine Similarity: <strong className="font-semibold text-amber-800">{evt.similarityScore}</strong>
+                        </span>
+                      )}
+                      {evt.retryCount !== undefined && (
+                        <span>
+                          Consecutive Errors: <strong className="font-semibold text-red-800">{evt.retryCount}x</strong>
+                        </span>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Panel>
+
+        {/* Right Column (1/3): Configurable Policy Sliders */}
+        <Panel title="Guardrail Policy" icon={Sliders} action={<Badge tone="green">Active</Badge>} bodyClassName="space-y-6">
+          <PolicySlider
+            id="policy-retries"
+            label="Max Consecutive Retries"
+            value={policy.maxConsecutiveRetries}
+            valueText={`${policy.maxConsecutiveRetries} Retries`}
+            min="1" max="8" step="1"
+            hint="Trips circuit breaker on repeated tool failures."
+            onChange={(v) => setPolicy({ ...policy, maxConsecutiveRetries: v })}
+          />
+          <PolicySlider
+            id="policy-similarity"
+            label="Semantic Similarity Cap"
+            value={policy.semanticSimilarityThreshold}
+            valueText={`${policy.semanticSimilarityThreshold} Cosine`}
+            min="0.75" max="0.98" step="0.01"
+            hint="Catches agents repeating identical thoughts in different phrasing."
+            onChange={(v) => setPolicy({ ...policy, semanticSimilarityThreshold: v })}
+          />
+          <PolicySlider
+            id="policy-nudge"
+            label="Nudge vs. Kill Threshold"
+            value={policy.nudgeCompletionThreshold}
+            valueText={`>= ${policy.nudgeCompletionThreshold}% Task`}
+            min="50" max="95" step="5"
+            hint="Pauses instead of killing if task completion is high."
+            onChange={(v) => setPolicy({ ...policy, nudgeCompletionThreshold: v })}
+          />
+          <PolicySlider
+            id="policy-ram"
+            label="Max RAM per Agent"
+            value={policy.maxRamPerAgentMb}
+            valueText={`${policy.maxRamPerAgentMb} MB`}
+            min="100" max="400" step="10"
+            hint="Cgroups clamp resident memory to prevent host OOM."
+            onChange={(v) => setPolicy({ ...policy, maxRamPerAgentMb: v })}
+          />
+
+          <label className="flex cursor-pointer items-start gap-3 rounded-xl bg-slate-900/[0.03] p-3.5 ring-1 ring-slate-900/[0.07]">
+            <input
+              type="checkbox"
+              checked={policy.autoApplyRewrites}
+              onChange={(e) => setPolicy({ ...policy, autoApplyRewrites: e.target.checked })}
+              className="mt-0.5 h-4 w-4 accent-slate-900"
+            />
+            <span>
+              <span className="block text-sm font-medium text-slate-900">Auto-resume stuck agents</span>
+              <span className="mt-0.5 block text-xs leading-relaxed text-slate-600">
+                Resume with the suggested instruction instead of waiting for you. At most once per 30 minutes per agent; you are still notified.
+              </span>
+            </span>
+          </label>
+
+          <button type="button" onClick={handleSavePolicy} className={buttonClasses("primary", false, "w-full py-3")}>
+            Save Guardrail Policy
+          </button>
+        </Panel>
+      </div>
+
+      {/* ================= SECTION 2: FLAGGED AGENTS REVIEW QUEUE ================= */}
+      <Panel
+        title="Flagged Agents & Human-in-the-Loop Review Queue"
+        icon={AlertOctagon}
+        description="Take supervisory actions: supply hint, throttle model tier, or execute hard kill-switch."
+        action={<Badge tone={displayedFlaggedAgents.length > 0 ? "amber" : "neutral"}>{displayedFlaggedAgents.length} Agents Flagged</Badge>}
+        bodyClassName="p-0 sm:p-0"
+      >
+        {displayedFlaggedAgents.length === 0 ? (
+          <EmptyState icon={Shield} title="Nothing needs your review">
+            Agents that pause, loop or get stopped will queue up here so you can resume or stop them.
+          </EmptyState>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[44rem] text-left text-sm">
+              <thead>
+                <tr className="border-b border-slate-900/5 bg-slate-900/[0.02] text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500">
+                  <th scope="col" className="px-5 py-3">Agent Node</th>
+                  <th scope="col" className="px-5 py-3">Status</th>
+                  <th scope="col" className="px-5 py-3">Loop Threat Score</th>
+                  <th scope="col" className="px-5 py-3">RAM / CPU</th>
+                  <th scope="col" className="px-5 py-3">Current Subtask</th>
+                  <th scope="col" className="px-5 py-3 text-right">Supervisory Controls</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-900/5">
+                {displayedFlaggedAgents.map((agent) => {
+                  const statusStyle = STATUS_STYLES[agent.status as AgentStatus] || STATUS_STYLES.HIBERNATED;
+
+                  return (
+                    <tr key={agent.agent_id} className="transition-colors hover:bg-slate-900/[0.02]">
+                      <td className="px-5 py-3.5 font-semibold text-slate-900">
+                        {agent.name}
+                        <span className="block font-mono text-[11px] font-normal text-slate-500">{agent.agent_id}</span>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium", statusStyle.badge)}>
+                          {statusStyle.label}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5 font-mono font-semibold">
+                        <span className={cn(agent.loop_score > 0.8 ? "text-red-700" : agent.loop_score > 0.5 ? "text-amber-700" : "text-emerald-700")}>
+                          {agent.loop_score}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5 font-mono text-xs text-slate-600">
+                        {agent.ram_usage} MB • {agent.cpu_usage}%
+                      </td>
+                      <td className="max-w-xs truncate px-5 py-3.5 text-slate-600">{agent.current_task || "No active task"}</td>
+                      <td className="whitespace-nowrap px-5 py-3.5 text-right">
+                        {agent.status === "PAUSED_NUDGE" ? (
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setNudgeModalAgent(agent)}
+                              className="inline-flex items-center gap-1.5 rounded-full bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-emerald-800"
+                            >
+                              <Send className="h-3 w-3" aria-hidden="true" />
+                              <span>Send Hint &amp; Resume</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => executeGuardrailAction("THROTTLE_DOWNGRADE", { agentId: agent.agent_id })}
+                              className="inline-flex items-center rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 ring-1 ring-slate-900/10 transition-colors hover:bg-slate-50"
+                            >
+                              Throttle Model
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => executeGuardrailAction("TRIGGER_KILL_SWITCH", { agentId: agent.agent_id })}
+                              className="inline-flex items-center rounded-full bg-red-700 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-red-800"
+                            >
+                              Kill Switch
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setNudgeModalAgent(agent)}
+                            className="rounded-full px-3 py-1.5 text-xs font-semibold text-slate-700 ring-1 ring-slate-900/10 transition-colors hover:bg-slate-50"
+                          >
+                            Operator Action
+                          </button>
                         )}
-                      >
-                        {evt.actionTaken}
-                      </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Panel>
+
+      {/* ================= SECTION 3: PER-AGENT RAM & CPU GOVERNANCE PANEL ================= */}
+      <Panel
+        title="Per-Agent RAM & CPU Governance Panel"
+        icon={Cpu}
+        description="Autonomous cgroup bus governors prevent low-complexity agent memory leaks from exhausting the host."
+      >
+        {displayedActiveAgents.length === 0 ? (
+          <EmptyState icon={Cpu} title="No agents running">
+            Start an agent with <code className="rounded-md bg-slate-900/[0.06] px-1.5 py-0.5 font-mono text-xs">argus run claude</code> and its memory and CPU show up here.
+          </EmptyState>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {displayedActiveAgents.map((agent) => {
+              const ramPct = Math.min(100, Math.round((agent.ram_usage / policy.maxRamPerAgentMb) * 100));
+              const isNearCap = agent.ram_usage > policy.maxRamPerAgentMb * 0.8;
+
+              return (
+                <div key={agent.agent_id} className="space-y-3 rounded-xl bg-slate-900/[0.025] p-4 text-sm ring-1 ring-slate-900/[0.07]">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="truncate font-semibold text-slate-900">{agent.name}</span>
+                    <span className="shrink-0 font-mono text-[11px] text-slate-500">{agent.model_tier}</span>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between font-mono text-xs">
+                      <span className="text-slate-600">RAM</span>
+                      <strong className={cn("font-semibold", isNearCap ? "text-red-700" : "text-slate-900")}>
+                        {agent.ram_usage} MB / {policy.maxRamPerAgentMb} MB
+                      </strong>
+                    </div>
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-900/10">
+                      <div
+                        className={cn("h-full rounded-full transition-[width] duration-500 ease-spring", isNearCap ? "bg-red-500" : "bg-slate-800")}
+                        style={{ width: `${ramPct}%` }}
+                      />
                     </div>
                   </div>
 
-                  <p className="text-[11px] font-sans text-slate-700 leading-relaxed">
-                    {evt.summary}
-                  </p>
-
-                  <div className="flex items-center gap-3 text-[11px] text-slate-500 border-t border-slate-200/50 pt-1.5">
-                    {evt.toolName && (
-                      <span>
-                        Tool: <code className="text-slate-800 font-semibold">{evt.toolName}</code>
-                      </span>
-                    )}
-                    {evt.similarityScore !== undefined && (
-                      <span>
-                        Cosine Similarity: <strong className="text-amber-800 font-bold">{evt.similarityScore}</strong>
-                      </span>
-                    )}
-                    {evt.retryCount !== undefined && (
-                      <span>
-                        Consecutive Errors: <strong className="text-rose-800 font-bold">{evt.retryCount}x</strong>
-                      </span>
-                    )}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between font-mono text-xs">
+                      <span className="text-slate-600">CPU</span>
+                      <span className="font-semibold text-slate-900">{agent.cpu_usage}%</span>
+                    </div>
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-900/10">
+                      <div
+                        className="h-full rounded-full bg-emerald-500 transition-[width] duration-500 ease-spring"
+                        style={{ width: `${Math.min(100, agent.cpu_usage * 3)}%` }}
+                      />
+                    </div>
                   </div>
                 </div>
               );
             })}
           </div>
-        </div>
-
-        {/* Right Column (1/3): Configurable Policy Sliders */}
-        <div className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft p-5 space-y-5">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <h2 className="font-bold text-sm text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-              <Sliders className="h-4 w-4 text-slate-600" />
-              <span>Guardrail Policy</span>
-            </h2>
-            <span className="font-mono text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 font-bold">
-              Active
-            </span>
-          </div>
-
-          <div className="space-y-4 text-xs">
-            {/* Slider 1: Max Retries */}
-            <div className="space-y-1.5">
-              <div className="flex justify-between items-center">
-                <label className="text-slate-700 font-semibold">Max Consecutive Retries</label>
-                <span className="font-mono font-bold text-slate-900">{policy.maxConsecutiveRetries} Retries</span>
-              </div>
-              <input
-                type="range"
-                min="1"
-                max="8"
-                step="1"
-                value={policy.maxConsecutiveRetries}
-                onChange={(e) =>
-                  setPolicy({ ...policy, maxConsecutiveRetries: Number(e.target.value) })
-                }
-                className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-slate-900"
-              />
-              <span className="text-[10px] text-slate-400 block">Trips circuit breaker on repeated tool failures.</span>
-            </div>
-
-            {/* Slider 2: Semantic Similarity Threshold */}
-            <div className="space-y-1.5">
-              <div className="flex justify-between items-center">
-                <label className="text-slate-700 font-semibold">Semantic Similarity Cap</label>
-                <span className="font-mono font-bold text-slate-900">{policy.semanticSimilarityThreshold} Cosine</span>
-              </div>
-              <input
-                type="range"
-                min="0.75"
-                max="0.98"
-                step="0.01"
-                value={policy.semanticSimilarityThreshold}
-                onChange={(e) =>
-                  setPolicy({ ...policy, semanticSimilarityThreshold: Number(e.target.value) })
-                }
-                className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-slate-900"
-              />
-              <span className="text-[10px] text-slate-400 block">Catches agents repeating identical thoughts in different phrasing.</span>
-            </div>
-
-            {/* Slider 3: Human Nudge Threshold */}
-            <div className="space-y-1.5">
-              <div className="flex justify-between items-center">
-                <label className="text-slate-700 font-semibold">Nudge vs. Kill Threshold</label>
-                <span className="font-mono font-bold text-slate-900">&gt;= {policy.nudgeCompletionThreshold}% Task</span>
-              </div>
-              <input
-                type="range"
-                min="50"
-                max="95"
-                step="5"
-                value={policy.nudgeCompletionThreshold}
-                onChange={(e) =>
-                  setPolicy({ ...policy, nudgeCompletionThreshold: Number(e.target.value) })
-                }
-                className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-slate-900"
-              />
-              <span className="text-[10px] text-slate-400 block">Pauses instead of killing if task completion is high.</span>
-            </div>
-
-            {/* Slider 4: RAM Limit per Agent */}
-            <div className="space-y-1.5">
-              <div className="flex justify-between items-center">
-                <label className="text-slate-700 font-semibold">Max RAM per Agent</label>
-                <span className="font-mono font-bold text-slate-900">{policy.maxRamPerAgentMb} MB</span>
-              </div>
-              <input
-                type="range"
-                min="100"
-                max="400"
-                step="10"
-                value={policy.maxRamPerAgentMb}
-                onChange={(e) =>
-                  setPolicy({ ...policy, maxRamPerAgentMb: Number(e.target.value) })
-                }
-                className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-slate-900"
-              />
-              <span className="text-[10px] text-slate-400 block">Cgroups clamp resident memory to prevent host OOM.</span>
-            </div>
-
-            <label className="flex items-start gap-2.5 rounded-lg border border-slate-200 bg-slate-50 p-3">
-              <input
-                type="checkbox"
-                checked={policy.autoApplyRewrites}
-                onChange={(e) => setPolicy({ ...policy, autoApplyRewrites: e.target.checked })}
-                className="mt-0.5 h-3.5 w-3.5 accent-slate-900"
-              />
-              <span>
-                <span className="block text-slate-700 font-semibold">Auto-resume stuck agents</span>
-                <span className="block text-[10px] text-slate-400">
-                  Resume with the suggested instruction instead of waiting for you. At most once per 30 minutes per agent; you are still notified.
-                </span>
-              </span>
-            </label>
-
-            <div className="pt-2">
-              <button
-                type="button"
-                onClick={handleSavePolicy}
-                className="w-full rounded-full bg-slate-900 py-2.5 text-xs font-semibold text-white hover:bg-slate-800 transition-colors shadow-2xs"
-              >
-                Save Guardrail Policy
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ================= SECTION 2: FLAGGED AGENTS REVIEW QUEUE ================= */}
-      <div className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft overflow-hidden">
-        <div className="p-4 sm:p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
-          <div>
-            <h2 className="font-bold text-sm text-slate-900 uppercase tracking-wider flex items-center gap-2">
-              <AlertOctagon className="h-4 w-4 text-amber-600" />
-              <span>Flagged Agents &amp; Human-in-the-Loop Review Queue</span>
-            </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Take supervisory actions: supply hint, throttle model tier, or execute hard kill-switch.
-            </p>
-          </div>
-          <span className="font-mono text-xs font-semibold bg-amber-50 text-amber-800 px-2.5 py-1 rounded border border-amber-200">
-            {displayedFlaggedAgents.length} Agents Flagged
-          </span>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs text-left">
-            <thead>
-              <tr className="border-b border-slate-200 bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold">
-                <th className="py-3 px-4">Agent Node</th>
-                <th className="py-3 px-4">Status</th>
-                <th className="py-3 px-4">Loop Threat Score</th>
-                <th className="py-3 px-4">RAM / CPU</th>
-                <th className="py-3 px-4">Current Subtask</th>
-                <th className="py-3 px-4 text-right">Supervisory Controls</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {displayedFlaggedAgents.map((agent) => {
-                const statusStyle = STATUS_STYLES[agent.status as AgentStatus] || STATUS_STYLES.HIBERNATED;
-
-                return (
-                  <tr key={agent.agent_id} className="hover:bg-slate-50/60 transition-colors">
-                    <td className="py-3 px-4 font-semibold text-slate-900">
-                      {agent.name}
-                      <span className="block font-mono text-[10px] text-slate-400">{agent.agent_id}</span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <span
-                        className={cn(
-                          "inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold border",
-                          statusStyle.badge
-                        )}
-                      >
-                        {statusStyle.label}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 font-mono font-bold">
-                      <span
-                        className={cn(
-                          agent.loop_score > 0.8
-                            ? "text-rose-600"
-                            : agent.loop_score > 0.5
-                            ? "text-amber-600"
-                            : "text-emerald-700"
-                        )}
-                      >
-                        {agent.loop_score}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 font-mono text-slate-600">
-                      {agent.ram_usage} MB • {agent.cpu_usage}%
-                    </td>
-                    <td className="py-3 px-4 text-slate-600 max-w-xs truncate font-mono text-[11px]">
-                      {agent.current_task || "No active task"}
-                    </td>
-                    <td className="py-3 px-4 text-right space-x-1.5 whitespace-nowrap">
-                      {agent.status === "PAUSED_NUDGE" ? (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => setNudgeModalAgent(agent)}
-                            className="inline-flex items-center gap-1 rounded bg-emerald-700 hover:bg-emerald-800 text-white px-2.5 py-1 text-xs font-semibold shadow-2xs transition-colors"
-                          >
-                            <Send className="h-3 w-3" />
-                            <span>Send Hint &amp; Resume</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              executeGuardrailAction("THROTTLE_DOWNGRADE", { agentId: agent.agent_id })
-                            }
-                            className="inline-flex items-center gap-1 rounded border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 px-2.5 py-1 text-xs font-semibold shadow-2xs transition-colors"
-                          >
-                            <span>Throttle Model</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              executeGuardrailAction("TRIGGER_KILL_SWITCH", { agentId: agent.agent_id })
-                            }
-                            className="inline-flex items-center gap-1 rounded bg-rose-600 hover:bg-rose-700 text-white px-2.5 py-1 text-xs font-semibold shadow-2xs transition-colors"
-                          >
-                            <span>Kill Switch</span>
-                          </button>
-                        </>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => setNudgeModalAgent(agent)}
-                          className="text-slate-600 hover:text-slate-900 underline font-medium"
-                        >
-                          Operator Action
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* ================= SECTION 3: PER-AGENT RAM & CPU GOVERNANCE PANEL ================= */}
-      <div className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft p-5 space-y-5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
-          <div>
-            <h2 className="font-bold text-sm text-slate-900 uppercase tracking-wider flex items-center gap-2">
-              <Cpu className="h-4 w-4 text-indigo-600" />
-              <span>Per-Agent RAM &amp; CPU Governance Panel</span>
-            </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Autonomous cgroup bus governors prevent low-complexity agent memory leaks from exhausting the host.
-            </p>
-          </div>
-
-        </div>
-
-        {/* Meters Grid for Active Agents */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {displayedActiveAgents.map((agent) => {
-            const ramPct = Math.min(100, Math.round((agent.ram_usage / policy.maxRamPerAgentMb) * 100));
-            const isNearCap = agent.ram_usage > policy.maxRamPerAgentMb * 0.8;
-
-            return (
-              <div
-                key={agent.agent_id}
-                className="p-3.5 rounded-lg border border-slate-200 bg-slate-50/70 space-y-2 text-xs"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-slate-900 truncate">{agent.name}</span>
-                  <span className="font-mono text-[10px] text-slate-500">{agent.model_tier}</span>
-                </div>
-
-                {/* RAM meter */}
-                <div className="space-y-1">
-                  <div className="flex justify-between font-mono text-[11px]">
-                    <span className="text-slate-500">RAM:</span>
-                    <strong className={cn(isNearCap ? "text-rose-600 font-bold" : "text-slate-800")}>
-                      {agent.ram_usage} MB / {policy.maxRamPerAgentMb} MB
-                    </strong>
-                  </div>
-                  <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
-                    <div
-                      className={cn(
-                        "h-full rounded-full transition-all duration-300",
-                        isNearCap ? "bg-rose-500" : "bg-indigo-500"
-                      )}
-                      style={{ width: `${ramPct}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* CPU meter */}
-                <div className="space-y-1">
-                  <div className="flex justify-between font-mono text-[11px]">
-                    <span className="text-slate-500">CPU:</span>
-                    <span className="text-slate-800 font-semibold">{agent.cpu_usage}%</span>
-                  </div>
-                  <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
-                    <div
-                      className="bg-emerald-500 h-full rounded-full transition-all duration-300"
-                      style={{ width: `${Math.min(100, agent.cpu_usage * 3)}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+        )}
+      </Panel>
 
       {/* ================= SEND NUDGE MODAL ================= */}
       {nudgeModalAgent && (
-        <div className="fixed inset-0 z-50 bg-slate-950/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-start justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2">
-                <div className="h-9 w-9 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 flex items-center justify-center">
-                  <MessageSquare className="h-4 w-4" />
-                </div>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4"
+          onKeyDown={(e) => e.key === "Escape" && setNudgeModalAgent(null)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="nudge-title"
+            className="max-h-[90dvh] w-full max-w-lg space-y-5 overflow-y-auto rounded-3xl bg-white p-6 shadow-lift ring-1 ring-slate-900/10"
+          >
+            <div className="flex items-start justify-between gap-3 border-b border-slate-900/5 pb-4">
+              <div className="flex items-center gap-3">
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/20">
+                  <MessageSquare className="h-4 w-4" aria-hidden="true" />
+                </span>
                 <div>
-                  <h3 className="font-bold text-slate-900 text-base">
+                  <h3 id="nudge-title" className="text-base font-semibold tracking-tight text-slate-900">
                     Resume with an instruction
                   </h3>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-slate-600">
                     Target: <strong className="text-slate-900">{nudgeModalAgent.name}</strong>
                   </p>
                 </div>
@@ -719,65 +630,62 @@ export function GuardrailsClient({
               <button
                 type="button"
                 onClick={() => setNudgeModalAgent(null)}
-                className="text-slate-400 hover:text-slate-700"
+                aria-label="Close"
+                className="rounded-full p-1.5 text-slate-500 hover:bg-slate-900/5 hover:text-slate-800"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
-            {suggestionLoading && <p className="text-xs text-slate-400">Loading suggestion…</p>}
+            {suggestionLoading && <p className="text-sm text-slate-600">Loading suggestion…</p>}
             {suggestion && (
-              <div className="rounded-lg border border-emerald-200 bg-emerald-50/60 p-3 text-xs space-y-1.5">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="flex items-center gap-1.5 font-semibold text-emerald-800">
-                    <Sparkles className="h-3.5 w-3.5" /> Suggested instruction
+              <div className="space-y-2 rounded-xl bg-emerald-50/70 p-4 text-sm ring-1 ring-emerald-600/20">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="flex items-center gap-1.5 font-semibold text-emerald-900">
+                    <Sparkles className="h-3.5 w-3.5" aria-hidden="true" /> Suggested instruction
                   </span>
-                  <span className="text-[10px] font-medium text-emerald-700">
+                  <span className="text-xs font-medium text-emerald-800">
                     {suggestion.source === "AI" ? "Written by AI from the repeated steps" : "Written by ArgusOps rules from the repeated steps"}
                   </span>
                 </div>
                 <p className="text-slate-700">{suggestion.observed}</p>
                 {suggestion.tokensBefore > 0 && (
-                  <p className="text-[11px] text-slate-500">
+                  <p className="text-xs text-slate-600">
                     The loop cost about {suggestion.tokensBefore.toLocaleString()} tokens; this instruction adds about {suggestion.tokensAfter.toLocaleString()}.
                   </p>
                 )}
-                <button type="button" onClick={handleDismissSuggestion} className="text-[11px] font-medium text-slate-500 underline underline-offset-2 hover:text-slate-800">
+                <button type="button" onClick={handleDismissSuggestion} className="text-xs font-medium text-slate-600 underline underline-offset-2 hover:text-slate-900">
                   Dismiss suggestion
                 </button>
               </div>
             )}
 
-            <div className="space-y-2 text-xs">
-              <label className="font-semibold text-slate-800 block">
+            <div className="space-y-2">
+              <label htmlFor="nudge-text" className="block text-sm font-medium text-slate-900">
                 {suggestion ? "Instruction to send (you can edit it)" : "Instruction to send"}
               </label>
               <textarea
+                id="nudge-text"
+                autoFocus
                 value={nudgeHintText}
                 onChange={(e) => setNudgeHintText(e.target.value)}
                 rows={suggestion ? 6 : 3}
-                className="w-full rounded-full border border-slate-300 bg-slate-50 p-3 font-mono text-xs text-slate-900 focus:bg-white focus:border-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 transition-all resize-none shadow-2xs"
+                className="w-full resize-none rounded-xl bg-white p-3.5 text-sm text-slate-900 ring-1 ring-slate-900/10 transition-shadow placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900"
                 placeholder="e.g. Stop re-running the tests; read the error and fix the cause first."
               />
-              <p className="text-[11px] text-slate-500">
-                The agent resumes, and this text is added to its next request to the model.
-              </p>
+              <p className="text-xs text-slate-600">The agent resumes, and this text is added to its next request to the model.</p>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => setNudgeModalAgent(null)}
-                className="px-4 py-2 rounded-md border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
-              >
+            <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-900/5 pt-4">
+              <button type="button" onClick={() => setNudgeModalAgent(null)} className={buttonClasses("secondary", false)}>
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleConfirmNudge}
-                className="px-4 py-2 rounded-md bg-emerald-700 hover:bg-emerald-800 text-xs font-semibold text-white transition-colors flex items-center gap-1.5 shadow-xs"
+                className={buttonClasses("primary", false, "bg-emerald-700 hover:bg-emerald-800")}
               >
-                <Send className="h-3.5 w-3.5" />
+                <Send className="h-3.5 w-3.5" aria-hidden="true" />
                 <span>{suggestion ? "Approve & resume" : "Send & resume"}</span>
               </button>
             </div>
