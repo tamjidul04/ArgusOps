@@ -1,26 +1,29 @@
 # ROADMAP.md
 
-> **Current Phase**: 0 — Foundation and honesty
-> **Version**: 0.x (single source of truth: `package.json`)
+> **Current Phase**: 1 — Guardian MVP (Phase 0 complete)
+> **Version**: 0.2.0 (single source of truth: `package.json`)
 
-## Phase 0: Foundation and honesty (1–2 weeks)
-- [ ] Reconcile version numbers, PRD, README and `.antigravityrules` (tiers, daemon RAM budget)
-- [ ] Sessions, `src/proxy.ts` route guard, admin role check, scoped `/api/keys`
-- [ ] Hash-only API-key lookup; remove demo key and password fallback; real TOTP
-- [ ] Replace in-memory stores with Prisma models
-- [ ] Schema: `UsageEvent`, `Incident`, `Policy`, `Notification`, `NotificationChannel`, `PromptRewrite`, `Session`, `CliDevice`, `ModelPrice`
-- [ ] Enforce agent limits and token caps; seed Free 2 / Pro 10 / Enterprise custom; remove free top-ups
-- [ ] Add `vitest`; port `test-proxy.ts`
+## Phase 0: Foundation and honesty — DONE
+- [x] Reconcile version numbers; honest README (PRD v1.1 kept as the original brief)
+- [x] Sessions, `src/proxy.ts` route guard, admin role check, owner-scoped keys/billing/pages
+- [x] Hash-only API-key lookup; demo key and password fallback removed; real TOTP
+- [x] Google and GitHub sign-in (OAuth 2.0, PKCE for Google)
+- [x] In-memory stores replaced with Prisma: policy, incidents, file locks, permissions
+- [x] Schema: `UsageEvent`, `Incident`, `Policy`, `Notification`, `NotificationChannel`, `PromptRewrite`, `Session`, `CliDevice`, `ModelPrice`, `FileLock`, `OAuthAccount`
+- [x] Agent limits enforced at registration/wake (Free 2, Pro 10); free top-ups removed
+- [x] Test runner: 44 unit tests + 27 real-database integration tests
+- [x] Simulated backends and invented dashboard numbers removed
 
 ## Phase 1: Guardian MVP (6–8 weeks)
-- [ ] Real forwarding proxy with provider adapters and real usage
-- [ ] Detectors: loop (policy-driven), waste, wrong prompt
-- [ ] `packages/cli`: `argus run`, PTY, pause/resume/kill/nudge, device pairing
-- [ ] Prompt rewrite flow with approval and diff
+- [ ] Real forwarding proxy with provider adapters (Anthropic, OpenAI, Google) and provider-reported usage into `UsageEvent`
+- [ ] Detectors: waste (context bloat, burn rate) and wrong/unclear prompt check (loop detector already policy-driven)
+- [ ] `packages/cli`: `argus run`, PTY, pause/resume/kill/nudge, device pairing (`CliDevice`), command channel
+- [ ] Prompt rewrite flow with approval and diff (`PromptRewrite`)
 - [ ] Notifications: email, webhook, toast, VS Code, desktop
-- [ ] Website wired to real data; incidents feed; device pairing page
+- [ ] Dashboard rebuilt on real data: incidents feed, usage and savings from `UsageEvent`, device pairing page
 - [ ] `packages/vscode` extension
-- [ ] Stripe billing and limit enforcement
+- [ ] Stripe billing; monthly token reset
+- [ ] Email verification at sign-up (then the OAuth link-wipes-password rule can be relaxed)
 
 ## Phase 2: Autopilot
 - [ ] LLM planner with clarifying questions, plan, design approval
