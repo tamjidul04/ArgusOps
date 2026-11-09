@@ -11,6 +11,7 @@ import {
   Laptop,
   CreditCard,
   Bell,
+  BarChart3,
   Lock,
   ChevronDown,
   Coins,
@@ -54,6 +55,11 @@ const NAV_ITEMS: NavItem[] = [
     name: "Local PC Bridge & SDK",
     href: "/dashboard/local-bridge",
     icon: Laptop,
+  },
+  {
+    name: "Usage & Savings",
+    href: "/dashboard/usage",
+    icon: BarChart3,
   },
   {
     name: "Notifications",
