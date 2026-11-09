@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertCircle, Check, Loader2 } from "lucide-react";
 import { AuthShell, Field } from "@/components/auth/AuthShell";
+import { OAuthButtons, OrDivider } from "@/components/auth/OAuthButtons";
 
 const INCLUDED = [
   "2 concurrent supervised agents",
@@ -58,6 +59,9 @@ export default function SignupPage() {
         </>
       }
     >
+      <OAuthButtons />
+      <OrDivider />
+
       <form onSubmit={onSubmit} className="space-y-4">
         {error && (
           <div role="alert" className="flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">
