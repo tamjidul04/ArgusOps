@@ -12,6 +12,8 @@ export interface GuardrailPolicy {
   nudgeCompletionThreshold: number;
   maxRamPerAgentMb: number;
   autoThrottleEnabled: boolean;
+  /** Resume a stuck agent automatically with the suggested instruction (at most once per 30 minutes per agent). */
+  autoApplyRewrites: boolean;
 }
 
 export interface PolicyRow {
@@ -21,6 +23,7 @@ export interface PolicyRow {
   max_consecutive_retries: number;
   ram_soft_limit_mb: number;
   auto_downgrade_models: boolean;
+  auto_apply_rewrites: boolean;
 }
 
 export interface Permissions {
@@ -44,6 +47,7 @@ export function policyRowToDto(row: PolicyRow): GuardrailPolicy {
     nudgeCompletionThreshold: row.nudge_progress_pct,
     maxRamPerAgentMb: row.ram_soft_limit_mb,
     autoThrottleEnabled: row.auto_downgrade_models,
+    autoApplyRewrites: row.auto_apply_rewrites,
   };
 }
 
@@ -70,6 +74,7 @@ export function sanitizePolicyInput(input: unknown): Partial<GuardrailPolicy> {
   const ram = clampNumber(src.maxRamPerAgentMb, L.maxRamPerAgentMb.min, L.maxRamPerAgentMb.max, true);
   if (ram !== undefined) out.maxRamPerAgentMb = ram;
   if (typeof src.autoThrottleEnabled === "boolean") out.autoThrottleEnabled = src.autoThrottleEnabled;
+  if (typeof src.autoApplyRewrites === "boolean") out.autoApplyRewrites = src.autoApplyRewrites;
   return out;
 }
 
@@ -83,6 +88,7 @@ export function policyDtoToRowUpdate(dto: Partial<GuardrailPolicy>) {
   if (dto.nudgeCompletionThreshold !== undefined) data.nudge_progress_pct = dto.nudgeCompletionThreshold;
   if (dto.maxRamPerAgentMb !== undefined) data.ram_soft_limit_mb = dto.maxRamPerAgentMb;
   if (dto.autoThrottleEnabled !== undefined) data.auto_downgrade_models = dto.autoThrottleEnabled;
+  if (dto.autoApplyRewrites !== undefined) data.auto_apply_rewrites = dto.autoApplyRewrites;
   return data;
 }
 

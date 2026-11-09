@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { costUsd, type PriceRow } from "@/lib/pricing";
 import { notify, notifyLoop } from "@/lib/notifier";
+import { proposeRewrite } from "@/lib/rewriter";
 import {
   checkAgentSlot,
   ensureLocalCluster,
@@ -95,7 +96,7 @@ export async function processSync(ctx: SyncContext, raw: unknown): Promise<SyncR
   // ---- apply events in order ---------------------------------------------------------------------------
   const prices = await getPrices();
   let tokensThisSync = 0;
-  const agentUpdate: { status?: string; loop_score?: number; current_task?: string | null } = {};
+  const agentUpdate: { status?: string; loop_score?: number; current_task?: string | null; pending_hint?: string | null } = {};
 
   for (const ev of events) {
     if (!ev || typeof ev !== "object") continue;
@@ -141,10 +142,36 @@ export async function processSync(ctx: SyncContext, raw: unknown): Promise<SyncR
         detail,
         interceptionMs: float(e.interception_ms, 60_000),
       });
-      if (action !== "NONE") {
-        await notifyLoop(ctx.userId, { agentName: agent.name, agentId: agent.agent_id, incidentId: incident.id, action, detail });
+      // what the agent kept repeating (newer CLIs send the exact steps; older ones only the summary)
+      const ev2 = (e.evidence && typeof e.evidence === "object" ? e.evidence : {}) as Record<string, unknown>;
+      const unit = (Array.isArray(ev2.unit) ? ev2.unit : [])
+        .filter((u): u is string => typeof u === "string" && u.trim().length > 0)
+        .slice(0, 8)
+        .map((u) => u.slice(0, 400));
+      const repeats = int(ev2.repeats, 1000) || 3;
+
+      let suggestion: "ready" | "applied" | undefined;
+      if (action === "PAUSED") {
+        const proposed = await proposeRewrite({
+          userId: ctx.userId,
+          agentId: agent.agent_id,
+          agentName: agent.name,
+          incidentId: incident.id,
+          unit: unit.length ? unit : [detail],
+          repeats,
+        });
+        if (proposed.autoApplied) {
+          // stay running and hand the instruction to the agent right away, instead of pausing
+          suggestion = "applied";
+          Object.assign(agentUpdate, { loop_score: score, pending_hint: proposed.rewrite.rewritten_prompt, current_task: "Resumed automatically with a suggested instruction" });
+        } else {
+          suggestion = "ready";
+        }
       }
-      if (action === "PAUSED") Object.assign(agentUpdate, { status: "PAUSED_NUDGE", loop_score: score, current_task: detail.slice(0, 500) });
+      if (action !== "NONE") {
+        await notifyLoop(ctx.userId, { agentName: agent.name, agentId: agent.agent_id, incidentId: incident.id, action, detail, suggestion });
+      }
+      if (action === "PAUSED" && suggestion !== "applied") Object.assign(agentUpdate, { status: "PAUSED_NUDGE", loop_score: score, current_task: detail.slice(0, 500) });
       if (action === "KILLED") Object.assign(agentUpdate, { status: "KILLED_LOOP", loop_score: score, current_task: detail.slice(0, 500) });
     }
   }
