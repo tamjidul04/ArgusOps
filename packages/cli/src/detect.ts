@@ -1,4 +1,3 @@
-import { evaluateAgentStreamForLoops } from "../../../src/lib/guardrails-engine";
 import { countToolCalls, extractToolTrace } from "./anthropic";
 
 export interface DetectPolicy {
@@ -8,8 +7,11 @@ export interface DetectPolicy {
 
 export const DEFAULT_POLICY: DetectPolicy = { loopScoreThreshold: 0.85, exactRepeatLimit: 2 };
 
-/** A genuine retry often repeats once, so require at least this many identical calls in a row. */
-export const MIN_CONSECUTIVE_REPEATS = 3;
+/** A genuine retry often repeats once or twice, so a pattern must repeat at least this many times. */
+export const MIN_REPEATS = 3;
+
+/** Longest repeating unit we look for: e.g. [call, error] is 2, [edit, ok, test, ok] is 4. */
+const MAX_PERIOD = 4;
 
 export interface LoopVerdict {
   tripped: boolean;
@@ -20,11 +22,37 @@ export interface LoopVerdict {
 }
 
 /**
- * Looks for a stuck agent in the conversation Claude Code sends with each request.
+ * Finds the longest tail of `items` that is one short sequence repeated end to end, at least `minRepeats` times.
+ * [A, A, A] -> unit [A] x3.  [A, E, A, E, A, E] -> unit [A, E] x3.  [X, A, A, A] -> unit [A] x3 (ignores older history).
+ */
+export function findRepeatingTail(items: string[], minRepeats: number): { unit: string[]; repeats: number } | null {
+  let best: { unit: string[]; repeats: number } | null = null;
+  for (let period = 1; period <= MAX_PERIOD; period++) {
+    if (items.length < period * minRepeats) continue;
+    const unit = items.slice(items.length - period);
+    let repeats = 1;
+    while (repeats * period + period <= items.length) {
+      const start = items.length - (repeats + 1) * period;
+      const chunk = items.slice(start, start + period);
+      if (chunk.every((v, i) => v === unit[i])) repeats++;
+      else break;
+    }
+    if (repeats >= minRepeats && (!best || repeats * period > best.repeats * best.unit.length)) best = { unit, repeats };
+  }
+  return best;
+}
+
+/** More repeats means more certainty: 3 -> 0.94, 4 -> 0.97, 5 or more -> 0.99. */
+export function scoreForRepeats(repeats: number): number {
+  return Math.min(0.99, Math.round((0.88 + 0.03 * (repeats - 1)) * 100) / 100);
+}
+
+/**
+ * Looks for a stuck agent in the conversation Claude Code sends with each request:
  *  - the same tool call over and over (even if the results differ), or
- *  - a call and its error repeating (A, error, A, error, ...).
- * Meaning-based matching is switched off here: different files share most of their words.
- * After a resume only calls made *after* it are considered, so the agent isn't re-paused for old history.
+ *  - a call and its error repeating (call, error, call, error, ...), or a short sequence repeating.
+ * Matching is exact on purpose: two different file reads share most of their words, so meaning-based matching
+ * would pause healthy agents. After a resume only calls made *after* it are considered.
  */
 export class LoopDetector {
   private policy: DetectPolicy = DEFAULT_POLICY;
@@ -50,30 +78,26 @@ export class LoopDetector {
 
     // only what happened after the resume point counts
     const skip = this.ignoreFirstCalls;
-    const calls = trace.calls.slice(skip).slice(-60);
-    const interleaved = trace.items.filter((i) => i.callNo >= skip).map((i) => i.sig).slice(-60);
+    const calls = trace.calls.slice(skip).slice(-80);
+    const mixed = trace.items.filter((i) => i.callNo >= skip).map((i) => i.sig).slice(-80);
 
-    const limit = Math.max(MIN_CONSECUTIVE_REPEATS, this.policy.exactRepeatLimit);
-    const opts = {
-      loopScoreThreshold: this.policy.loopScoreThreshold,
-      exactRepeatLimit: limit,
-      nudgeProgressPct: 0, // any trip pauses for a human (never a silent hard kill)
-      semanticEnabled: false,
-    };
+    const minRepeats = Math.max(MIN_REPEATS, this.policy.exactRepeatLimit);
+    const found = [findRepeatingTail(calls, minRepeats), findRepeatingTail(mixed, minRepeats)]
+      .filter((f): f is { unit: string[]; repeats: number } => f !== null)
+      .sort((a, b) => b.repeats - a.repeats)[0];
 
-    const a = evaluateAgentStreamForLoops(calls, 100, opts);
-    const b = interleaved.length >= 2 ? evaluateAgentStreamForLoops(interleaved, 100, opts) : null;
-    const worst = b && b.loopScore > a.loopScore ? b : a;
     const ms = Math.round((performance.now() - started) * 100) / 100;
+    const score = found ? scoreForRepeats(found.repeats) : 0;
 
-    if (worst.status === "ACTIVE") {
-      return { tripped: false, score: worst.loopScore, loopType: "EXACT_TOOL_LOOP", reason: "", interceptionMs: ms };
+    if (!found || score < this.policy.loopScoreThreshold) {
+      return { tripped: false, score, loopType: "EXACT_TOOL_LOOP", reason: "", interceptionMs: ms };
     }
+    const what = found.unit.map((u) => u.slice(0, 90)).join(" -> ");
     return {
       tripped: true,
-      score: worst.loopScore,
+      score,
       loopType: "EXACT_TOOL_LOOP",
-      reason: worst.matchedPattern ? `Repeating: ${worst.matchedPattern.slice(0, 160)}` : worst.reason,
+      reason: `Repeated ${found.repeats} times: ${what}`.slice(0, 220),
       interceptionMs: ms,
     };
   }
