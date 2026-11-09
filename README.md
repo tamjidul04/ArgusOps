@@ -66,12 +66,25 @@ What happens: `argus run` starts a small proxy on 127.0.0.1 and launches Claude 
 
 Set `ARGUS_API_URL` to point at a deployed server (default `http://localhost:3000`).
 
+### Try it for free (no Anthropic account, no token spend)
+
+Claude Code is free to install; only its model calls cost money. `packages/cli/e2e/fake-anthropic.mjs` is a local stand-in for the Anthropic API, so you can run the **real** Claude Code through ArgusOps at no cost:
+
+```bash
+npm install -g @anthropic-ai/claude-code
+npm run dev                         # in one terminal
+npm run test:claude                 # in another: real Claude Code is made to loop, ArgusOps pauses it, resumes it with a hint
+```
+
+To poke at it by hand: `node packages/cli/e2e/fake-anthropic.mjs 8787 --loop`, then run `ANTHROPIC_API_KEY=sk-ant-fake argus run --upstream http://127.0.0.1:8787 claude`. Without `--loop` the fake provider just answers every message with a canned reply.
+
 ## Tests
 
 ```bash
 npm test                    # unit tests (no database needed)
 npm run test:integration    # real-database tests (needs DATABASE_URL and a seeded database)
 npm run test:e2e            # real CLI + running app (start `npm run dev` first); plays operator end to end
+npm run test:claude         # same, with the REAL Claude Code and a free fake model (needs `claude` installed)
 npx tsc --noEmit            # type check
 ```
 
