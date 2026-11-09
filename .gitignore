@@ -44,3 +44,6 @@ next-env.d.ts
 *.db
 *.db-journal
 stitch-export/
+
+# runtime state written by the local daemon
+.argus-mutex.json
