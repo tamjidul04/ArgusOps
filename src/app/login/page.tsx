@@ -4,7 +4,7 @@ import React, { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AlertCircle, KeyRound, Loader2 } from "lucide-react";
-import { AuthShell, Field } from "@/components/auth/AuthShell";
+import { AuthShell, Field, authPrimaryButton } from "@/components/auth/AuthShell";
 import { OAuthButtons, OrDivider, oauthErrorMessage } from "@/components/auth/OAuthButtons";
 
 /** Only same-site relative paths are allowed as a post-login target. */
@@ -74,7 +74,7 @@ function LoginForm() {
 
       <form onSubmit={onSubmit} className="space-y-4">
         {error && (
-          <div role="alert" className="flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">
+          <div role="alert" className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
             <span>{error}</span>
           </div>
@@ -104,7 +104,7 @@ function LoginForm() {
         />
 
         {needsOtp && (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
             <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-amber-800">
               <KeyRound className="h-4 w-4" /> Two-factor code
             </div>
@@ -127,7 +127,7 @@ function LoginForm() {
         <button
           type="submit"
           disabled={loading}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-slate-900 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900/30 active:scale-[0.99] disabled:opacity-60"
+          className={authPrimaryButton}
         >
           {loading && <Loader2 className="h-4 w-4 animate-spin" />}
           {loading ? "Signing in…" : needsOtp ? "Verify and sign in" : "Sign in"}
