@@ -1,44 +1,51 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import crypto from "crypto";
+import {
+  createSession,
+  hashPassword,
+  isLegacyHash,
+  verifyPassword,
+  verifyTotp,
+} from "@/lib/auth";
+import { clientIp, rateLimit, resetRateLimit } from "@/lib/rate-limit";
 
-function verifyPassword(password: string, storedHash: string): boolean {
-  // If storedHash is formatted as salt:hash
-  if (storedHash.includes(":")) {
-    const [salt, key] = storedHash.split(":");
-    const testHash = crypto.pbkdf2Sync(password, salt, 1000, 64, "sha512").toString("hex");
-    return key === testHash;
-  }
-  // Fallback for seeded hashes or demo password checks
-  return storedHash.includes(password) || password === "ArgusOps2026!" || password.length >= 6;
-}
+const GENERIC_FAILURE = "Invalid email or password.";
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const { email, password, otp } = body;
+    const body = await req.json().catch(() => ({}));
+    const { email, password, otp } = body as {
+      email?: unknown;
+      password?: unknown;
+      otp?: unknown;
+    };
 
-    if (!email || typeof email !== "string") {
-      return NextResponse.json(
-        { error: "Work email is required." },
-        { status: 400 }
-      );
+    if (typeof email !== "string" || !email.trim() || typeof password !== "string" || !password) {
+      return NextResponse.json({ error: "Email and password are required." }, { status: 400 });
     }
 
     const trimmedEmail = email.trim().toLowerCase();
 
+    // Brute-force damping: 8 attempts / 10 min per ip+email, 40 / 10 min per ip.
+    const ip = clientIp(req);
+    const keyA = `login:${ip}:${trimmedEmail}`;
+    const limited = rateLimit(keyA, 8, 10 * 60_000);
+    const limitedIp = rateLimit(`login-ip:${ip}`, 40, 10 * 60_000);
+    if (!limited.allowed || !limitedIp.allowed) {
+      return NextResponse.json(
+        { error: "Too many sign-in attempts. Please wait and try again." },
+        { status: 429, headers: { "Retry-After": String(limited.retryAfterSec) } }
+      );
+    }
+
     const user = await prisma.user.findUnique({
       where: { email: trimmedEmail },
-      include: {
-        subscription: true,
-      },
+      include: { subscription: true },
     });
 
-    if (!user) {
-      return NextResponse.json(
-        { error: "No account found with this email. Please sign up." },
-        { status: 404 }
-      );
+    // Same response for unknown user and wrong password, so emails cannot be enumerated.
+    if (!user || !verifyPassword(password, user.password_hash)) {
+      return NextResponse.json({ error: GENERIC_FAILURE }, { status: 401 });
     }
 
     if (user.status === "BANNED") {
@@ -48,31 +55,28 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Check 2FA requirement
-    if (user.two_factor_enabled && !otp) {
-      return NextResponse.json(
-        {
-          require_2fa: true,
-          message: "Two-Factor Authentication code required.",
-        },
-        { status: 200 }
-      );
+    if (user.two_factor_enabled && user.two_factor_secret) {
+      if (typeof otp !== "string" || !otp) {
+        return NextResponse.json(
+          { require_2fa: true, message: "Two-factor authentication code required." },
+          { status: 200 }
+        );
+      }
+      if (!verifyTotp(user.two_factor_secret, otp)) {
+        return NextResponse.json({ error: "Invalid authenticator code." }, { status: 401 });
+      }
     }
 
-    if (user.two_factor_enabled && otp && otp.length !== 6) {
-      return NextResponse.json(
-        { error: "Invalid 6-digit authenticator code." },
-        { status: 400 }
-      );
+    // Upgrade legacy PBKDF2 hashes to scrypt on successful login.
+    if (isLegacyHash(user.password_hash)) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { password_hash: hashPassword(password) },
+      });
     }
 
-    const isMatch = verifyPassword(password, user.password_hash);
-    if (!isMatch) {
-      return NextResponse.json(
-        { error: "Invalid password credentials provided." },
-        { status: 401 }
-      );
-    }
+    resetRateLimit(keyA);
+    await createSession(user.id, req.headers.get("user-agent"));
 
     return NextResponse.json({
       success: true,
@@ -82,17 +86,11 @@ export async function POST(req: NextRequest) {
         name: user.name,
         role: user.role,
         plan_id: user.subscription?.plan_id,
-        free_tokens: user.subscription?.free_tokens,
-        paid_tokens: user.subscription?.paid_tokens,
       },
       redirectUrl: user.role === "ADMIN" ? "/admin" : "/dashboard",
     });
   } catch (error) {
-    console.error("Login verification error:", error);
-    return NextResponse.json(
-      { error: "An error occurred during authentication." },
-      { status: 500 }
-    );
+    console.error("Login error:", error);
+    return NextResponse.json({ error: "An error occurred during authentication." }, { status: 500 });
   }
 }
-

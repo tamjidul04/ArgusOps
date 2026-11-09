@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import fs from "node:fs";
 import path from "node:path";
 import { prisma } from "@/lib/prisma";
+import { requireAuth } from "@/lib/auth";
 import {
   getHostHardwareTelemetry,
   scanLocalCodingProcesses,
@@ -27,6 +28,8 @@ import {
 // GET /api/brain
 // ============================================================================
 export async function GET(req: NextRequest) {
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
   try {
     // 1. Collect real host PC hardware metrics
     const hardware = getHostHardwareTelemetry();
@@ -175,6 +178,8 @@ export async function GET(req: NextRequest) {
 // POST /api/brain
 // ============================================================================
 export async function POST(req: NextRequest) {
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
   try {
     const body = await req.json();
     const { action } = body;

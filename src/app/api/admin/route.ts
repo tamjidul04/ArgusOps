@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireAdmin } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
+  const auth = await requireAdmin(request);
+  if (auth instanceof NextResponse) return auth;
   try {
     // 1. Fetch all transactions in the approval queue joined with User and Subscription
     const transactions = await prisma.transactionApprovalQueue.findMany({
@@ -109,6 +112,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const auth = await requireAdmin(request);
+  if (auth instanceof NextResponse) return auth;
   try {
     const body = await request.json();
     const { action } = body;
@@ -137,66 +142,66 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Determine the target plan
-      const allPlans = await prisma.pricingPlan.findMany();
-      let matchedPlan = allPlans.find(
-        (p) =>
-          tx.requested_plan.toLowerCase().includes(p.name.toLowerCase()) ||
-          p.name.toLowerCase().includes(tx.requested_plan.toLowerCase())
-      );
-
-      // Fallback matching
-      if (!matchedPlan) {
-        if (tx.requested_plan.toLowerCase().includes("enterprise")) {
-          matchedPlan = allPlans.find((p) => p.plan_id === "plan_enterprise");
-        } else if (
-          tx.requested_plan.toLowerCase().includes("pro") ||
-          tx.requested_plan.toLowerCase().includes("swarm")
-        ) {
-          matchedPlan = allPlans.find((p) => p.plan_id === "plan_pro");
-        } else {
-          matchedPlan = allPlans[1] || allPlans[0];
-        }
+      if (tx.admin_status !== "PENDING") {
+        return NextResponse.json(
+          { success: false, error: `Transaction is already ${tx.admin_status}.` },
+          { status: 409 }
+        );
       }
 
-      const planId = matchedPlan?.plan_id || "plan_pro";
-      const agentLimit = matchedPlan?.agent_limit || 25;
-      const tokensToAdd = matchedPlan?.included_tokens || 1500000;
+      // Token top-up: credit exactly the tokens named in the request, never change the plan.
+      const topup = /^Token Top-Up \(\+(\d+)k tokens\)$/.exec(tx.requested_plan);
+      if (topup) {
+        const tokens = Number(topup[1]) * 1000;
+        const [updatedTx, updatedSub] = await prisma.$transaction([
+          prisma.transactionApprovalQueue.update({
+            where: { tx_id: txId },
+            data: { admin_status: "APPROVED", reviewed_at: new Date() },
+          }),
+          prisma.subscriptionAndWallet.update({
+            where: { user_id: tx.user_id },
+            data: { paid_tokens: { increment: tokens }, purchase_status: "NONE" },
+          }),
+        ]);
+        return NextResponse.json({
+          success: true,
+          message: `Approved top-up ${txId}: credited ${tokens.toLocaleString()} tokens to ${tx.user?.email}.`,
+          transaction: updatedTx,
+          subscription: updatedSub,
+        });
+      }
 
-      // 1. Update TransactionApprovalQueue
-      const updatedTx = await prisma.transactionApprovalQueue.update({
-        where: { tx_id: txId },
-        data: {
-          admin_status: "APPROVED",
-          reviewed_at: new Date(),
-        },
+      // Plan upgrade: exact plan-name match only, with no fuzzy fallback.
+      const matchedPlan = await prisma.pricingPlan.findUnique({
+        where: { name: tx.requested_plan },
       });
+      if (!matchedPlan) {
+        return NextResponse.json(
+          { success: false, error: `No plan named "${tx.requested_plan}" exists. Reject this request.` },
+          { status: 422 }
+        );
+      }
 
-      // 2. Update SubscriptionAndWallet
-      const updatedSub = await prisma.subscriptionAndWallet.upsert({
-        where: { user_id: tx.user_id },
-        update: {
-          plan_id: planId,
-          max_agents: agentLimit,
-          paid_tokens: {
-            increment: tokensToAdd,
+      const [updatedTx, updatedSub] = await prisma.$transaction([
+        prisma.transactionApprovalQueue.update({
+          where: { tx_id: txId },
+          data: { admin_status: "APPROVED", reviewed_at: new Date() },
+        }),
+        prisma.subscriptionAndWallet.update({
+          where: { user_id: tx.user_id },
+          data: {
+            plan_id: matchedPlan.plan_id,
+            max_agents: matchedPlan.agent_limit,
+            paid_tokens: { increment: matchedPlan.included_tokens },
+            purchase_status: "APPROVED",
           },
-          purchase_status: "APPROVED",
-        },
-        create: {
-          user_id: tx.user_id,
-          plan_id: planId,
-          max_agents: agentLimit,
-          free_tokens: 50000,
-          paid_tokens: tokensToAdd,
-          purchase_status: "APPROVED",
-        },
-        include: { plan: true },
-      });
+          include: { plan: true },
+        }),
+      ]);
 
       return NextResponse.json({
         success: true,
-        message: `Approved transaction ${txId}. Upgraded ${tx.user?.email || tx.user_id} to ${matchedPlan?.name} (${agentLimit} agents, +${tokensToAdd.toLocaleString()} tokens).`,
+        message: `Approved ${txId}. ${tx.user?.email} is now on ${matchedPlan.name} (${matchedPlan.agent_limit} agents, +${matchedPlan.included_tokens.toLocaleString()} tokens).`,
         transaction: updatedTx,
         subscription: updatedSub,
       });
@@ -357,13 +362,28 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      if (user.id === auth.user.id) {
+        return NextResponse.json(
+          { success: false, error: "You cannot change your own account status." },
+          { status: 400 }
+        );
+      }
+
       const newStatus =
-        targetStatus || (user.status === "ACTIVE" ? "BANNED" : "ACTIVE");
+        targetStatus === "ACTIVE" || targetStatus === "BANNED"
+          ? targetStatus
+          : user.status === "ACTIVE"
+            ? "BANNED"
+            : "ACTIVE";
 
       const updatedUser = await prisma.user.update({
         where: { id: userId },
         data: { status: newStatus },
       });
+      // A ban takes effect immediately: drop live sessions.
+      if (newStatus === "BANNED") {
+        await prisma.session.deleteMany({ where: { user_id: userId } });
+      }
 
       return NextResponse.json({
         success: true,
@@ -394,6 +414,15 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      const MAX_GRANT = 1_000_000_000;
+      const nums = [Number(freeTokens), Number(paidTokens)];
+      if (nums.some((n) => !Number.isFinite(n) || Math.abs(n) > MAX_GRANT)) {
+        return NextResponse.json(
+          { success: false, error: "Token amounts must be finite and within +/-1,000,000,000." },
+          { status: 400 }
+        );
+      }
+
       const updateData: any = {};
       if (Number(freeTokens) !== 0) {
         updateData.free_tokens = { increment: Number(freeTokens) };
@@ -401,8 +430,8 @@ export async function POST(request: NextRequest) {
       if (Number(paidTokens) !== 0) {
         updateData.paid_tokens = { increment: Number(paidTokens) };
       }
-      if (maxAgents !== undefined && Number(maxAgents) > 0) {
-        updateData.max_agents = Number(maxAgents);
+      if (maxAgents !== undefined && Number(maxAgents) > 0 && Number(maxAgents) <= 10_000) {
+        updateData.max_agents = Math.floor(Number(maxAgents));
       }
 
       const updatedSub = await prisma.subscriptionAndWallet.update({

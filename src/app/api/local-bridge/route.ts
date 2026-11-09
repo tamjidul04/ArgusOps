@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireAuth } from "@/lib/auth";
 import { verifyAndAcquireFileMutex } from "@/lib/guardrails-engine";
 
 export interface FileMutexLock {
@@ -48,6 +49,8 @@ let governancePermissions = {
 };
 
 export async function GET(req: NextRequest) {
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
   try {
     const localCluster = await prisma.clusterAndWorkspace.findFirst({
       where: { environment: "LOCAL_PC" },
@@ -86,6 +89,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
   try {
     const body = await req.json();
     const { action, lockId, permissions, targetFilePath } = body;
