@@ -119,6 +119,8 @@ async function api(pathname, body) {
     check("real token usage recorded with cost", usage.length === 1 && usage[0].input_tokens === 1200 && usage[0].output_tokens === 300 && usage[0].cost_usd > 0, `${usage[0]?.input_tokens} in / ${usage[0]?.output_tokens} out, $${usage[0]?.cost_usd}`);
     const mid = await prisma.subscriptionAndWallet.findUniqueOrThrow({ where: { user_id: user.id } });
     check("wallet charged exactly the metered tokens", before.free_tokens - mid.free_tokens === 1500, `${before.free_tokens - mid.free_tokens} tokens`);
+    const sug = await api("/api/rewrites?agentId=" + agentRow.agent_id);
+    check("a suggested instruction was written for the loop", !!sug.json.suggestion && sug.json.suggestion.text.includes("npm test"), (sug.json.suggestion?.text || "").slice(0, 80));
     const guard = await api("/api/guardrails");
     check("dashboard API shows the paused agent and the incident", guard.json.flaggedAgents?.some((a) => a.agent_id === agentRow.agent_id) && guard.json.streamEvents?.length >= 1);
 

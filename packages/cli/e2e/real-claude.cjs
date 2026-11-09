@@ -86,8 +86,11 @@ const toolRequests = () => (fakeOut.match(/POST \/v1\/messages\S*\s+model=\S+ st
     check("real token usage from real Claude Code recorded", usage.length >= 3 && usage.every((u) => u.input_tokens > 1000 && u.cost_usd > 0), `${usage.length} requests, ~${usage[0]?.input_tokens} input tokens each, model ${usage[0]?.model}`);
 
     const cookieHeader = { "content-type": "application/json", cookie: "argus_session=" + session };
-    const resume = await fetch(BASE + "/api/guardrails", { method: "POST", headers: cookieHeader, body: JSON.stringify({ action: "SEND_NUDGE", agentId: paused.agent_id, hintText: "Stop re-running that command; it will always fail." }) });
-    check("operator resumed it with a hint from the dashboard API", resume.status === 200, (await resume.json()).message);
+    const sug = await (await fetch(BASE + "/api/rewrites?agentId=" + paused.agent_id, { headers: cookieHeader })).json();
+    check("ArgusOps wrote a suggested instruction naming the repeated command", !!sug.suggestion && sug.suggestion.text.includes("process.exit(1)"), (sug.suggestion?.text || "").slice(0, 90));
+    check("the suggestion shows what the loop really cost", sug.suggestion?.tokensBefore > 0, `${sug.suggestion?.tokensBefore} tokens`);
+    const resume = await fetch(BASE + "/api/rewrites", { method: "POST", headers: cookieHeader, body: JSON.stringify({ action: "apply", id: sug.suggestion.id }) });
+    check("operator approved the suggestion from the dashboard API", resume.status === 200, (await resume.json()).message);
 
     const code = await Promise.race([exited, sleep(120000).then(() => "timeout")]);
     check("Claude Code received the hint and finished normally", code === 0, `exit ${code}`);
