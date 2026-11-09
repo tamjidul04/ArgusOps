@@ -568,7 +568,7 @@ export function BillingV2Client({
                 <div className="space-y-2 text-xs">
                   <div className="flex items-center justify-between">
                     <span className="text-slate-500">Saved via Hibernation</span>
-                    <span className="font-mono font-bold text-slate-900">$18.73</span>
+                    <span className="font-mono font-bold text-slate-900">&mdash;</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-slate-500">Last Invoice</span>
@@ -760,9 +760,9 @@ export function BillingV2Client({
       {/* Bottom Footer Info Strip matching 06-billing-v2.png */}
       <div className="pt-6 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2">
         <div className="flex items-center gap-2">
-          <span>Cluster ID: <span className="font-mono text-slate-700">us-east-cluster-09</span></span>
+          <span>ArgusOps v0.2</span>
           <span>&bull;</span>
-          <span>Daemon: <span className="text-slate-700">v1.4.0 (Zero-Trust Local Code)</span></span>
+          <span>Zero-trust local code privacy</span>
         </div>
         <div>
           <span>Owner: <strong className="text-slate-800">{profile.name}</strong></span>

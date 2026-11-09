@@ -26,7 +26,13 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { cn, formatTokens, getStatusBadgeClasses, STATUS_STYLES, AgentStatus } from "@/lib/utils";
-import { GuardrailPolicy, StreamEvent } from "@/app/api/guardrails/route";
+import type { GuardrailPolicy, StreamEvent } from "@/lib/control-plane-core";
+
+/** Event times arrive as ISO strings from the incident log. */
+function formatEventTime(ts: string): string {
+  const d = new Date(ts);
+  return Number.isNaN(d.getTime()) ? ts : d.toLocaleTimeString();
+}
 
 interface AgentData {
   agent_id: string;
@@ -45,6 +51,7 @@ interface GuardrailsClientProps {
   initialStreamEvents: StreamEvent[];
   initialFlaggedAgents: AgentData[];
   initialActiveAgents: AgentData[];
+  initialLatency: { avg: number; p99: number };
 }
 
 export function GuardrailsClient({
@@ -52,8 +59,10 @@ export function GuardrailsClient({
   initialStreamEvents,
   initialFlaggedAgents,
   initialActiveAgents,
+  initialLatency,
 }: GuardrailsClientProps) {
-  const { cloudCluster, interceptionLatencyMs, executeBrainAction } = useBrain();
+  const { cloudCluster } = useBrain();
+  const [latency, setLatency] = useState(initialLatency);
 
   // State
   const [policy, setPolicy] = useState<GuardrailPolicy>(initialPolicy);
@@ -120,95 +129,7 @@ export function GuardrailsClient({
     setFeedback({ type: "info", text: "Processing hypervisor guardrail action..." });
 
     try {
-      if (action === "TEST_MEMORY_SPIKE" || action === "THROTTLE_DOWNGRADE") {
-        const res = await executeBrainAction("THROTTLE_RAM_SPIKE", {
-          agentId: payload.agentId as string | undefined,
-        });
-
-        if (!res.success) {
-          setFeedback({ type: "error", text: res.error || "Action failed." });
-          return;
-        }
-
-        const msg = res.message || "Memory bus throttled agent to safe limits.";
-        setFeedback({ type: "success", text: msg });
-        setEvents((prev) => [
-          {
-            id: `evt-${Date.now()}`,
-            timestamp: new Date().toLocaleTimeString(),
-            agentId: (payload.agentId as string) || "agent_governed",
-            agentName: (payload.agentName as string) || "Cloud-Worker",
-            eventType: "MEMORY_GOVERNANCE",
-            latencyMs: interceptionLatencyMs || 28,
-            actionTaken: "THROTTLED",
-            summary: msg,
-          },
-          ...prev,
-        ]);
-        return;
-      }
-
-      if (action === "SEND_NUDGE") {
-        const res = await executeBrainAction("RESOLVE_NUDGE", {
-          agentId: payload.agentId as string,
-          decision: "RESUME",
-          hintText: payload.hintText as string,
-        });
-
-        if (!res.success) {
-          setFeedback({ type: "error", text: res.error || "Action failed." });
-          return;
-        }
-
-        const msg = res.message || `Human hint applied to ${payload.agentName || payload.agentId}. Resumed.`;
-        setFeedback({ type: "success", text: msg });
-        setEvents((prev) => [
-          {
-            id: `evt-${Date.now()}`,
-            timestamp: new Date().toLocaleTimeString(),
-            agentId: payload.agentId as string,
-            agentName: (payload.agentName as string) || (payload.agentId as string),
-            eventType: "SEMANTIC_REASONING_LOOP",
-            similarityScore: 0.89,
-            latencyMs: interceptionLatencyMs || 34,
-            actionTaken: "FLAGGED",
-            summary: `Human operator supplied hint: "${payload.hintText}". Agent loop cleared and resumed.`,
-          },
-          ...prev,
-        ]);
-        return;
-      }
-
-      if (action === "TRIGGER_KILL_SWITCH") {
-        const res = await executeBrainAction("RESOLVE_NUDGE", {
-          agentId: payload.agentId as string,
-          decision: "KILL",
-        });
-
-        if (!res.success) {
-          setFeedback({ type: "error", text: res.error || "Action failed." });
-          return;
-        }
-
-        const msg = res.message || "Agent terminated by operator kill switch.";
-        setFeedback({ type: "success", text: msg });
-        setEvents((prev) => [
-          {
-            id: `evt-${Date.now()}`,
-            timestamp: new Date().toLocaleTimeString(),
-            agentId: payload.agentId as string,
-            agentName: (payload.agentName as string) || (payload.agentId as string),
-            eventType: "EXACT_TOOL_LOOP",
-            latencyMs: interceptionLatencyMs || 14,
-            actionTaken: "KILLED_LOOP",
-            summary: `Manual kill switch triggered. Agent terminated with 0 token burn.`,
-          },
-          ...prev,
-        ]);
-        return;
-      }
-
-      // Default to /api/guardrails for policy updates and stream evaluations
+      // All guardrail actions go through /api/guardrails (scoped to the signed-in user)
       const res = await fetch("/api/guardrails", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -244,6 +165,7 @@ export function GuardrailsClient({
         if (fresh.streamEvents) setEvents(fresh.streamEvents);
         if (fresh.flaggedAgents) setFlaggedAgents(fresh.flaggedAgents);
         if (fresh.activeAgents) setActiveAgents(fresh.activeAgents);
+        if (typeof fresh.avgLatencyMs === "number") setLatency({ avg: fresh.avgLatencyMs, p99: fresh.p99LatencyMs ?? 0 });
       }
     } catch (err) {
       console.error(err);
@@ -291,11 +213,11 @@ export function GuardrailsClient({
               <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
             </span>
             <span className="text-slate-500">Latency:</span>
-            <strong className="text-slate-900 font-bold">&lt; 100ms ({interceptionLatencyMs || 38}ms live)</strong>
+            <strong className="text-slate-900 font-bold">{latency.avg > 0 ? `${latency.avg}ms avg` : "no incidents yet"}</strong>
           </div>
 
           <div className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 shadow-2xs text-slate-700 font-semibold">
-            P99: {interceptionLatencyMs ? (interceptionLatencyMs * 0.7).toFixed(1) : "8.2"}ms
+            P99: {latency.p99 > 0 ? `${latency.p99}ms` : "—"}
           </div>
         </div>
       </div>
@@ -353,7 +275,7 @@ export function GuardrailsClient({
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
-                      <span className="text-[11px] text-slate-400 font-normal">[{evt.timestamp}]</span>
+                      <span className="text-[11px] text-slate-400 font-normal">[{formatEventTime(evt.timestamp)}]</span>
                       <strong className="text-slate-900 font-bold">{evt.agentName}</strong>
                       <span
                         className={cn(
@@ -647,14 +569,6 @@ export function GuardrailsClient({
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={() => executeGuardrailAction("TEST_MEMORY_SPIKE")}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 px-3 py-1.5 text-xs font-semibold shadow-2xs transition-colors active:scale-95 shrink-0"
-          >
-            <Zap className="h-3.5 w-3.5 text-indigo-600" />
-            <span>Test Memory Spike Governance</span>
-          </button>
         </div>
 
         {/* Meters Grid for Active Agents */}

@@ -97,23 +97,31 @@ export function ClusterDashboardV2Client({
     }
   }, [brainCloudCluster, brainLocalCluster]);
 
-  // Mutex locks state
-  const [mutexLocks, setMutexLocks] = useState([
-    {
-      id: "lck-01",
-      path: "src/auth/jwt_session.ts",
-      holder: "Claude",
-      queued: "Hermes",
-      status: "LOCKED",
-    },
-    {
-      id: "lck-02",
-      path: "prisma/schema.prisma",
-      holder: "Antigravity",
-      queued: null,
-      status: "PAUSED_LOOP",
-    },
-  ]);
+  // File locks held by this account's agents (from the database)
+  interface LockRow {
+    id: string;
+    path: string;
+    holder: string;
+    queued: string | null;
+    status: string;
+  }
+  const [mutexLocks, setMutexLocks] = useState<LockRow[]>([]);
+  const toLockRows = (rows: Array<{ id: string; filePath: string; holderAgent: string; queuedAgent: string | null; status: string }>): LockRow[] =>
+    rows.map((l) => ({ id: l.id, path: l.filePath, holder: l.holderAgent, queued: l.queuedAgent, status: l.status }));
+
+  React.useEffect(() => {
+    let cancelled = false;
+    fetch("/api/local-bridge", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!cancelled && d && Array.isArray(d.fileLocks)) setMutexLocks(toLockRows(d.fileLocks));
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [brainLocalCluster]);
 
   // Toast / Status notification
   const [toastMessage, setToastMessage] = useState<{
@@ -133,17 +141,17 @@ export function ClusterDashboardV2Client({
   const agents = activeCluster?.agents || [];
 
   // Metrics
-  const activeCount = agents.filter((a) => a.status === "ACTIVE").length || 2;
-  const hibernatedCount =
-    agents.filter((a) => a.status === "HIBERNATED").length || 4;
+  const activeCount = agents.filter((a) => a.status === "ACTIVE").length;
+  const hibernatedCount = agents.filter((a) => a.status === "HIBERNATED").length;
   const pausedCount = agents.filter((a) => a.status === "PAUSED_NUDGE").length;
   const killedCount = agents.filter((a) => a.status === "KILLED_LOOP").length;
-  const totalCount = agents.length || 6;
-  const allocationPct = Math.round((activeCount / totalCount) * 100) || 33;
+  const totalCount = agents.length;
+  const allocationPct = totalCount > 0 ? Math.round((activeCount / totalCount) * 100) : 0;
 
-  const tokensSaved = activeCluster?.cache_tokens_saved || 1240000;
-  const freeTokens = profile?.freeTokens ?? 84520;
-  const costSaved = 18.73;
+  const tokensSaved = activeCluster?.cache_tokens_saved ?? 0;
+  const freeTokens = profile?.freeTokens ?? 0;
+  // Estimate at a $3 per million input-token list price; real per-request savings arrive with usage tracking.
+  const costSaved = +((tokensSaved / 1_000_000) * 3).toFixed(2);
   const totalRamMb = agents.reduce((acc, a) => acc + (a.ram_usage || 0), 0);
   const totalRamGb = hardware
     ? hardware.usedRamGb.toFixed(2)
@@ -154,39 +162,55 @@ export function ClusterDashboardV2Client({
     action: string,
     payload: { agentId?: string; targetStatus?: string } = {}
   ) => {
+    const callGuardrail = async (guardAction: string, body: Record<string, unknown>) => {
+      const res = await fetch("/api/guardrails", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: guardAction, ...body }),
+      });
+      const data = await res.json().catch(() => ({}));
+      setToastMessage({
+        type: res.ok ? "success" : "error",
+        text: data.message || data.error || (res.ok ? "Done." : "Action failed."),
+      });
+      if (res.ok) await refreshBrain();
+    };
+    const pausedAgentId = agents.find((a) => a.status === "PAUSED_NUDGE")?.agent_id;
+
     try {
-      if (action === "SIMULATE_ROGUE_LOOP" || action === "TRIGGER_ROGUE_LOOP") {
-        const res = await executeBrainAction("TRIGGER_ROGUE_LOOP", {
-          agentId: payload.agentId,
-        });
-        setToastMessage({
-          type: "success",
-          text: res.message || "Circuit breaker tripped: Rogue agent terminated.",
-        });
+      // Stop an agent: the selected one, or the one waiting on review.
+      if (action === "SIMULATE_ROGUE_LOOP" || action === "TRIGGER_ROGUE_LOOP" || action === "KILL_AGENT") {
+        const agentId = payload.agentId ?? pausedAgentId;
+        if (!agentId) {
+          setToastMessage({ type: "info", text: "Pick an agent to stop first." });
+          return;
+        }
+        await callGuardrail("TRIGGER_KILL_SWITCH", { agentId });
         return;
       }
 
-      if (action === "APPROVE_NUDGE" || action === "TRIGGER_HUMAN_NUDGE") {
-        const res = await executeBrainAction("TRIGGER_HUMAN_NUDGE", {
-          agentId: payload.agentId,
-        });
-        setToastMessage({
-          type: "success",
-          text: res.message || "Human-in-the-Loop Nudge alert triggered (paused at 91%).",
-        });
+      // Resume a paused agent.
+      if (action === "APPROVE_NUDGE" || action === "TRIGGER_HUMAN_NUDGE" || action === "RESUME_AGENT") {
+        const agentId = payload.agentId ?? pausedAgentId;
+        if (!agentId) {
+          setToastMessage({ type: "info", text: "No agent is waiting for review right now." });
+          return;
+        }
+        await callGuardrail("SEND_NUDGE", { agentId });
         return;
       }
 
+      // Planning preview (analysis only; changes nothing).
       if (action === "AUTO_RIGHT_SIZE" || action === "DECOMPOSE_TASK") {
         const res = await executeBrainAction("DECOMPOSE_TASK");
         setToastMessage({
-          type: "success",
-          text: res.message || "Cluster auto-rightsized and decomposed into active modules.",
+          type: res.success ? "success" : "error",
+          text: res.message || res.error || "Plan preview ready.",
         });
         return;
       }
 
-      // Fallback for custom status toggles
+      // Hibernate / wake an agent
       const res = await fetch("/api/clusters/actions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -224,13 +248,24 @@ export function ClusterDashboardV2Client({
     handleClusterAction("SIMULATE_ROGUE_LOOP");
   };
 
-  // 4. Release Mutex Lock
-  const handleReleaseLock = (id: string) => {
-    setMutexLocks((prev) => prev.filter((l) => l.id !== id));
-    setToastMessage({
-      type: "info",
-      text: "File-locking mutex released. Waiting agents unblocked cleanly.",
-    });
+  // 4. Release a file lock (server-side, owner only)
+  const handleReleaseLock = async (id: string) => {
+    try {
+      const res = await fetch("/api/local-bridge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "RELEASE_LOCK", lockId: id }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && Array.isArray(data.fileLocks)) {
+        setMutexLocks(toLockRows(data.fileLocks));
+        setToastMessage({ type: "success", text: data.message || "File lock released." });
+      } else {
+        setToastMessage({ type: "error", text: data.error || "Could not release the lock." });
+      }
+    } catch {
+      setToastMessage({ type: "error", text: "Network error releasing the lock." });
+    }
   };
 
   // Filtered agents for table
@@ -375,18 +410,17 @@ export function ClusterDashboardV2Client({
                   Free Token Balance
                 </span>
                 <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-slate-100 text-slate-600 border border-slate-200">
-                  100k cap
+                  {profile.planName}
                 </span>
               </div>
               <div className="text-2xl font-extrabold text-slate-900 tracking-tight font-mono mt-1">
-                84,520
+                {freeTokens.toLocaleString()}
               </div>
-              <div className="w-full bg-slate-100 rounded-full h-1 mt-2 overflow-hidden">
-                <div className="bg-slate-900 h-1 rounded-full w-[84.5%]" />
-              </div>
-              <div className="flex items-center justify-between text-[11px] text-slate-400 mt-2">
-                <span>84.5% remaining</span>
-                <span>Resets in 18d</span>
+              <div className="flex items-center justify-between text-[11px] text-slate-400 mt-3 border-t border-slate-100 pt-2">
+                <span>Paid: {profile.paidTokens.toLocaleString()}</span>
+                <span>
+                  {profile.activeAgents}/{profile.maxAgents} agents
+                </span>
               </div>
             </div>
 
@@ -396,11 +430,11 @@ export function ClusterDashboardV2Client({
                 Cost Saved
               </div>
               <div className="text-2xl font-extrabold text-slate-900 tracking-tight font-mono mt-1">
-                $18.73
+                ${costSaved.toFixed(2)}
               </div>
               <div className="text-[11px] text-slate-400 mt-3 border-t border-slate-100 pt-2">
-                <div>vs unmanaged</div>
-                <div className="text-[10px]">Calculated rate</div>
+                <div>from cached context</div>
+                <div className="text-[10px]">Estimate at list price</div>
               </div>
             </div>
 
@@ -508,7 +542,7 @@ export function ClusterDashboardV2Client({
               </div>
 
               <span className="text-xs text-slate-400 font-mono">
-                Daemon: v1.4.0 (Zero-Trust Local Code)
+                Zero-trust local code privacy
               </span>
             </div>
 
@@ -858,7 +892,7 @@ export function ClusterDashboardV2Client({
                       >
                         {isPausedLoop
                           ? "Locked by Antigravity \u2022 Paused Loop"
-                          : `Locked by ${lock.holder} \u2022 ${lock.queued} Queued`}
+                          : (lock.queued ? `Locked by ${lock.holder} \u2022 ${lock.queued} waiting` : `Locked by ${lock.holder}`)}
                       </div>
                     </div>
 
@@ -1026,7 +1060,7 @@ export function ClusterDashboardV2Client({
                 }}
                 className="px-3 py-1.5 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-lg"
               >
-                Simulate Rogue Loop
+                Stop agent
               </button>
             </div>
           </div>
@@ -1036,12 +1070,14 @@ export function ClusterDashboardV2Client({
       {/* Footer Info Strip matching 03-dashboard-cluster-v2.png */}
       <div className="pt-6 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2">
         <div className="flex items-center gap-2">
-          <span>Cluster ID: <span className="font-mono text-slate-700">us-east-cluster-09</span></span>
+          <span>
+            Plan: <span className="font-mono text-slate-700">{profile.planName}</span>
+          </span>
           <span>&bull;</span>
-          <span>Daemon: <span className="text-slate-700">v1.4.0 (Zero-Trust Local Code)</span></span>
+          <span>Zero-trust local code privacy</span>
         </div>
         <div>
-          <span>Owner: <strong className="text-slate-800">{profile?.name || "MD.Tamjidul Islam"}</strong></span>
+          <span>Owner: <strong className="text-slate-800">{profile?.name}</strong></span>
         </div>
       </div>
     </div>
