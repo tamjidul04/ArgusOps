@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Generated bundles (the CLI and the VS Code extension are built with esbuild).
+    "packages/*/dist/**",
+    "packages/*/out/**",
   ]),
 ]);
 

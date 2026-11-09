@@ -1,0 +1,183 @@
+{
+  "name": "argusops",
+  "displayName": "ArgusOps",
+  "description": "See and control your AI coding agents from VS Code: get told when one is stuck, then resume it with a better instruction or stop it.",
+  "version": "0.2.0",
+  "publisher": "tamjidul04",
+  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tamjidul04/ArgusOps.git"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "ai",
+    "agents",
+    "claude",
+    "supervision",
+    "tokens"
+  ],
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "argusops",
+          "title": "ArgusOps",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "argusops": [
+        {
+          "id": "argusops.agents",
+          "name": "Agents"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "argusops.agents",
+        "contents": "Sign in to see your coding agents here, get told when one is stuck, and resume or stop it.\n[Sign in to ArgusOps](command:argusops.signIn)",
+        "when": "!argusops.signedIn"
+      },
+      {
+        "view": "argusops.agents",
+        "contents": "No agents are running.\nStart one in a terminal with `argus run claude` and it will appear here.\n[Open dashboard](command:argusops.openDashboard)",
+        "when": "argusops.signedIn && argusops.noAgents"
+      }
+    ],
+    "commands": [
+      {
+        "command": "argusops.signIn",
+        "title": "Sign in",
+        "category": "ArgusOps",
+        "icon": "$(sign-in)"
+      },
+      {
+        "command": "argusops.signOut",
+        "title": "Sign out",
+        "category": "ArgusOps",
+        "icon": "$(sign-out)"
+      },
+      {
+        "command": "argusops.refresh",
+        "title": "Refresh",
+        "category": "ArgusOps",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "argusops.showAgents",
+        "title": "Show agents",
+        "category": "ArgusOps"
+      },
+      {
+        "command": "argusops.openDashboard",
+        "title": "Open dashboard",
+        "category": "ArgusOps",
+        "icon": "$(link-external)"
+      },
+      {
+        "command": "argusops.resumeAgent",
+        "title": "Resume agent…",
+        "category": "ArgusOps",
+        "icon": "$(debug-continue)"
+      },
+      {
+        "command": "argusops.stopAgent",
+        "title": "Stop agent…",
+        "category": "ArgusOps",
+        "icon": "$(debug-stop)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "argusops.refresh",
+          "when": "view == argusops.agents && argusops.signedIn",
+          "group": "navigation@1"
+        },
+        {
+          "command": "argusops.openDashboard",
+          "when": "view == argusops.agents && argusops.signedIn",
+          "group": "navigation@2"
+        },
+        {
+          "command": "argusops.signOut",
+          "when": "view == argusops.agents && argusops.signedIn",
+          "group": "overflow@1"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "argusops.resumeAgent",
+          "when": "view == argusops.agents && viewItem == agent.paused",
+          "group": "inline@1"
+        },
+        {
+          "command": "argusops.stopAgent",
+          "when": "view == argusops.agents && (viewItem == agent.paused || viewItem == agent.running)",
+          "group": "inline@2"
+        },
+        {
+          "command": "argusops.resumeAgent",
+          "when": "view == argusops.agents && viewItem == suggestion",
+          "group": "inline@1"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "argusops.signIn",
+          "when": "!argusops.signedIn"
+        },
+        {
+          "command": "argusops.signOut",
+          "when": "argusops.signedIn"
+        },
+        {
+          "command": "argusops.resumeAgent",
+          "when": "argusops.signedIn"
+        },
+        {
+          "command": "argusops.stopAgent",
+          "when": "argusops.signedIn"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "ArgusOps",
+      "properties": {
+        "argusops.serverUrl": {
+          "type": "string",
+          "default": "http://localhost:3000",
+          "markdownDescription": "The ArgusOps server to connect to. Changing it signs you out, because a key is only ever sent to the server that issued it."
+        },
+        "argusops.pollIntervalSeconds": {
+          "type": "number",
+          "default": 4,
+          "minimum": 2,
+          "maximum": 60,
+          "description": "How often to check your agents, in seconds."
+        },
+        "argusops.notifications": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show a notification in VS Code when an agent is paused or stopped."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "package": "node build.mjs && npx --yes @vscode/vsce package --no-dependencies"
+  }
+}
