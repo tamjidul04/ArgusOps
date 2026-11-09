@@ -1,12 +1,13 @@
 import React, { Suspense } from "react";
 import { Metadata } from "next";
 import { DashboardShell } from "@/components/layout";
+import { PageLoading } from "@/components/ui";
 import { requirePageUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { NotificationsClient } from "./NotificationsClient";
 
 export const metadata: Metadata = {
-  title: "Notifications | ArgusOps",
+  title: "Notifications",
   description: "Alerts when an agent is paused or stopped, and where they are delivered.",
 };
 
