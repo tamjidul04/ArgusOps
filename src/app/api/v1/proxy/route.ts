@@ -3,9 +3,9 @@ import crypto from "node:crypto";
 import { performance } from "node:perf_hooks";
 import { prisma } from "@/lib/prisma";
 import { extractApiKey, userFromApiKey } from "@/lib/auth";
+import { getPolicyRow, recordIncident } from "@/lib/control-plane";
 import {
   evaluateAgentStreamForLoops,
-  LOOP_SCORE_THRESHOLD,
   MAX_INTERCEPTION_BUDGET_MS,
 } from "@/lib/guardrails-engine";
 import {
@@ -256,12 +256,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Support simulated repeat counts for rigorous integration testing
-    if (body.repeatCount && typeof body.repeatCount === "number" && toolCall) {
-      const tcStr = typeof toolCall === "string" ? toolCall : JSON.stringify(toolCall);
-      logsToEvaluate = Array(body.repeatCount).fill(tcStr);
-    }
-
     // Accumulate in per-agent error-retry memory buffer (tracks consecutive failing tool calls across HTTP requests)
     const bufferKey = targetAgent?.agent_id || user.id;
     const hasError = (toolCall && typeof toolCall === "object" && ("error" in toolCall || "isError" in toolCall)) || body.error;
@@ -282,10 +276,28 @@ export async function POST(req: NextRequest) {
 
     // If stream contains 2+ steps, evaluate loop recurrence within <100ms SLA
     if (logsToEvaluate.length >= 2) {
-      const loopEval = evaluateAgentStreamForLoops(logsToEvaluate, taskProgressPct);
+      const policy = await getPolicyRow(user.id);
+      const loopEval = evaluateAgentStreamForLoops(logsToEvaluate.slice(-200), taskProgressPct, {
+        loopScoreThreshold: policy.loop_score_threshold,
+        nudgeProgressPct: policy.nudge_progress_pct,
+        exactRepeatLimit: policy.exact_repeat_limit,
+      });
 
-      if (loopEval.loopScore >= LOOP_SCORE_THRESHOLD) {
-        if (taskProgressPct >= 80) {
+      if (loopEval.status !== "ACTIVE") {
+        const incidentBase = {
+          userId: user.id,
+          agentId: targetAgent?.agent_id ?? null,
+          agentName: targetAgent?.name ?? null,
+          kind: "LOOP" as const,
+          loopType:
+            loopEval.loopType === "SEMANTIC_REASONING_LOOP"
+              ? ("SEMANTIC_REASONING_LOOP" as const)
+              : ("EXACT_TOOL_LOOP" as const),
+          score: loopEval.loopScore,
+          detail: loopEval.reason,
+          interceptionMs: loopEval.interceptionMs,
+        };
+        if (loopEval.status === "PAUSED_NUDGE") {
           // Near-complete agent: Human-in-the-Loop review (HTTP 423 Locked)
           if (targetAgent) {
             await prisma.agent.update({
@@ -311,6 +323,7 @@ export async function POST(req: NextRequest) {
               status: "PAUSED_NUDGE",
             },
           });
+          await recordIncident({ ...incidentBase, severity: "WARN", action: "PAUSED" });
 
           return NextResponse.json(
             {
@@ -356,6 +369,7 @@ export async function POST(req: NextRequest) {
               status: "KILLED_LOOP",
             },
           });
+          await recordIncident({ ...incidentBase, severity: "CRITICAL", action: "KILLED" });
 
           return NextResponse.json(
             {
