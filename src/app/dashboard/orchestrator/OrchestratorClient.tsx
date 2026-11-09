@@ -25,6 +25,7 @@ import {
 import { cn, formatTokens, formatCurrency } from "@/lib/utils";
 import { SubTaskItem } from "@/app/api/orchestrator/route";
 import { useBrain } from "@/context/BrainContext";
+import { Badge, DashHeader, EmptyState, Panel, buttonClasses } from "@/components/ui";
 
 interface OrchestratorClientProps {
   initialPrompt: string;
@@ -102,349 +103,240 @@ export function OrchestratorClient({
   return (
     <div className="space-y-6">
       {/* ================= PAGE TITLE & SUBMIT BAR ================= */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-900/[0.07] pb-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
-              Task Decomposition &amp; Right-Sizing
-            </h1>
-            <span className="font-mono text-xs font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-              Master Agentic AI
-            </span>
-          </div>
-          <p className="text-xs text-slate-500 mt-1">
-            Autonomous project decomposition, dynamic 100-to-30 concurrency right-sizing, and leaf-node model routing.
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => handleDecomposeSubmit()}
-          disabled={isLoading}
-          className="inline-flex items-center justify-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-slate-800 active:scale-95 transition-all disabled:opacity-60 shrink-0"
-        >
-          <Sparkles className="h-3.5 w-3.5 text-amber-400" />
-          <span>{isLoading ? "Decomposing DAG..." : "Submit Project Prompt"}</span>
-        </button>
-      </div>
+      <DashHeader
+        title="Task Decomposition & Right-Sizing"
+        description="Autonomous project decomposition, dynamic 100-to-30 concurrency right-sizing, and leaf-node model routing."
+        badge={<Badge tone="green">Master Agentic AI</Badge>}
+        actions={
+          <button type="button" onClick={() => handleDecomposeSubmit()} disabled={isLoading} className={buttonClasses("primary", false, "disabled:opacity-60")}>
+            <Sparkles className="h-3.5 w-3.5 text-amber-300" aria-hidden="true" />
+            <span>{isLoading ? "Decomposing DAG..." : "Submit Project Prompt"}</span>
+          </button>
+        }
+      />
 
       {statusMsg && (
-        <div className="p-3 rounded-xl border border-emerald-200 bg-emerald-50 text-xs text-emerald-900 flex items-center justify-between animate-in fade-in duration-150">
+        <div role="status" className="flex items-center justify-between gap-3 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-900 ring-1 ring-emerald-600/20">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" aria-hidden="true" />
             <span className="font-medium">{statusMsg}</span>
           </div>
-          <button
-            type="button"
-            onClick={() => setStatusMsg("")}
-            className="text-emerald-700 hover:text-emerald-950 font-semibold"
-          >
+          <button type="button" onClick={() => setStatusMsg("")} aria-label="Dismiss message" className="rounded-md px-1.5 text-lg leading-none text-emerald-800 hover:text-emerald-950">
             ×
           </button>
         </div>
       )}
 
-      {/* ================= TOP ROW: ALLOCATION & PROMPT BOX (Stitch Match) ================= */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Dynamic Swarm Allocation */}
-        <div className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="font-semibold text-xs text-slate-500 uppercase tracking-[0.12em]">
-              Dynamic Swarm Allocation
-            </span>
-            <span className="font-mono text-[11px] bg-slate-100 px-2 py-0.5 rounded-full ring-1 ring-slate-900/[0.08] text-slate-600 font-medium">
-              {clusterSize}-agent cluster
-            </span>
-          </div>
-
+      {/* ================= TOP ROW: ALLOCATION & PROMPT BOX ================= */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <Panel title="Dynamic Swarm Allocation" action={<Badge>{clusterSize}-agent cluster</Badge>} bodyClassName="space-y-4">
           <div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-semibold text-slate-900 tracking-tight">
-                {activeAgents} Active / {hibernatedAgents} Hibernated
-              </span>
-            </div>
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
+              {activeAgents} Active / {hibernatedAgents} Hibernated
+            </p>
+            <p className="mt-1.5 text-sm text-slate-600">
               {clusterSize}-agent cluster right-sized ({Math.round((hibernatedAgents / clusterSize) * 100)}% saved)
             </p>
           </div>
 
-          {/* Allocation Progress Bar */}
-          <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
-            <div
-              className="bg-slate-900 h-full rounded-full transition-all duration-300"
-              style={{ width: `${Math.round((activeAgents / clusterSize) * 100)}%` }}
-            />
+          <div
+            className="h-2.5 w-full overflow-hidden rounded-full bg-slate-900/10"
+            role="meter"
+            aria-label="Active agents"
+            aria-valuemin={0}
+            aria-valuemax={clusterSize}
+            aria-valuenow={activeAgents}
+          >
+            <div className="h-full rounded-full bg-slate-900 transition-[width] duration-500 ease-spring" style={{ width: `${Math.round((activeAgents / clusterSize) * 100)}%` }} />
           </div>
 
-          <div className="pt-2 border-t border-slate-900/5 flex items-center justify-between text-xs text-slate-600">
+          <div className="flex items-center justify-between gap-3 border-t border-slate-900/5 pt-4 text-sm text-slate-600">
             <span className="font-medium">Zero-Token Hibernation Pool:</span>
-            <span className="font-mono font-semibold text-slate-900">
-              {hibernatedAgents} Nodes (0 tok/s)
-            </span>
+            <span className="font-mono text-xs font-semibold text-slate-900">{hibernatedAgents} Nodes (0 tok/s)</span>
           </div>
-        </div>
+        </Panel>
 
-        {/* Active Project Prompt Card */}
-        <div className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft p-5 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="font-semibold text-xs text-slate-500 uppercase tracking-[0.12em]">
-              Active Project Prompt
-            </span>
-            <span className="font-mono text-[10px] font-semibold text-slate-900 bg-slate-100 px-2 py-0.5 rounded-full ring-1 ring-slate-900/[0.08]">
-              DAG Triage Active
-            </span>
-          </div>
-
+        <Panel title="Active Project Prompt" action={<Badge>DAG Triage Active</Badge>} bodyClassName="space-y-4">
+          <label htmlFor="project-prompt" className="sr-only">
+            Project prompt
+          </label>
           <textarea
+            id="project-prompt"
             value={promptText}
             onChange={(e) => setPromptText(e.target.value)}
-            rows={2}
-            className="w-full rounded-xl ring-1 ring-slate-900/[0.08] bg-slate-50 p-3 font-mono text-xs text-slate-900 focus:bg-white focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 transition-all resize-none shadow-2xs"
+            rows={3}
+            className="w-full resize-none rounded-xl bg-white p-3.5 font-mono text-xs leading-relaxed text-slate-900 ring-1 ring-slate-900/10 transition-shadow placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900"
             placeholder="Enter complex multi-agent prompt or repository task..."
           />
 
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs border-t border-slate-900/5 pt-3">
-            <div>
-              <span className="text-slate-500 block text-[11px]">Est. Run Cost:</span>
-              <div className="font-mono">
-                <strong className="text-slate-900 font-semibold">$108.00</strong>{" "}
-                <span className="text-slate-500 line-through">(vs $420.00 unthrottled)</span>
+          <div className="flex flex-col gap-4 border-t border-slate-900/5 pt-4 text-sm sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex gap-6">
+              <div>
+                <span className="block text-xs text-slate-600">Est. Run Cost:</span>
+                <div className="font-mono text-xs">
+                  <strong className="font-semibold text-slate-900">$108.00</strong> <span className="text-slate-600 line-through">(vs $420.00 unthrottled)</span>
+                </div>
+              </div>
+              <div>
+                <span className="block text-xs text-slate-600">Tokens:</span>
+                <span className="font-mono text-xs font-semibold text-slate-900">34,700 Tokens</span>
               </div>
             </div>
 
-            <div className="text-right sm:text-left">
-              <span className="text-slate-500 block text-[11px]">Tokens:</span>
-              <span className="font-mono font-semibold text-slate-900">34,700 Tokens</span>
-            </div>
-
             <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => handleDecomposeSubmit()}
-                className="px-3 py-1.5 rounded ring-1 ring-slate-900/[0.08] bg-slate-50 hover:bg-slate-100 text-xs font-semibold text-slate-700 transition-colors"
-              >
+              <button type="button" onClick={() => handleDecomposeSubmit()} className={buttonClasses("secondary", false, "px-4 py-2 text-xs")}>
                 Re-Triage
               </button>
-              <button
-                type="button"
-                onClick={() => handleDecomposeSubmit()}
-                className="px-3.5 py-1.5 rounded bg-slate-900 hover:bg-slate-800 text-xs font-semibold text-white transition-colors"
-              >
+              <button type="button" onClick={() => handleDecomposeSubmit()} className={buttonClasses("primary", false, "px-4 py-2 text-xs")}>
                 Auto-Rightsize Swarm
               </button>
             </div>
           </div>
-        </div>
+        </Panel>
       </div>
 
       {/* ================= MIDDLE ROW: 3 TELEMETRY CARDS ================= */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Smart Model Router */}
-        <div className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft p-5 space-y-3">
-          <div className="flex items-center justify-between text-xs text-slate-500">
-            <span className="font-semibold uppercase tracking-[0.12em]">Smart Model Router</span>
-            <span className="font-mono text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-              +64% routed
-            </span>
-          </div>
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <Panel title="Smart Model Router" action={<Badge tone="green">+64% routed</Badge>} bodyClassName="space-y-3">
           <div>
-            <div className="text-3xl font-semibold text-slate-900 tracking-tight font-mono">
-              64% Downgraded
-            </div>
-            <p className="text-xs text-slate-500 mt-1">
-              Simple JSON, regex, and tests routed to fast/local models.
-            </p>
+            <p className="text-3xl font-semibold tracking-tight text-slate-900">64% Downgraded</p>
+            <p className="mt-1.5 text-sm text-slate-600">Simple JSON, regex, and tests routed to fast/local models.</p>
           </div>
-          <div className="pt-2 border-t border-slate-900/5 flex items-center justify-between text-[11px] text-slate-600 font-mono">
+          <div className="flex items-center justify-between border-t border-slate-900/5 pt-3 font-mono text-xs text-slate-600">
             <span>Frontier: 36%</span>
             <span>Downgraded: 64%</span>
           </div>
-        </div>
+        </Panel>
 
-        {/* Shared Context Cache */}
-        <div className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft p-5 space-y-3">
-          <div className="flex items-center justify-between text-xs text-slate-500">
-            <span className="font-semibold uppercase tracking-[0.12em]">Shared Context Cache</span>
-            <span className="font-mono text-[10px] text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full ring-1 ring-slate-900/[0.08] font-semibold">
-              AST SHA256
-            </span>
-          </div>
+        <Panel title="Shared Context Cache" action={<Badge>AST SHA256</Badge>} bodyClassName="space-y-3">
           <div>
-            <div className="text-3xl font-semibold text-slate-900 tracking-tight font-mono">
-              1.80M Cached
-            </div>
-            <p className="text-xs text-slate-500 mt-1">
-              Single codebase read shared across swarm without redundant tokens.
-            </p>
+            <p className="text-3xl font-semibold tracking-tight text-slate-900">1.80M Cached</p>
+            <p className="mt-1.5 text-sm text-slate-600">Single codebase read shared across swarm without redundant tokens.</p>
           </div>
-          <div className="pt-2 border-t border-slate-900/5 flex items-center justify-between text-[11px] text-slate-500 font-mono truncate">
+          <div className="truncate border-t border-slate-900/5 pt-3 font-mono text-xs text-slate-600">
             <span className="truncate">Hash: {contextHash}</span>
           </div>
-        </div>
+        </Panel>
 
-        {/* Quarantined Idle Swarm Pool */}
-        <div className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft p-5 space-y-3">
-          <div className="flex items-center justify-between text-xs text-slate-500">
-            <span className="font-semibold uppercase tracking-[0.12em]">Quarantined Idle Swarm</span>
-            <button
-              type="button"
-              onClick={handleWakePool}
-              className="text-[11px] font-semibold text-slate-700 hover:text-slate-950 underline"
-            >
+        <Panel
+          title="Quarantined Idle Swarm"
+          action={
+            <button type="button" onClick={handleWakePool} className="rounded-full px-3 py-1.5 text-xs font-semibold text-slate-700 ring-1 ring-slate-900/10 hover:bg-slate-50">
               Wake Pool
             </button>
-          </div>
+          }
+          bodyClassName="space-y-3"
+        >
           <div>
-            <div className="text-2xl font-semibold text-slate-900 tracking-tight font-mono">
-              Agents #31-#100
-            </div>
-            <p className="text-xs text-slate-500 mt-1">
-              {hibernatedAgents} Nodes in hibernation • Target: <code className="font-mono text-slate-700">--hibernated (0 Tok)</code>
+            <p className="text-3xl font-semibold tracking-tight text-slate-900">Agents #31-#100</p>
+            <p className="mt-1.5 text-sm text-slate-600">
+              {hibernatedAgents} Nodes in hibernation • Target: <code className="font-mono text-xs text-slate-800">--hibernated (0 Tok)</code>
             </p>
           </div>
-          <div className="pt-2 border-t border-slate-900/5 flex items-center justify-between text-[11px] text-slate-600">
-            <span>RAM Saved: <strong className="font-mono text-slate-900">5.60 GB Dormant</strong></span>
-            <span className="font-mono text-slate-500">Locked</span>
+          <div className="flex items-center justify-between gap-2 border-t border-slate-900/5 pt-3 text-xs text-slate-600">
+            <span>
+              RAM Saved: <strong className="font-mono text-slate-900">5.60 GB Dormant</strong>
+            </span>
+            <span className="font-mono">Locked</span>
           </div>
-        </div>
+        </Panel>
       </div>
 
       {/* ================= ACTIVE SUB-TASK EXECUTION MATRIX TABLE ================= */}
-      <div className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-900/[0.07] flex items-center justify-between bg-slate-50/50">
+      <Panel
+        title="Active Sub-Task Execution Matrix"
+        action={
           <div className="flex items-center gap-2">
-            <h2 className="font-semibold text-base text-slate-900 tracking-tight">
-              Active Sub-Task Execution Matrix
-            </h2>
-            <span className="font-mono text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded ring-1 ring-slate-900/[0.08]">
-              {subtasks.length} Sub-Tasks
-            </span>
+            <Badge>{subtasks.length} Sub-Tasks</Badge>
+            <span className="text-xs text-slate-600">Real-time DAG Execution</span>
           </div>
-          <span className="text-xs text-slate-500 font-mono">Real-time DAG Execution</span>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs text-left">
-            <thead>
-              <tr className="border-b border-slate-900/[0.07] bg-slate-900/[0.02] text-slate-500 uppercase tracking-[0.12em] font-medium">
-                <th className="py-3 px-4">Step</th>
-                <th className="py-3 px-4">Sub-Task</th>
-                <th className="py-3 px-4">Assigned Agent</th>
-                <th className="py-3 px-4">Routed Model</th>
-                <th className="py-3 px-4">Target Path</th>
-                <th className="py-3 px-4">Tokens</th>
-                <th className="py-3 px-4 text-right">State</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 font-mono">
-              {subtasks.map((task) => (
-                <tr key={task.step} className="hover:bg-slate-50/60 transition-colors">
-                  <td className="py-3 px-4 font-semibold text-slate-500">{task.step}</td>
-                  <td className="py-3 px-4 font-sans font-semibold text-slate-900">
-                    {task.subtask}
-                  </td>
-                  <td className="py-3 px-4 text-slate-700">{task.assigned_agents}</td>
-                  <td className="py-3 px-4">
-                    <span
-                      className={cn(
-                        "inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border",
-                        task.model_tier === "FRONTIER"
-                          ? "bg-indigo-50 text-indigo-700 border-indigo-200"
-                          : "bg-slate-100 text-slate-700 border-slate-900/[0.07]"
-                      )}
-                    >
-                      {task.routed_model}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-slate-500 truncate max-w-[180px]">
-                    {task.target_path}
-                  </td>
-                  <td className="py-3 px-4 font-semibold text-slate-900">
-                    {formatTokens(task.tokens, { compact: false })}
-                  </td>
-                  <td className="py-3 px-4 text-right">
-                    {task.state === "Done" && (
-                      <span className="inline-flex items-center gap-1 font-sans text-[11px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full ring-1 ring-slate-900/[0.08]">
-                        Done
-                      </span>
-                    )}
-                    {task.state === "Run" && (
-                      <span className="inline-flex items-center gap-1 font-sans text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                        Run
-                      </span>
-                    )}
-                    {task.state === "Queued" && (
-                      <span className="inline-flex items-center gap-1 font-sans text-[11px] font-semibold text-slate-500 bg-slate-50 px-2 py-0.5 rounded-full ring-1 ring-slate-900/[0.08]">
-                        Queued
-                      </span>
-                    )}
-                  </td>
+        }
+        bodyClassName="p-0 sm:p-0"
+      >
+        {subtasks.length === 0 ? (
+          <EmptyState icon={Layers} title="No sub-tasks yet">
+            Submit a project prompt and it is split into steps here, each routed to the right agent and model.
+          </EmptyState>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[46rem] text-left text-sm">
+              <thead>
+                <tr className="border-b border-slate-900/5 bg-slate-900/[0.02] text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500">
+                  <th scope="col" className="px-5 py-3">Step</th>
+                  <th scope="col" className="px-5 py-3">Sub-Task</th>
+                  <th scope="col" className="px-5 py-3">Assigned Agent</th>
+                  <th scope="col" className="px-5 py-3">Routed Model</th>
+                  <th scope="col" className="px-5 py-3">Target Path</th>
+                  <th scope="col" className="px-5 py-3">Tokens</th>
+                  <th scope="col" className="px-5 py-3 text-right">State</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+              </thead>
+              <tbody className="divide-y divide-slate-900/5">
+                {subtasks.map((task) => (
+                  <tr key={task.step} className="transition-colors hover:bg-slate-900/[0.02]">
+                    <td className="px-5 py-3.5 font-mono text-xs font-semibold text-slate-500">{task.step}</td>
+                    <td className="px-5 py-3.5 font-semibold text-slate-900">{task.subtask}</td>
+                    <td className="px-5 py-3.5 text-slate-700">{task.assigned_agents}</td>
+                    <td className="px-5 py-3.5">
+                      <Badge tone={task.model_tier === "FRONTIER" ? "blue" : "neutral"}>{task.routed_model}</Badge>
+                    </td>
+                    <td className="max-w-[200px] truncate px-5 py-3.5 font-mono text-xs text-slate-600">{task.target_path}</td>
+                    <td className="px-5 py-3.5 font-mono text-xs font-semibold text-slate-900">{formatTokens(task.tokens, { compact: false })}</td>
+                    <td className="px-5 py-3.5 text-right">
+                      {task.state === "Done" && <Badge>Done</Badge>}
+                      {task.state === "Run" && (
+                        <Badge tone="green">
+                          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+                          Run
+                        </Badge>
+                      )}
+                      {task.state === "Queued" && <Badge>Queued</Badge>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Panel>
 
       {/* ================= BOTTOM ROW: 3 TECHNICAL BREAKDOWN BOXES ================= */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Box 1: Model Tier Allocation */}
-        <div className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft p-5 space-y-3">
-          <h3 className="font-medium text-xs uppercase tracking-[0.12em] text-slate-900">
-            Model Tier Allocation (No-Graph Ledger)
-          </h3>
-          <div className="space-y-2 text-xs font-mono">
-            <div className="flex justify-between items-center py-1.5 border-b border-slate-900/5">
-              <span className="font-semibold text-slate-800">Tier 1: Sonnet 3.7</span>
-              <span className="text-slate-500">10 Claude Nodes • 18.4k tok</span>
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <Panel title="Model Tier Allocation (No-Graph Ledger)" bodyClassName="space-y-1">
+          {[
+            ["Tier 1: Sonnet 3.7", "10 Claude Nodes • 18.4k tok"],
+            ["Tier 2: Haiku Router", "10 Antigravity Nodes • 12.1k tok"],
+            ["Tier 3: Local LLM", "10 Hermes Nodes • 4.2k tok"],
+          ].map(([tier, detail]) => (
+            <div key={tier} className="flex flex-col gap-0.5 border-b border-slate-900/5 py-3 last:border-0 sm:flex-row sm:items-center sm:justify-between">
+              <span className="text-sm font-semibold text-slate-900">{tier}</span>
+              <span className="font-mono text-xs text-slate-600">{detail}</span>
             </div>
-            <div className="flex justify-between items-center py-1.5 border-b border-slate-900/5">
-              <span className="font-semibold text-slate-800">Tier 2: Haiku Router</span>
-              <span className="text-slate-500">10 Antigravity Nodes • 12.1k tok</span>
-            </div>
-            <div className="flex justify-between items-center py-1.5">
-              <span className="font-semibold text-slate-800">Tier 3: Local LLM</span>
-              <span className="text-slate-500">10 Hermes Nodes • 4.2k tok</span>
-            </div>
-          </div>
-        </div>
+          ))}
+        </Panel>
 
-        {/* Box 2: Deduplicated Codebase Reads */}
-        <div className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft p-5 space-y-3">
-          <h3 className="font-medium text-xs uppercase tracking-[0.12em] text-slate-900">
-            Deduplicated Codebase Reads
-          </h3>
-          <div className="space-y-2 text-xs font-mono">
-            <div className="p-2.5 rounded bg-slate-50 ring-1 ring-slate-900/[0.08] flex justify-between items-center">
-              <span className="truncate text-slate-800 max-w-[140px]">db/migrations/schema.sql</span>
-              <span className="text-emerald-700 font-semibold">Read 1x • Shared 10x</span>
+        <Panel title="Deduplicated Codebase Reads" bodyClassName="space-y-2.5">
+          {[
+            ["db/migrations/schema.sql", "Read 1x • Shared 10x"],
+            ["src/rag/index.ts", "Read 1x • Shared 20x"],
+          ].map(([file, note]) => (
+            <div key={file} className="flex flex-col gap-0.5 rounded-xl bg-slate-900/[0.03] p-3.5 ring-1 ring-slate-900/[0.07] sm:flex-row sm:items-center sm:justify-between">
+              <span className="truncate font-mono text-xs text-slate-800">{file}</span>
+              <span className="font-mono text-xs font-semibold text-emerald-700">{note}</span>
             </div>
-            <div className="p-2.5 rounded bg-slate-50 ring-1 ring-slate-900/[0.08] flex justify-between items-center">
-              <span className="truncate text-slate-800 max-w-[140px]">src/rag/index.ts</span>
-              <span className="text-emerald-700 font-semibold">Read 1x • Shared 20x</span>
-            </div>
-          </div>
-        </div>
+          ))}
+        </Panel>
 
-        {/* Box 3: Triage Guardrails */}
-        <div className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft p-5 space-y-3">
-          <h3 className="font-medium text-xs uppercase tracking-[0.12em] text-slate-900">
-            Triage Guardrails
-          </h3>
-          <div className="space-y-2.5 text-xs font-mono">
-            <div className="flex justify-between items-center py-1.5 border-b border-slate-900/5">
-              <span className="text-slate-600">Concurrency Ceiling</span>
-              <span className="font-semibold text-slate-900">30 / 100 Max</span>
-            </div>
-            <div className="flex justify-between items-center py-1.5">
-              <span className="text-slate-600">Redundant Prompt Block</span>
-              <span className="font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                Enabled
-              </span>
-            </div>
+        <Panel title="Triage Guardrails" bodyClassName="space-y-1">
+          <div className="flex items-center justify-between gap-3 border-b border-slate-900/5 py-3 text-sm">
+            <span className="text-slate-600">Concurrency Ceiling</span>
+            <span className="font-mono text-xs font-semibold text-slate-900">30 / 100 Max</span>
           </div>
-        </div>
+          <div className="flex items-center justify-between gap-3 py-3 text-sm">
+            <span className="text-slate-600">Redundant Prompt Block</span>
+            <Badge tone="green">Enabled</Badge>
+          </div>
+        </Panel>
       </div>
     </div>
   );
