@@ -19,6 +19,8 @@ export interface LoopVerdict {
   loopType: "EXACT_TOOL_LOOP";
   reason: string;
   interceptionMs: number;
+  /** The repeated steps (calls and errors) and how many times they repeated; empty when not tripped. */
+  evidence: { unit: string[]; repeats: number };
 }
 
 /**
@@ -84,13 +86,14 @@ export class LoopDetector {
     const minRepeats = Math.max(MIN_REPEATS, this.policy.exactRepeatLimit);
     const found = [findRepeatingTail(calls, minRepeats), findRepeatingTail(mixed, minRepeats)]
       .filter((f): f is { unit: string[]; repeats: number } => f !== null)
-      .sort((a, b) => b.repeats - a.repeats)[0];
+      // most repeats wins; on a tie prefer the longer pattern, which includes the error the agent keeps hitting
+      .sort((a, b) => b.repeats - a.repeats || b.unit.length - a.unit.length)[0];
 
     const ms = Math.round((performance.now() - started) * 100) / 100;
     const score = found ? scoreForRepeats(found.repeats) : 0;
 
     if (!found || score < this.policy.loopScoreThreshold) {
-      return { tripped: false, score, loopType: "EXACT_TOOL_LOOP", reason: "", interceptionMs: ms };
+      return { tripped: false, score, loopType: "EXACT_TOOL_LOOP", reason: "", interceptionMs: ms, evidence: { unit: [], repeats: 0 } };
     }
     const what = found.unit.map((u) => u.slice(0, 90)).join(" -> ");
     return {
@@ -99,6 +102,7 @@ export class LoopDetector {
       loopType: "EXACT_TOOL_LOOP",
       reason: `Repeated ${found.repeats} times: ${what}`.slice(0, 220),
       interceptionMs: ms,
+      evidence: { unit: found.unit.map((u) => u.slice(0, 400)), repeats: found.repeats },
     };
   }
 }
