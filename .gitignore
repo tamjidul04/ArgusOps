@@ -47,3 +47,4 @@ stitch-export/
 
 # runtime state written by the local daemon
 .argus-mutex.json
+!.env.example
