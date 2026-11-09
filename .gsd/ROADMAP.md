@@ -21,7 +21,7 @@
 - [x] Prompt rewrite: suggested instruction from the repeated steps and error, real loop cost, approve/edit/dismiss, optional auto-resume (30-min cooldown), optional AI polish with the server's own key
 - [x] Notifications: in-app bell + toast, browser alerts, CLI desktop pop-up, webhooks (Slack/Discord/https, private addresses blocked); email and VS Code still to do
 - [x] Usage & savings page from `UsageEvent` (tokens, spend, calls, loops caught, cache savings; by agent and model); device pairing page; incidents feed in Guardrails and Notifications
-- [ ] `packages/vscode` extension
+- [x] `packages/vscode` extension: Agents view, status bar, alerts with approve/edit/stop, resume and stop, browser or key sign-in; verified in a real VS Code. Deeper VS Code control (edit files, run tasks) is Phase 2
 - [ ] Stripe billing; monthly token reset
 - [ ] Email verification at sign-up (then the OAuth link-wipes-password rule can be relaxed)
 

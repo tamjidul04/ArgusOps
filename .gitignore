@@ -51,3 +51,7 @@ stitch-export/
 
 # built CLI bundle
 /packages/cli/dist/
+
+# built extension and packages
+/packages/vscode/out/
+*.vsix

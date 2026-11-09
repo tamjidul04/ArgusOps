@@ -84,7 +84,6 @@ describe("suggested instruction on a loop", () => {
     const agent = await prisma.agent.findFirstOrThrow({ where: { cluster: { user_id: alice.id }, name: "Tester" } });
     const rw = await prisma.promptRewrite.findFirstOrThrow({ where: { agent_id: agent.agent_id, status: "PROPOSED" } });
 
-    expect((await rwPOST(withKey(alice, "/api/rewrites", { action: "apply", id: rw.id }))).status).toBe(403); // API keys can't
     expect((await rwPOST(withSession(bob, "/api/rewrites", { action: "apply", id: rw.id }))).status).toBe(404); // nor other users
 
     const edited = "Skip the flaky test, then run the build.";

@@ -45,8 +45,6 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const auth = await requireAuth(req);
   if (auth instanceof NextResponse) return auth;
-  if (auth.via !== "session") return NextResponse.json({ error: "Sign in to resume agents." }, { status: 403 });
-
   const body = await req.json().catch(() => ({}));
   const id = typeof body.id === "string" ? body.id : "";
   if (!id) return NextResponse.json({ error: "id is required." }, { status: 400 });
