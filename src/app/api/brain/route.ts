@@ -1,28 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
-import fs from "node:fs";
-import path from "node:path";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
+import { orchestrateProjectTask } from "@/lib/master-orchestrator";
 import {
-  getHostHardwareTelemetry,
-  scanLocalCodingProcesses,
-  checkRamGovernance,
-} from "@/lib/hardware-monitor";
-import {
-  orchestrateProjectTask,
-} from "@/lib/master-orchestrator";
-import {
-  evaluateAgentStreamForLoops,
-  verifyAndAcquireFileMutex,
-} from "@/lib/guardrails-engine";
+  acquireLock,
+  applyHeartbeat,
+  ensureLocalCluster,
+  getLatencyStats,
+  killAgent,
+  listLocks,
+  ownedAgent,
+  releaseLocksFor,
+  resumeAgent,
+} from "@/lib/control-plane";
 
 /**
- * ArgusOps Central Brain API Route
- * 
- * Step 4 of Core Backend Brain:
- * Direct Prisma database bridge connecting hardware-monitor.ts,
- * master-orchestrator.ts, and guardrails-engine.ts.
+ * Control-plane API used by the dashboard and the local daemon/CLI.
+ * Everything is scoped to the authenticated user: clusters, agents, wallet and file locks.
+ * (The previous demo actions that fabricated incidents and charged tokens were removed.)
  */
+
+const REMOVED_ACTIONS = new Set([
+  "TRIGGER_ROGUE_LOOP",
+  "TRIGGER_HUMAN_NUDGE",
+  "TEST_FILE_MUTEX",
+  "THROTTLE_RAM_SPIKE",
+]);
 
 // ============================================================================
 // GET /api/brain
@@ -30,147 +33,39 @@ import {
 export async function GET(req: NextRequest) {
   const auth = await requireAuth(req);
   if (auth instanceof NextResponse) return auth;
+  const userId = auth.user.id;
+
   try {
-    // 1. Collect real host PC hardware metrics
-    const hardware = getHostHardwareTelemetry();
-
-    // 2. Scan host PC for real running coding processes (Antigravity, Code, node, claude, hermes)
-    const scanResult = await scanLocalCodingProcesses();
-
-    // 3. Update the LOCAL_PC cluster's agents in Prisma with the real host PC telemetry
-    const localClusterRecord = await prisma.clusterAndWorkspace.findFirst({
-      where: { environment: "LOCAL_PC" },
-      include: { agents: true },
-    });
-
-    if (localClusterRecord) {
-      for (const slot of scanResult.agents) {
-        const existing = localClusterRecord.agents.find((a) => a.agent_type === slot.agent_type);
-        const isGoverned = existing?.status === "KILLED_LOOP" || existing?.status === "PAUSED_NUDGE";
-
-        await prisma.agent.updateMany({
-          where: {
-            cluster_id: localClusterRecord.cluster_id,
-            agent_type: slot.agent_type,
-          },
-          data: {
-            ram_usage: isGoverned && existing?.status === "KILLED_LOOP" ? 0.0 : slot.ram_usage,
-            cpu_usage: isGoverned && existing?.status === "KILLED_LOOP" ? 0.0 : slot.cpu_usage,
-            status: isGoverned ? existing.status : slot.status,
-            current_task: isGoverned ? existing.current_task : slot.current_task,
-            locked_file_path: isGoverned && existing?.status === "KILLED_LOOP" ? null : slot.locked_file_path,
-            last_heartbeat_at: new Date(),
-          },
-        });
-      }
-    }
-
-    // Read real local file mutex registry if active
-    let activeLocks: Array<{
-      id: string;
-      filePath: string;
-      holderAgent: string;
-      holderPid?: number;
-      status: string;
-      acquiredAt: string;
-      collisionInterceptMs?: number;
-    }> = [];
-
-    try {
-      const mutexPath = path.resolve(process.cwd(), ".argus-mutex.json");
-      if (fs.existsSync(mutexPath)) {
-        const parsed = JSON.parse(fs.readFileSync(mutexPath, "utf-8"));
-        if (Array.isArray(parsed?.locks)) {
-          activeLocks = parsed.locks;
-        }
-      }
-    } catch {
-      // Safe fallback if mutex file is momentarily being written
-    }
-
-    // 4. Fetch complete database entities: Cloud & Local Clusters, Tasks, and User Wallet
-    const [cloudCluster, localCluster, activeUser] = await Promise.all([
+    const [cloudCluster, localCluster, wallet, locks, latency] = await Promise.all([
       prisma.clusterAndWorkspace.findFirst({
-        where: { environment: "CLOUD" },
-        include: {
-          agents: {
-            orderBy: { agent_id: "asc" },
-          },
-          tasks: {
-            orderBy: { created_at: "desc" },
-            take: 10,
-          },
-        },
+        where: { user_id: userId, environment: "CLOUD" },
+        include: { agents: { orderBy: { agent_id: "asc" } }, tasks: { orderBy: { created_at: "desc" }, take: 10 } },
       }),
       prisma.clusterAndWorkspace.findFirst({
-        where: { environment: "LOCAL_PC" },
-        include: {
-          agents: {
-            orderBy: { agent_id: "asc" },
-          },
-          tasks: {
-            orderBy: { created_at: "desc" },
-            take: 5,
-          },
-        },
+        where: { user_id: userId, environment: "LOCAL_PC" },
+        include: { agents: { orderBy: { agent_id: "asc" } }, tasks: { orderBy: { created_at: "desc" }, take: 5 } },
       }),
-      prisma.user.findFirst({
-        where: { role: "USER" },
-        include: {
-          subscription: {
-            include: {
-              plan: true,
-            },
-          },
-        },
-      }),
+      prisma.subscriptionAndWallet.findUnique({ where: { user_id: userId }, include: { plan: true } }),
+      listLocks(userId),
+      getLatencyStats(userId),
     ]);
-
-    // 5. Measure live guardrails engine interception latency
-    const liveBench = evaluateAgentStreamForLoops(
-      [
-        "Hypervisor telemetry heartbeat poll",
-        "AST symbol tree cache synchronized with zero-trust IPC socket",
-      ],
-      100
-    );
 
     return NextResponse.json({
       success: true,
-      hardware: {
-        totalRamGb: hardware.totalRamGb,
-        usedRamGb: hardware.usedRamGb,
-        freeRamGb: hardware.freeRamGb,
-        ramUsagePercent: hardware.ramUsagePercent,
-        cpuLoadPercent: hardware.cpuLoadPercent,
-        daemonMemoryMb: hardware.daemonMemoryMb,
-        daemonWithinBudget: hardware.daemonWithinBudget,
-        cpuCores: hardware.cpuCores,
-        cpuModel: hardware.cpuModel,
-        platform: hardware.platform,
-        uptimeSeconds: hardware.uptimeSeconds,
-      },
+      // Host RAM/CPU belongs to the machine running the CLI, not this server; the CLI reports it per agent.
+      hardware: null,
       cloudCluster,
       localCluster,
-      wallet: activeUser?.subscription || null,
-      interceptionLatencyMs: liveBench.interceptionMs,
-      scanResult: {
-        totalDetectedProcesses: scanResult.totalDetectedProcesses,
-        detectedProcesses: scanResult.detectedProcesses.slice(0, 10),
-      },
-      activeLocks,
-      mutexRegistry: {
-        activeLocksCount: activeLocks.length,
-        locks: activeLocks,
-      },
+      wallet,
+      interceptionLatencyMs: latency.avg,
+      scanResult: { totalDetectedProcesses: 0, detectedProcesses: [] },
+      activeLocks: locks,
+      mutexRegistry: { activeLocksCount: locks.length, locks },
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
     console.error("GET /api/brain error:", error);
-    return NextResponse.json(
-      { error: "Failed to retrieve brain telemetry and cluster state." },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to retrieve cluster state." }, { status: 500 });
   }
 }
 
@@ -180,665 +75,149 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const auth = await requireAuth(req);
   if (auth instanceof NextResponse) return auth;
-  try {
-    const body = await req.json();
-    const { action } = body;
+  const userId = auth.user.id;
 
+  try {
+    const body = await req.json().catch(() => ({}));
+    const action: unknown = body.action;
     if (!action || typeof action !== "string") {
+      return NextResponse.json({ error: "A valid 'action' parameter is required." }, { status: 400 });
+    }
+
+    if (REMOVED_ACTIONS.has(action)) {
       return NextResponse.json(
-        { error: "A valid 'action' parameter is required in request body." },
-        { status: 400 }
+        { error: `'${action}' was a simulation and has been removed. Real incidents appear once an agent runs under argus.` },
+        { status: 410 }
       );
     }
 
+    const interactive = auth.via === "session";
+
     switch (action) {
-      // ----------------------------------------------------------------------
-      // Action 1: DECOMPOSE_TASK
-      // ----------------------------------------------------------------------
+      // Planning preview only: it analyses the prompt. It does not change any agent and costs no tokens.
       case "DECOMPOSE_TASK": {
-        const prompt = typeof body.prompt === "string" && body.prompt.trim().length > 0
-          ? body.prompt.trim()
-          : "Architect and orchestrate enterprise microservice cluster with OAuth2, PostgreSQL, and test suite";
+        if (!interactive) return NextResponse.json({ error: "Sign in to use the orchestrator." }, { status: 403 });
+        const prompt =
+          typeof body.prompt === "string" && body.prompt.trim()
+            ? body.prompt.trim().slice(0, 4000)
+            : "Describe the project you want to build.";
 
-        const cloudCluster = await prisma.clusterAndWorkspace.findFirst({
-          where: { environment: "CLOUD" },
-        });
+        const cluster =
+          (await prisma.clusterAndWorkspace.findFirst({ where: { user_id: userId }, orderBy: { created_at: "asc" } })) ??
+          (await ensureLocalCluster(userId, auth.user.name));
 
-        if (!cloudCluster) {
-          return NextResponse.json({ error: "Cloud cluster not found." }, { status: 404 });
-        }
-
-        // 1. Run master orchestrator brain
         const plan = await orchestrateProjectTask(prompt, 100);
-
-        // 2. Update Cloud Cluster's active & hibernated counts and context cache
-        await prisma.clusterAndWorkspace.update({
-          where: { cluster_id: cloudCluster.cluster_id },
-          data: {
-            active_agents: plan.concurrency.activeAgents,
-            hibernated_agents: plan.concurrency.hibernatedAgents,
-            cached_context_hash: plan.cachedContextHash,
-            cache_tokens_saved: plan.savings.totalTokensSaved,
-          },
-        });
-
-        // 3. Update the 100 Agent rows in Cloud cluster
-        const cloudAgents = await prisma.agent.findMany({
-          where: { cluster_id: cloudCluster.cluster_id },
-          orderBy: { agent_id: "asc" },
-        });
-
-        for (let i = 0; i < cloudAgents.length; i++) {
-          const updateData = plan.prismaPayload.agentBatchUpdates[i];
-          if (updateData) {
-            await prisma.agent.update({
-              where: { agent_id: cloudAgents[i].agent_id },
-              data: {
-                status: updateData.status,
-                model_tier: updateData.model_tier,
-                ram_usage: updateData.ram_usage,
-                cpu_usage: updateData.cpu_usage,
-                current_task: updateData.current_task,
-                locked_file_path: updateData.locked_file_path,
-                loop_score: updateData.status === "ACTIVE" ? +(0.02 + (i % 4) * 0.01).toFixed(2) : 0.0,
-                last_heartbeat_at: new Date(),
-              },
-            });
-          }
-        }
-
-        // 4. Deduct realistic token amount from user's wallet
-        const activeUser = await prisma.user.findFirst({
-          where: { role: "USER" },
-          include: { subscription: true },
-        });
-
-        const tokensToDeduct = 18500;
-        let newFreeTokens = 0;
-        let newPaidTokens = 0;
-
-        if (activeUser?.subscription) {
-          const currentFree = activeUser.subscription.free_tokens;
-          const currentPaid = activeUser.subscription.paid_tokens;
-
-          if (currentFree >= tokensToDeduct) {
-            newFreeTokens = currentFree - tokensToDeduct;
-            newPaidTokens = currentPaid;
-          } else {
-            const remainder = tokensToDeduct - currentFree;
-            newFreeTokens = 0;
-            newPaidTokens = Math.max(0, currentPaid - remainder);
-          }
-
-          await prisma.subscriptionAndWallet.update({
-            where: { id: activeUser.subscription.id },
-            data: {
-              free_tokens: newFreeTokens,
-              paid_tokens: newPaidTokens,
-            },
-          });
-        }
-
-        // 5. Save task log into Tasks_And_Logs
         const taskLog = await prisma.taskAndLog.create({
           data: {
-            cluster_id: cloudCluster.cluster_id,
-            prompt_summary: plan.prompt,
+            cluster_id: cluster.cluster_id,
+            prompt_summary: plan.prompt.slice(0, 1000),
             complexity_score: plan.complexity.score,
             assigned_agents: plan.concurrency.activeAgents,
             hibernated_count: plan.concurrency.hibernatedAgents,
-            tokens_saved: plan.savings.totalTokensSaved,
+            tokens_saved: 0,
             loop_incidents: 0,
-            interception_ms: 28,
+            interception_ms: 0,
             status: "RUNNING",
           },
         });
 
         return NextResponse.json({
           success: true,
-          action: "DECOMPOSE_TASK",
-          message: `Task decomposed into ${plan.subtasks.length} modules. ${plan.concurrency.activeAgents} active agents provisioned, ${plan.concurrency.hibernatedAgents} placed in Zero-Token hibernation. ${tokensToDeduct.toLocaleString()} tokens deducted from wallet.`,
+          action,
+          message: `Plan preview: ${plan.subtasks.length} modules. This is an estimate, nothing was started.`,
           plan,
           taskLog,
-          tokensDeducted: tokensToDeduct,
-          updatedWallet: {
-            free_tokens: newFreeTokens,
-            paid_tokens: newPaidTokens,
-          },
         });
       }
 
-      // ----------------------------------------------------------------------
-      // Action 2: TRIGGER_ROGUE_LOOP
-      // ----------------------------------------------------------------------
-      case "TRIGGER_ROGUE_LOOP": {
-        // Pick an active agent (or specified agentId)
-        let targetAgent = null;
-        if (body.agentId) {
-          targetAgent = await prisma.agent.findUnique({ where: { agent_id: body.agentId } });
-        }
-        if (!targetAgent) {
-          targetAgent = await prisma.agent.findFirst({
-            where: { status: "ACTIVE" },
-            orderBy: { ram_usage: "desc" },
-          });
-        }
-
-        if (!targetAgent) {
-          return NextResponse.json({ error: "No active agent found to simulate loop on." }, { status: 404 });
-        }
-
-        // Feed repeating tool error logs into loop detector at 42% progress (<80%)
-        const rogueLogs = [
-          "Parsing OpenAPI service boundary...",
-          "fetch_vector_chunks(offset=2048): ECONNRESET connection reset by peer",
-          "fetch_vector_chunks(offset=2048): ECONNRESET connection reset by peer",
-          "fetch_vector_chunks(offset=2048): ECONNRESET connection reset by peer",
-        ];
-        const evalResult = evaluateAgentStreamForLoops(rogueLogs, 42);
-
-        // Trip the circuit breaker in Prisma
-        const killedAgent = await prisma.agent.update({
-          where: { agent_id: targetAgent.agent_id },
-          data: {
-            status: "KILLED_LOOP",
-            ram_usage: 0.0,
-            cpu_usage: 0.0,
-            loop_score: 0.98,
-            current_task: `Circuit breaker tripped at ${evalResult.interceptionMs}ms due to repeated tool errors. Terminated to zero token burn.`,
-            locked_file_path: null,
-            last_heartbeat_at: new Date(),
-          },
-        });
-
-        // Increment loop incidents on the latest cluster task
-        const latestTask = await prisma.taskAndLog.findFirst({
-          where: { cluster_id: targetAgent.cluster_id },
-          orderBy: { created_at: "desc" },
-        });
-
-        if (latestTask) {
-          await prisma.taskAndLog.update({
-            where: { task_id: latestTask.task_id },
-            data: {
-              loop_incidents: { increment: 1 },
-            },
-          });
-        }
-
-        return NextResponse.json({
-          success: true,
-          action: "TRIGGER_ROGUE_LOOP",
-          message: `Circuit breaker tripped in ${evalResult.interceptionMs}ms! ${killedAgent.name} terminated (0 RAM, 0 CPU). Loop incident incremented.`,
-          agent: killedAgent,
-          evaluation: evalResult,
-        });
-      }
-
-      // ----------------------------------------------------------------------
-      // Action 3: TRIGGER_HUMAN_NUDGE
-      // ----------------------------------------------------------------------
-      case "TRIGGER_HUMAN_NUDGE": {
-        let targetAgent = null;
-        if (body.agentId) {
-          targetAgent = await prisma.agent.findUnique({ where: { agent_id: body.agentId } });
-        }
-        if (!targetAgent) {
-          targetAgent = await prisma.agent.findFirst({
-            where: { status: "ACTIVE" },
-            orderBy: { agent_id: "asc" },
-          });
-        }
-
-        if (!targetAgent) {
-          return NextResponse.json({ error: "No active agent found to nudge." }, { status: 404 });
-        }
-
-        // Simulate agent at 91% completion hitting a semantic paraphrasing loop
-        const reasoningLogs = [
-          "I need to alter the database schema to drop the foreign key constraint before committing.",
-          "Attempting to alter the database schema to drop the foreign key constraint before committing.",
-        ];
-        const evalResult = evaluateAgentStreamForLoops(reasoningLogs, 91);
-
-        // Update agent to PAUSED_NUDGE in Prisma
-        const nudgedAgent = await prisma.agent.update({
-          where: { agent_id: targetAgent.agent_id },
-          data: {
-            status: "PAUSED_NUDGE",
-            loop_score: 0.89,
-            ram_usage: 198.4,
-            cpu_usage: 1.8,
-            current_task: "Refactoring database migration scripts (91% complete, awaiting human confirmation)",
-            locked_file_path: "prisma/migrations/20261030_tenant_schema.sql",
-            last_heartbeat_at: new Date(),
-          },
-        });
-
-        return NextResponse.json({
-          success: true,
-          action: "TRIGGER_HUMAN_NUDGE",
-          message: `Human-in-the-Loop Nudge alert triggered in ${evalResult.interceptionMs}ms! ${nudgedAgent.name} is 91% complete: Paused with amber status for operator confirmation.`,
-          agent: nudgedAgent,
-          evaluation: evalResult,
-        });
-      }
-
-      // ----------------------------------------------------------------------
-      // Action 4: RESOLVE_NUDGE
-      // ----------------------------------------------------------------------
       case "RESOLVE_NUDGE": {
-        const { agentId, decision = "RESUME", hintText } = body;
+        if (!interactive) return NextResponse.json({ error: "Sign in to resolve a paused agent." }, { status: 403 });
+        const agentId = typeof body.agentId === "string" ? body.agentId : "";
+        if (!agentId) return NextResponse.json({ error: "agentId is required." }, { status: 400 });
 
-        let agent = null;
-        if (agentId) {
-          agent = await prisma.agent.findUnique({ where: { agent_id: agentId } });
-        }
-        if (!agent) {
-          agent = await prisma.agent.findFirst({
-            where: { status: "PAUSED_NUDGE" },
-          });
-        }
-
-        if (!agent) {
-          return NextResponse.json({ error: "No agent in PAUSED_NUDGE status found to resolve." }, { status: 404 });
-        }
-
-        let updatedAgent = null;
-        if (decision === "KILL") {
-          updatedAgent = await prisma.agent.update({
-            where: { agent_id: agent.agent_id },
-            data: {
-              status: "KILLED_LOOP",
-              loop_score: 0.99,
-              ram_usage: 0.0,
-              cpu_usage: 0.0,
-              current_task: "Terminated by operator decision during human nudge review.",
-              locked_file_path: null,
-              last_heartbeat_at: new Date(),
-            },
-          });
-        } else {
-          // Default: RESUME
-          const hint = hintText || "Commit without foreign-key check and finalize step";
-          updatedAgent = await prisma.agent.update({
-            where: { agent_id: agent.agent_id },
-            data: {
-              status: "ACTIVE",
-              loop_score: 0.05,
-              ram_usage: 142.5,
-              cpu_usage: 12.0,
-              current_task: `Resumed via Human Nudge: "${hint}"`,
-              last_heartbeat_at: new Date(),
-            },
-          });
-        }
+        const r =
+          body.decision === "KILL"
+            ? await killAgent(userId, agentId, "Terminated by operator during nudge review.")
+            : await resumeAgent(userId, agentId, typeof body.hintText === "string" ? body.hintText : undefined);
+        if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.status });
 
         return NextResponse.json({
           success: true,
-          action: "RESOLVE_NUDGE",
-          decision,
-          message: decision === "KILL"
-            ? `${agent.name} terminated by operator command.`
-            : `${agent.name} resumed with cleared loop score (0.05). Execution in progress.`,
-          agent: updatedAgent,
+          action,
+          decision: body.decision === "KILL" ? "KILL" : "RESUME",
+          message:
+            body.decision === "KILL"
+              ? `${r.value.agent.name} was marked stopped.`
+              : `${r.value.agent.name} will resume with your hint on its next sync.`,
+          agent: r.value.agent,
         });
       }
 
-      // ----------------------------------------------------------------------
-      // Action 5: TEST_FILE_MUTEX
-      // ----------------------------------------------------------------------
-      case "TEST_FILE_MUTEX": {
-        const targetPath = body.targetFilePath || "src/app/dashboard/page.tsx";
-
-        // Query active agents in database to form active mutex records
-        const allActiveAgents = await prisma.agent.findMany({
-          where: {
-            OR: [
-              { agent_type: "ANTIGRAVITY" },
-              { agent_type: "CLAUDE" },
-              { agent_type: "HERMES" },
-            ],
-          },
-        });
-
-        const antigravity = allActiveAgents.find((a) => a.agent_type === "ANTIGRAVITY");
-        const claude = allActiveAgents.find((a) => a.agent_type === "CLAUDE");
-
-        // Ensure Antigravity currently holds the target lock
-        if (antigravity) {
-          await prisma.agent.update({
-            where: { agent_id: antigravity.agent_id },
-            data: {
-              locked_file_path: targetPath,
-              current_task: `Holding exclusive write lock on ${targetPath}`,
-            },
-          });
-        }
-
-        // Run mutex verification: Claude attempts to edit the locked file
-        const mutexAgents = [
-          {
-            agent_id: antigravity?.agent_id || "agent_local_antigravity",
-            name: antigravity?.name || "Antigravity Agent",
-            locked_file_path: targetPath,
-          },
-          {
-            agent_id: claude?.agent_id || "agent_local_claude",
-            name: claude?.name || "Claude Agent",
-            locked_file_path: null,
-          },
-        ];
-
-        const mutexResult = verifyAndAcquireFileMutex(
-          mutexAgents,
-          claude?.agent_id || "agent_local_claude",
-          targetPath
-        );
-
-        // Automatically reroute Claude to an unlocked module file
-        const reroutedFilePath = "src/lib/loop-detector.ts";
-        let updatedClaude = null;
-
-        if (claude) {
-          updatedClaude = await prisma.agent.update({
-            where: { agent_id: claude.agent_id },
-            data: {
-              locked_file_path: reroutedFilePath,
-              current_task: `Write collision on '${targetPath}' blocked in ${mutexResult.interceptionMs}ms! Rerouted to unlocked module: ${reroutedFilePath}`,
-              last_heartbeat_at: new Date(),
-            },
-          });
-        }
-
-        return NextResponse.json({
-          success: true,
-          action: "TEST_FILE_MUTEX",
-          message: `Collision intercepted in ${mutexResult.interceptionMs}ms! Claude attempted to overwrite '${targetPath}'. Mutex blocked collision and rerouted Claude to '${reroutedFilePath}'. 0 code lost.`,
-          mutexResult,
-          reroutedAgent: updatedClaude,
-          lockedHolder: antigravity?.name || "Antigravity Agent",
-          lockedFilePath: targetPath,
-        });
-      }
-
-      // ----------------------------------------------------------------------
-      // Action 6: THROTTLE_RAM_SPIKE
-      // ----------------------------------------------------------------------
-      case "THROTTLE_RAM_SPIKE": {
-        // Run checkRamGovernance on an agent with elevated memory
-        let spikeAgent = await prisma.agent.findFirst({
-          where: {
-            status: "ACTIVE",
-            ram_usage: { gte: 250 },
-          },
-        });
-
-        if (!spikeAgent) {
-          // Select highest RAM active agent and simulate elevated memory to test governance
-          spikeAgent = await prisma.agent.findFirst({
-            where: { status: "ACTIVE" },
-            orderBy: { ram_usage: "desc" },
-          });
-        }
-
-        if (!spikeAgent) {
-          return NextResponse.json({ error: "No active agent found to govern." }, { status: 404 });
-        }
-
-        const simulatedSpikeMb = 340.0;
-        const taskComplexity = 30; // Low complexity task (<40)
-        const governance = checkRamGovernance(simulatedSpikeMb, taskComplexity);
-
-        // Throttle ram_usage back down to 64MB and downgrade to DOWNGRADED_FAST
-        const throttledAgent = await prisma.agent.update({
-          where: { agent_id: spikeAgent.agent_id },
-          data: {
-            ram_usage: 64.0,
-            cpu_usage: 6.5,
-            model_tier: "DOWNGRADED_FAST",
-            current_task: `Auto-governed: Memory spiked to ${simulatedSpikeMb}MB (cap: 250MB). Clamped to 64MB and downgraded to DOWNGRADED_FAST.`,
-            last_heartbeat_at: new Date(),
-          },
-        });
-
-        return NextResponse.json({
-          success: true,
-          action: "THROTTLE_RAM_SPIKE",
-          message: `Memory spike governed! ${throttledAgent.name} spiked to ${simulatedSpikeMb}MB (cap: 250MB). Hypervisor clamped RAM to 64MB and downgraded model to DOWNGRADED_FAST.`,
-          governance,
-          agent: throttledAgent,
-        });
-      }
-
-      // ----------------------------------------------------------------------
-      // Action 7: HEARTBEAT / DAEMON_HEARTBEAT (Local Supervisor Telemetry)
-      // ----------------------------------------------------------------------
       case "HEARTBEAT":
       case "DAEMON_HEARTBEAT": {
-        const { daemon, agents, locks } = body;
-
-        const localCluster = await prisma.clusterAndWorkspace.findFirst({
-          where: { environment: "LOCAL_PC" },
-          include: { agents: true },
-        });
-
-        if (localCluster && Array.isArray(agents)) {
-          for (const a of agents) {
-            const agentType = (a.type || a.agent_type || "").toUpperCase();
-            const existingAgent = localCluster.agents.find(
-              (ea) =>
-                ea.agent_type === agentType ||
-                ea.agent_id === (a.id || a.agent_id) ||
-                (a.name && ea.name.toLowerCase().includes(a.name.toLowerCase()))
-            );
-
-            if (existingAgent) {
-              const isGoverned =
-                existingAgent.status === "KILLED_LOOP" ||
-                existingAgent.status === "PAUSED_NUDGE";
-
-              await prisma.agent.update({
-                where: { agent_id: existingAgent.agent_id },
-                data: {
-                  ram_usage:
-                    isGoverned && existingAgent.status === "KILLED_LOOP"
-                      ? 0.0
-                      : parseFloat(a.ram_usage || a.memoryUsageMb || existingAgent.ram_usage),
-                  cpu_usage:
-                    isGoverned && existingAgent.status === "KILLED_LOOP"
-                      ? 0.0
-                      : parseFloat(a.cpu_usage || a.cpuPercent || existingAgent.cpu_usage),
-                  status: isGoverned ? existingAgent.status : a.status || existingAgent.status,
-                  current_task: isGoverned
-                    ? existingAgent.current_task
-                    : a.current_task || a.activeFilePath || existingAgent.current_task,
-                  locked_file_path:
-                    isGoverned && existingAgent.status === "KILLED_LOOP"
-                      ? null
-                      : a.locked_file_path || a.lockedFilePath || existingAgent.locked_file_path,
-                  last_heartbeat_at: new Date(),
-                },
-              });
-            }
-          }
-        }
-
-        // Sync to .argus-mutex.json on disk if locks are supplied
-        if (Array.isArray(locks)) {
-          try {
-            const mutexPath = path.resolve(process.cwd(), ".argus-mutex.json");
-            const mutexPayload = {
-              version: daemon?.version || "v1.4.0",
-              updatedAt: new Date().toISOString(),
-              daemonPid: daemon?.pid || process.pid,
-              zeroTrustLocalCode: true,
-              activeLocksCount: locks.length,
-              locks,
-            };
-            fs.writeFileSync(mutexPath, JSON.stringify(mutexPayload, null, 2), "utf-8");
-          } catch {
-            // Safe fallback if writing is locked
-          }
-        }
-
+        const result = await applyHeartbeat(userId, auth.user.name, body.agents);
         return NextResponse.json({
           success: true,
           action: "HEARTBEAT",
-          message: "Telemetry heartbeat acknowledged. Zero-Trust Code Privacy verified.",
-          daemonStats: {
-            residentMemoryMb: daemon?.residentMemoryMb,
-            withinBudget: (parseFloat(daemon?.residentMemoryMb) || 35) < 150,
-            activeLocksCount: Array.isArray(locks) ? locks.length : 0,
-          },
-          locks: Array.isArray(locks) ? locks : [],
+          ...result,
+          locks: await listLocks(userId),
           timestamp: new Date().toISOString(),
         });
       }
 
-      // ----------------------------------------------------------------------
-      // Action 8: ACQUIRE_FILE_MUTEX
-      // ----------------------------------------------------------------------
       case "ACQUIRE_FILE_MUTEX": {
-        const { targetFilePath, agentId = "agent_local_antigravity", agentName = "Antigravity Agent" } = body;
+        const targetFilePath = typeof body.targetFilePath === "string" ? body.targetFilePath : "";
+        const agentId = typeof body.agentId === "string" ? body.agentId : "";
+        if (!targetFilePath) return NextResponse.json({ error: "targetFilePath is required." }, { status: 400 });
+        if (!agentId) return NextResponse.json({ error: "agentId is required." }, { status: 400 });
 
-        if (!targetFilePath || typeof targetFilePath !== "string") {
-          return NextResponse.json({ error: "targetFilePath is required." }, { status: 400 });
-        }
+        const agent = await ownedAgent(userId, agentId);
+        if (!agent) return NextResponse.json({ error: "Agent not found." }, { status: 404 });
 
-        const allAgents = await prisma.agent.findMany();
-        const activeRecords = allAgents.map((a) => ({
-          agent_id: a.agent_id,
-          name: a.name,
-          locked_file_path: a.locked_file_path,
-        }));
-
-        const result = verifyAndAcquireFileMutex(activeRecords, agentId, targetFilePath);
-
+        const result = await acquireLock(userId, targetFilePath, agent.name, {
+          pid: typeof body.pid === "number" ? body.pid : undefined,
+        });
         if (result.allowed) {
           await prisma.agent.update({
-            where: { agent_id: agentId },
-            data: {
-              locked_file_path: result.lockedFilePath,
-              current_task: `Holding exclusive write lock on ${result.lockedFilePath}`,
-              last_heartbeat_at: new Date(),
-            },
-          }).catch(() => {});
-
-          // Sync to .argus-mutex.json
-          try {
-            const mutexPath = path.resolve(process.cwd(), ".argus-mutex.json");
-            let existingLocks: any[] = [];
-            if (fs.existsSync(mutexPath)) {
-              const parsed = JSON.parse(fs.readFileSync(mutexPath, "utf-8"));
-              if (Array.isArray(parsed?.locks)) existingLocks = parsed.locks;
-            }
-            // Remove old lock for this file or agent
-            existingLocks = existingLocks.filter(
-              (l) => l.filePath !== result.lockedFilePath && l.holderAgent !== agentName
-            );
-            existingLocks.push({
-              id: `lck-${Date.now()}`,
-              filePath: result.lockedFilePath,
-              holderAgent: agentName,
-              holderPid: process.pid,
-              status: "LOCKED",
-              acquiredAt: new Date().toISOString(),
-              collisionInterceptMs: result.interceptionMs,
-            });
-            fs.writeFileSync(
-              mutexPath,
-              JSON.stringify(
-                {
-                  version: "v1.4.0",
-                  updatedAt: new Date().toISOString(),
-                  daemonPid: process.pid,
-                  zeroTrustLocalCode: true,
-                  activeLocksCount: existingLocks.length,
-                  locks: existingLocks,
-                },
-                null,
-                2
-              ),
-              "utf-8"
-            );
-          } catch {
-            // Ignore concurrent disk write collision
-          }
+            where: { agent_id: agent.agent_id },
+            data: { locked_file_path: result.lockedFilePath, last_heartbeat_at: new Date() },
+          });
         }
-
         return NextResponse.json({
           success: result.allowed,
-          action: "ACQUIRE_FILE_MUTEX",
+          action,
           mutexResult: result,
           targetFilePath,
         });
       }
 
-      // ----------------------------------------------------------------------
-      // Action 9: RELEASE_FILE_MUTEX
-      // ----------------------------------------------------------------------
       case "RELEASE_FILE_MUTEX": {
-        const { targetFilePath, agentId = "agent_local_antigravity" } = body;
+        const agentId = typeof body.agentId === "string" ? body.agentId : "";
+        if (!agentId) return NextResponse.json({ error: "agentId is required." }, { status: 400 });
+        const agent = await ownedAgent(userId, agentId);
+        if (!agent) return NextResponse.json({ error: "Agent not found." }, { status: 404 });
 
-        await prisma.agent.update({
-          where: { agent_id: agentId },
-          data: {
-            locked_file_path: null,
-            last_heartbeat_at: new Date(),
-          },
-        }).catch(() => {});
-
-        // Sync to .argus-mutex.json
-        try {
-          const mutexPath = path.resolve(process.cwd(), ".argus-mutex.json");
-          if (fs.existsSync(mutexPath)) {
-            const parsed = JSON.parse(fs.readFileSync(mutexPath, "utf-8"));
-            if (Array.isArray(parsed?.locks)) {
-              const updatedLocks = parsed.locks.filter(
-                (l: any) =>
-                  (targetFilePath ? l.filePath !== targetFilePath : true) &&
-                  l.holderAgent !== agentId
-              );
-              fs.writeFileSync(
-                mutexPath,
-                JSON.stringify(
-                  {
-                    ...parsed,
-                    updatedAt: new Date().toISOString(),
-                    activeLocksCount: updatedLocks.length,
-                    locks: updatedLocks,
-                  },
-                  null,
-                  2
-                ),
-                "utf-8"
-              );
-            }
-          }
-        } catch {
-          // Ignore disk collision
-        }
-
-        return NextResponse.json({
-          success: true,
-          action: "RELEASE_FILE_MUTEX",
-          message: `File lock released for '${targetFilePath || "all"}'.`,
+        const released = await releaseLocksFor(userId, {
+          holder: agent.name,
+          filePath: typeof body.targetFilePath === "string" ? body.targetFilePath : undefined,
         });
+        await prisma.agent.update({
+          where: { agent_id: agent.agent_id },
+          data: { locked_file_path: null, last_heartbeat_at: new Date() },
+        });
+        return NextResponse.json({ success: true, action, released });
       }
 
       default:
         return NextResponse.json(
-          { error: `Unknown brain action: '${action}'. Supported actions: DECOMPOSE_TASK, TRIGGER_ROGUE_LOOP, TRIGGER_HUMAN_NUDGE, RESOLVE_NUDGE, TEST_FILE_MUTEX, THROTTLE_RAM_SPIKE, HEARTBEAT, ACQUIRE_FILE_MUTEX, RELEASE_FILE_MUTEX.` },
+          {
+            error: `Unknown action '${action}'. Supported: DECOMPOSE_TASK, RESOLVE_NUDGE, HEARTBEAT, ACQUIRE_FILE_MUTEX, RELEASE_FILE_MUTEX.`,
+          },
           { status: 400 }
         );
     }
   } catch (error) {
     console.error("POST /api/brain error:", error);
-    return NextResponse.json(
-      { error: "Internal server error occurred while executing brain action." },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Internal server error while executing the action." }, { status: 500 });
   }
 }
-

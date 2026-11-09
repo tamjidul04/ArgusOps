@@ -1,288 +1,120 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
-import { verifyAndAcquireFileMutex } from "@/lib/guardrails-engine";
+import { sanitizePermissions } from "@/lib/control-plane-core";
+import {
+  applyHeartbeat,
+  getPermissions,
+  listLocks,
+  releaseLockById,
+  updatePermissions,
+  type FileMutexLock,
+} from "@/lib/control-plane";
 
-export interface FileMutexLock {
-  id: string;
-  filePath: string;
-  holderAgent: string;
-  queuedAgent: string | null;
-  status: "LOCKED" | "CONFLICT_QUEUED" | "RELEASED";
-  acquiredAt: string;
-  collisionInterceptMs?: number;
-}
+export type { FileMutexLock };
 
-// In-memory mutex registry and governance permissions
-let fileLocks: FileMutexLock[] = [
-  {
-    id: "lck-01",
-    filePath: "src/app/dashboard/page.tsx",
-    holderAgent: "Antigravity",
-    queuedAgent: null,
-    status: "LOCKED",
-    acquiredAt: "00:01:14 ago",
-  },
-  {
-    id: "lck-02",
-    filePath: "src/lib/loop-detector.ts",
-    holderAgent: "Claude",
-    queuedAgent: null,
-    status: "LOCKED",
-    acquiredAt: "00:00:42 ago",
-  },
-  {
-    id: "lck-03",
-    filePath: "src/tests/billing.spec.ts",
-    holderAgent: "Hermes",
-    queuedAgent: null,
-    status: "LOCKED",
-    acquiredAt: "00:02:08 ago",
-  },
-];
-
-let governancePermissions = {
-  monitorProcesses: true,
-  enforceMutex: true,
-  interceptRedundantApi: true,
-  zeroTrustCodePrivacy: true,
-};
+/** A device counts as connected if it checked in within this window. */
+const CONNECTED_WINDOW_MS = 2 * 60_000;
 
 export async function GET(req: NextRequest) {
   const auth = await requireAuth(req);
   if (auth instanceof NextResponse) return auth;
-  try {
-    const localCluster = await prisma.clusterAndWorkspace.findFirst({
-      where: { environment: "LOCAL_PC" },
-      include: {
-        agents: {
-          orderBy: { name: "asc" },
-        },
-      },
-    });
+  const userId = auth.user.id;
 
-    const daemonStats = {
-      version: "v1.4.0",
-      residentMemoryMb: 42.4,
-      maxAllowedRamMb: 150,
-      port: 41829,
-      ipcSock: "ipc://socket0 (Zero-Trust Local Code)",
-      activeAgentsCount: localCluster?.active_agents || 3,
-      contextTokensSaved: localCluster?.cache_tokens_saved || 320000,
-      interceptionLatencyMs: 18,
-    };
+  try {
+    const [cluster, fileLocks, permissions, devices] = await Promise.all([
+      prisma.clusterAndWorkspace.findFirst({
+        where: { user_id: userId, environment: "LOCAL_PC" },
+        include: { agents: { orderBy: { name: "asc" } } },
+      }),
+      listLocks(userId),
+      getPermissions(userId),
+      prisma.cliDevice.findMany({
+        where: { user_id: userId, status: "APPROVED" },
+        select: { name: true, last_seen_at: true },
+      }),
+    ]);
+
+    const now = Date.now();
+    const connected = devices.filter((d) => d.last_seen_at && now - d.last_seen_at.getTime() < CONNECTED_WINDOW_MS);
 
     return NextResponse.json({
       success: true,
-      cluster: localCluster,
-      daemonStats,
+      cluster,
+      daemon: {
+        connectedDevices: connected.length,
+        pairedDevices: devices.length,
+        lastSeenAt: devices.reduce<Date | null>(
+          (latest, d) => (d.last_seen_at && (!latest || d.last_seen_at > latest) ? d.last_seen_at : latest),
+          null
+        ),
+      },
       fileLocks,
-      permissions: governancePermissions,
+      permissions,
     });
   } catch (error) {
     console.error("Local Bridge GET error:", error);
-    return NextResponse.json(
-      { error: "Failed to retrieve local bridge data." },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to retrieve local bridge data." }, { status: 500 });
   }
 }
 
 export async function POST(req: NextRequest) {
   const auth = await requireAuth(req);
   if (auth instanceof NextResponse) return auth;
+  const userId = auth.user.id;
+
   try {
-    const body = await req.json();
-    const { action, lockId, permissions, targetFilePath } = body;
+    const body = await req.json().catch(() => ({}));
+    const { action } = body as { action?: string };
 
     switch (action) {
       case "HEARTBEAT": {
-        const { daemon, agents, locks } = body;
-        if (locks && Array.isArray(locks)) {
-          fileLocks = locks.map((l: any, idx: number) => ({
-            id: l.id || `lck-${idx + 1}`,
-            filePath: l.filePath,
-            holderAgent: l.holderAgent || "Local Agent",
-            queuedAgent: l.queuedAgent || null,
-            status: l.status || "LOCKED",
-            acquiredAt: l.acquiredAt ? new Date(l.acquiredAt).toLocaleTimeString() : "Just now",
-            collisionInterceptMs: l.collisionInterceptMs || 18,
-          }));
+        // Daemons authenticate with an API key; the heartbeat only touches the key owner's cluster.
+        const result = await applyHeartbeat(userId, auth.user.name, body.agents);
+        if (auth.via === "api_key" && auth.apiKeyId) {
+          await prisma.cliDevice
+            .updateMany({ where: { user_id: userId, api_key_id: auth.apiKeyId }, data: { last_seen_at: new Date() } })
+            .catch(() => undefined);
         }
-
-        // Update local agent telemetry in database if agents payload provided
-        if (agents && Array.isArray(agents)) {
-          for (const a of agents) {
-            try {
-              await prisma.agent.updateMany({
-                where: {
-                  OR: [
-                    { name: { contains: a.name } },
-                    { agent_type: a.type?.toUpperCase() || "" },
-                  ],
-                },
-                data: {
-                  ram_usage: parseFloat(a.ram_usage || a.memoryUsageMb || 0),
-                  cpu_usage: parseFloat(a.cpu_usage || a.cpuPercent || 0),
-                  tokens_used: parseInt(a.tokens_used || a.tokensConsumed || 0, 10),
-                  current_task: a.current_task || a.activeFilePath || undefined,
-                  locked_file_path: a.locked_file_path || a.activeFilePath || undefined,
-                  last_heartbeat_at: new Date(),
-                },
-              });
-            } catch (err) {
-              // Ignore agent sync errors during heartbeat
-            }
-          }
-        }
-
         return NextResponse.json({
           success: true,
-          message: "Telemetry heartbeat acknowledged. Zero-Trust verified.",
-          daemonStats: {
-            version: daemon?.version || "v1.4.0",
-            residentMemoryMb: parseFloat(daemon?.residentMemoryMb || "32.4"),
-            maxAllowedRamMb: 150,
-            port: daemon?.port || 41829,
-            ipcSock: "ipc://socket0 (Zero-Trust Local Code)",
-            activeAgentsCount: agents?.length || 3,
-            contextTokensSaved: 320000,
-            interceptionLatencyMs: 18,
-          },
-          fileLocks,
-        });
-      }
-
-      case "SIMULATE_COLLISION": {
-        // Find the lock on src/app/dashboard/page.tsx
-        const targetPath = targetFilePath || "src/app/dashboard/page.tsx";
-        let targetLock = fileLocks.find((l) => l.filePath === targetPath);
-
-        if (!targetLock) {
-          targetLock = {
-            id: `lck-${Date.now()}`,
-            filePath: targetPath,
-            holderAgent: "Antigravity",
-            queuedAgent: null,
-            status: "LOCKED",
-            acquiredAt: "Just now",
-          };
-          fileLocks.unshift(targetLock);
-        }
-
-        // Evaluate collision using our native guardrails engine
-        const activeAgentsForMutex = fileLocks.map((l) => ({
-          agent_id: l.holderAgent.toLowerCase(),
-          name: l.holderAgent,
-          locked_file_path: l.filePath,
-        }));
-        const mutexResult = verifyAndAcquireFileMutex(
-          activeAgentsForMutex,
-          "claude",
-          targetPath
-        );
-
-        // Simulate Claude Code trying to overwrite page.tsx while Antigravity holds it
-        targetLock.queuedAgent = `Claude Code (Write Intercepted & Queued -> ${mutexResult.fallbackFilePath || "conflict branch"})`;
-        targetLock.status = "CONFLICT_QUEUED";
-        targetLock.collisionInterceptMs = mutexResult.interceptionMs || 18;
-
-        return NextResponse.json({
-          success: true,
-          message: `Collision intercepted in ${targetLock.collisionInterceptMs}ms! Claude Code attempted to overwrite '${targetPath}'. ArgusOps queued Claude and protected Antigravity's active lock. 0 code lost.`,
-          fileLock: targetLock,
-          fileLocks,
-          mutexResult,
+          message: "Heartbeat received.",
+          ...result,
+          fileLocks: await listLocks(userId),
         });
       }
 
       case "RELEASE_LOCK": {
-        if (!lockId) {
-          return NextResponse.json({ error: "lockId is required." }, { status: 400 });
-        }
-
-        const lock = fileLocks.find((l) => l.id === lockId);
-        if (lock) {
-          lock.status = "RELEASED";
-          lock.queuedAgent = null;
-        }
-
-        fileLocks = fileLocks.filter((l) => l.id !== lockId);
-
+        if (auth.via !== "session") return NextResponse.json({ error: "Sign in to release locks." }, { status: 403 });
+        const lockId = typeof body.lockId === "string" ? body.lockId : "";
+        if (!lockId) return NextResponse.json({ error: "lockId is required." }, { status: 400 });
+        const lock = await releaseLockById(userId, lockId);
+        if (!lock) return NextResponse.json({ error: "Lock not found." }, { status: 404 });
         return NextResponse.json({
           success: true,
-          message: `File lock released for '${lock?.filePath}'. Waiting agents unblocked cleanly.`,
-          fileLocks,
+          message: `Lock on '${lock.file_path}' released.`,
+          fileLocks: await listLocks(userId),
         });
       }
 
       case "UPDATE_PERMISSIONS": {
-        if (permissions) {
-          governancePermissions = {
-            ...governancePermissions,
-            ...permissions,
-          };
-        }
-
-        // Sync to cluster state in SQLite
-        await prisma.clusterAndWorkspace.updateMany({
-          where: { environment: "LOCAL_PC" },
-          data: {
-            zero_trust_local: governancePermissions.zeroTrustCodePrivacy,
-          },
-        });
-
+        if (auth.via !== "session") return NextResponse.json({ error: "Sign in to change permissions." }, { status: 403 });
+        const permissions = await updatePermissions(userId, sanitizePermissions(body.permissions));
         return NextResponse.json({
           success: true,
-          message: "Local governance permissions and Zero-Trust settings updated.",
-          permissions: governancePermissions,
-        });
-      }
-
-      case "RESET_MUTEX": {
-        fileLocks = [
-          {
-            id: "lck-01",
-            filePath: "src/app/dashboard/page.tsx",
-            holderAgent: "Antigravity",
-            queuedAgent: null,
-            status: "LOCKED",
-            acquiredAt: "00:01:14 ago",
-          },
-          {
-            id: "lck-02",
-            filePath: "src/lib/loop-detector.ts",
-            holderAgent: "Claude",
-            queuedAgent: null,
-            status: "LOCKED",
-            acquiredAt: "00:00:42 ago",
-          },
-          {
-            id: "lck-03",
-            filePath: "src/tests/billing.spec.ts",
-            holderAgent: "Hermes",
-            queuedAgent: null,
-            status: "LOCKED",
-            acquiredAt: "00:02:08 ago",
-          },
-        ];
-
-        return NextResponse.json({
-          success: true,
-          message: "Mutex registry reset to isolated agent states.",
-          fileLocks,
+          message: "Local governance permissions saved.",
+          permissions,
         });
       }
 
       default:
-        return NextResponse.json({ error: `Unknown action: ${action}` }, { status: 400 });
+        return NextResponse.json(
+          { error: `Unknown or removed action: ${String(action)}. Simulation actions are no longer available.` },
+          { status: 400 }
+        );
     }
   } catch (error) {
     console.error("Local Bridge POST error:", error);
-    return NextResponse.json(
-      { error: "Internal server error occurred while processing local bridge action." },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Internal server error while processing the local bridge action." }, { status: 500 });
   }
 }
-
