@@ -98,6 +98,7 @@ model Agent {
   current_task       String?             @db.Text
   locked_file_path   String?             @db.VarChar(512)
   loop_score         Float               @default(0)
+  pending_hint       String?             @db.Text
   last_heartbeat_at  DateTime            @default(now())
 
   cluster            ClusterAndWorkspace @relation(fields: [cluster_id], references: [cluster_id], onDelete: Cascade)
@@ -180,6 +181,7 @@ model CliDevice {
   api_key_id   String?
   expires_at   DateTime
   last_seen_at DateTime?
+  last_polled_at DateTime?
   created_at   DateTime  @default(now())
 
   user         User?     @relation(fields: [user_id], references: [id], onDelete: Cascade)

@@ -15,9 +15,9 @@
 - [x] Simulated backends and invented dashboard numbers removed
 
 ## Phase 1: Guardian MVP (6–8 weeks)
-- [ ] Real forwarding proxy with provider adapters (Anthropic, OpenAI, Google) and provider-reported usage into `UsageEvent`
+- [x] Forwarding proxy for Anthropic (Claude Code), local to the user's machine, with provider-reported usage into `UsageEvent` (bring-your-own-key); OpenAI and Google adapters still to do
 - [ ] Detectors: waste (context bloat, burn rate) and wrong/unclear prompt check (loop detector already policy-driven)
-- [ ] `packages/cli`: `argus run`, PTY, pause/resume/kill/nudge, device pairing (`CliDevice`), command channel
+- [x] `packages/cli`: `argus login` (device pairing), `argus run claude`, pause by holding requests, resume with a hint, stop, plan limits at start; `argus resume` and Codex/Gemini still to do
 - [ ] Prompt rewrite flow with approval and diff (`PromptRewrite`)
 - [ ] Notifications: email, webhook, toast, VS Code, desktop
 - [ ] Dashboard rebuilt on real data: incidents feed, usage and savings from `UsageEvent`, device pairing page

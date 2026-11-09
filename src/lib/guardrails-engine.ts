@@ -224,6 +224,11 @@ export interface LoopEvaluationOptions {
   nudgeProgressPct?: number;
   /** Identical consecutive entries needed before a repeat counts (default 2). */
   exactRepeatLimit?: number;
+  /**
+   * Compare consecutive lines by meaning (default true). Turn this off for streams of tool calls: two
+   * different file reads share most of their words, so they would look like a "paraphrased" loop.
+   */
+  semanticEnabled?: boolean;
 }
 
 /**
@@ -258,6 +263,7 @@ export function evaluateAgentStreamForLoops(
   const loopThreshold = options.loopScoreThreshold ?? LOOP_SCORE_THRESHOLD;
   const nudgeThreshold = options.nudgeProgressPct ?? NUDGE_PROGRESS_THRESHOLD;
   const repeatLimit = Math.max(2, options.exactRepeatLimit ?? CONSECUTIVE_EXACT_REPEAT_LIMIT);
+  const semanticEnabled = options.semanticEnabled ?? true;
 
   const progress = Math.max(0, Math.min(100, taskProgressPct));
   const logs = Array.isArray(recentLogs) ? recentLogs.filter((l) => typeof l === "string" && l.trim().length > 0) : [];
@@ -351,7 +357,7 @@ export function evaluateAgentStreamForLoops(
   const windowSize = Math.min(6, logs.length);
   const recentSlice = logs.slice(logs.length - windowSize);
 
-  for (let i = 0; i < recentSlice.length - 1; i++) {
+  for (let i = 0; semanticEnabled && i < recentSlice.length - 1; i++) {
     const textA = recentSlice[i];
     const textB = recentSlice[i + 1];
     // Literal repeats belong to the exact-match check (and its repeat limit); only paraphrases count here.

@@ -2,7 +2,7 @@
 
 A supervisor for AI coding agents. ArgusOps watches the agents you run (Claude Code, Codex, Gemini and others), detects loops and wasted tokens, pauses or stops the agent, and tells you. A later phase adds an autopilot that plans a project, asks you questions, and routes each task to the best model.
 
-> **Status: early development (v0.2).** The website, accounts, billing plans and the control-plane database are real. The `argus run` CLI, the real provider-forwarding proxy and the VS Code extension are the next milestones. See [.gsd/SPEC.md](.gsd/SPEC.md) and [.gsd/ROADMAP.md](.gsd/ROADMAP.md).
+> **Status: early development (v0.2).** The website, accounts, plans, the control-plane database and the `argus` CLI for Claude Code are working and tested end to end. Notifications, prompt rewrite and the VS Code extension are next. See [.gsd/SPEC.md](.gsd/SPEC.md) and [.gsd/ROADMAP.md](.gsd/ROADMAP.md).
 
 ## What works today
 
@@ -14,11 +14,12 @@ A supervisor for AI coding agents. ArgusOps watches the agents you run (Claude C
 | Loop detector | Exact repeats, ping-pong and cycle patterns, and paraphrased (semantic) loops; thresholds come from each user's policy; typically a few milliseconds |
 | Control plane | Per-user policy, incident log, file locks with expiry, pause / resume / stop state, all stored in MySQL |
 | Dashboard | Cluster view, guardrails, local bridge and API keys, billing, admin panel |
-| Proxy `/api/v1/proxy` | Authenticated by API key (hash lookup only). It meters requests, applies the loop breaker and wallet checks, but **does not call a real model yet**: replies are simulated |
+| `argus` CLI | `argus login` (browser approval, no pasted keys), `argus run claude` supervises Claude Code through a proxy on your own machine, reads real token usage, pauses a stuck agent, delivers your hint on resume, and can stop it |
+| Proxy `/api/v1/proxy` (legacy, server-side) | Authenticated by API key (hash lookup only). It meters requests, applies the loop breaker and wallet checks, but **does not call a real model yet**: replies are simulated |
 
 ## Not built yet
 
-- `argus run <agent>` CLI that owns the agent process (real pause / resume) and the forwarding proxy with provider-reported token counts
+- CLI support for Codex and Gemini (Claude Code only today), and `argus resume` from a terminal
 - Prompt rewrite and notifications (email, webhook, VS Code)
 - VS Code extension
 - Payment gateway (Stripe)
@@ -49,11 +50,41 @@ Dev logins created by the seed (local only): `admin@argusops.dev` / `ArgusOps-ad
 
 Sign-in buttons for a provider show a "not set up" message until its keys are present.
 
+## The `argus` CLI
+
+You bring your own model credentials: Claude Code keeps using your Anthropic key or login. ArgusOps never sees your prompts or code; the CLI sends only token counts and incident reports.
+
+```bash
+npm run cli:build                         # bundles packages/cli into packages/cli/dist/argus.mjs
+node packages/cli/dist/argus.mjs login    # prints a code; approve it in the browser at /device
+node packages/cli/dist/argus.mjs run claude          # run Claude Code under supervision
+node packages/cli/dist/argus.mjs run claude --resume # everything after `claude` goes to Claude Code
+node packages/cli/dist/argus.mjs run --offline claude   # supervise locally, report nothing
+```
+
+What happens: `argus run` starts a small proxy on 127.0.0.1 and launches Claude Code with `ANTHROPIC_BASE_URL` pointing at it. Each model call is forwarded to Anthropic with your own credentials. If the agent repeats the same failing tool call, its next request is **held** (nothing reaches the provider, so no tokens are spent) and the incident appears in the dashboard's Guardrails page. Resume it there (optionally with a hint, which is added to the next request) or stop it, and the CLI ends the process. The Free plan allows 2 supervised agents at once, Pro 10.
+
+Set `ARGUS_API_URL` to point at a deployed server (default `http://localhost:3000`).
+
+### Try it for free (no Anthropic account, no token spend)
+
+Claude Code is free to install; only its model calls cost money. `packages/cli/e2e/fake-anthropic.mjs` is a local stand-in for the Anthropic API, so you can run the **real** Claude Code through ArgusOps at no cost:
+
+```bash
+npm install -g @anthropic-ai/claude-code
+npm run dev                         # in one terminal
+npm run test:claude                 # in another: real Claude Code is made to loop, ArgusOps pauses it, resumes it with a hint
+```
+
+To poke at it by hand: `node packages/cli/e2e/fake-anthropic.mjs 8787 --loop`, then run `ANTHROPIC_API_KEY=sk-ant-fake argus run --upstream http://127.0.0.1:8787 claude`. Without `--loop` the fake provider just answers every message with a canned reply.
+
 ## Tests
 
 ```bash
 npm test                    # unit tests (no database needed)
 npm run test:integration    # real-database tests (needs DATABASE_URL and a seeded database)
+npm run test:e2e            # real CLI + running app (start `npm run dev` first); plays operator end to end
+npm run test:claude         # same, with the REAL Claude Code and a free fake model (needs `claude` installed)
 npx tsc --noEmit            # type check
 ```
 
@@ -68,6 +99,9 @@ src/lib/auth*.ts         sessions, passwords, API keys, TOTP
 src/lib/oauth*.ts        Google / GitHub sign-in
 src/lib/guardrails-engine.ts   loop detector and mutex logic
 src/lib/control-plane*.ts      policy, incidents, locks, agent limits, heartbeat
+src/lib/cli-sync.ts            what the CLI reports and what it is told to do
+src/app/api/device/            device pairing for `argus login`
+packages/cli/                  the `argus` command line tool (local proxy, loop detection, supervisor)
 prisma/                  schema and seed
 .gsd/                    spec and roadmap
 docs/PRD.md              original product brief (v1.1); the spec above supersedes it where they differ
