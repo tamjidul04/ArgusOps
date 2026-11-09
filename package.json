@@ -1,6 +1,6 @@
 {
   "name": "argusops",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -9,8 +9,8 @@
     "lint": "eslint",
     "seed": "tsx prisma/seed.ts",
     "daemon": "node daemon/argus-daemon.mjs",
-    "daemon:simulate": "node daemon/argus-daemon.mjs --simulate",
-    "agent:live": "node daemon/run-live-agent.mjs"
+    "test": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.ts"
   },
   "dependencies": {
     "@prisma/client": "6.19.3",
