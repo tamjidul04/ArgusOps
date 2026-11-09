@@ -115,3 +115,7 @@ docs/PRD.md              original product brief (v1.1); the spec above supersede
 - Every API route and server page checks the session or API key and filters by the owning user. Admin routes require the ADMIN role.
 - Cookie-authenticated writes must be same-origin. Login, sign-up and OAuth are rate limited (in memory: use a shared store if you run several instances).
 - Signing in with Google or GitHub to an email that already has a password account links the two, and wipes that password and its sessions, because sign-up does not yet verify email addresses.
+
+## License
+
+Copyright (c) 2026 MD.Tamjidul Islam. **All rights reserved.** The source is visible for reference only; see [LICENSE](LICENSE). Using, copying, modifying or reselling it requires written permission.
