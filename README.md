@@ -15,6 +15,7 @@ A supervisor for AI coding agents. ArgusOps watches the agents you run (Claude C
 | Control plane | Per-user policy, incident log, file locks with expiry, pause / resume / stop state, all stored in MySQL |
 | Dashboard | Cluster view, guardrails, local bridge and API keys, billing, admin panel |
 | `argus` CLI | `argus login` (browser approval, no pasted keys), `argus run claude` supervises Claude Code through a proxy on your own machine, reads real token usage, pauses a stuck agent, delivers your hint on resume, and can stop it |
+| VS Code extension | An **ArgusOps** view in the activity bar lists your agents (running, paused, stopped) with tokens used, why a paused one stopped and its suggested instruction; alerts with Approve suggestion / Edit / Stop; a status bar item that turns amber when an agent needs you; resume and stop from the view or the command palette. Sign in through the browser or with a key |
 | Usage & Savings page | Real tokens, estimated spend at list prices, model calls, loops caught and savings from prompt caching, per hour or day over 24h / 7d / 30d, by agent and by model, with the plan allowance |
 | Suggested instructions (prompt rewrite) | When an agent loops, ArgusOps writes a short corrective instruction from the steps it kept repeating and the error it kept hitting, shows what the loop really cost, and lets you approve, edit or dismiss it; approving resumes the agent with it. Optional auto-resume (once per 30 minutes per agent). If the server has its own key (`ARGUS_REWRITE_API_KEY`), a small model polishes the wording; your own model key is never used |
 | Notifications | When an agent is paused or stopped, or the token allowance runs out: a bell and pop-up in the dashboard, an optional browser alert, a desktop pop-up from the CLI (Windows, macOS, Linux), and webhooks (Slack, Discord or any https endpoint) |
@@ -24,7 +25,6 @@ A supervisor for AI coding agents. ArgusOps watches the agents you run (Claude C
 
 - CLI support for Codex and Gemini (Claude Code only today), and `argus resume` from a terminal
 - Email notifications (needs an email provider)
-- VS Code extension
 - Payment gateway (Stripe)
 - Autopilot (planning, design review, multi-model routing)
 
@@ -78,10 +78,22 @@ Claude Code is free to install; only its model calls cost money. `packages/cli/e
 ```bash
 npm install -g @anthropic-ai/claude-code
 npm run dev                         # in one terminal
+npm run test:vscode         # loads the extension in a real VS Code (throwaway profile); checks it activates and registers its commands
 npm run test:claude                 # in another: real Claude Code is made to loop, ArgusOps pauses it, resumes it with a hint
 ```
 
 To poke at it by hand: `node packages/cli/e2e/fake-anthropic.mjs 8787 --loop`, then run `ANTHROPIC_API_KEY=sk-ant-fake argus run --upstream http://127.0.0.1:8787 claude`. Without `--loop` the fake provider just answers every message with a canned reply.
+
+## The VS Code extension
+
+`packages/vscode` is the editor companion to the CLI. It shows the agents you run with `argus run`, alerts you when one is paused, and lets you approve ArgusOps' suggested instruction (or edit it), resume, or stop the agent without leaving VS Code.
+
+```bash
+npm run vscode:package      # builds packages/vscode/argusops-<version>.vsix
+code --install-extension packages/vscode/argusops-0.2.0.vsix
+```
+
+Then run **ArgusOps: Sign in** from the command palette (it opens the same browser approval page as `argus login`). Settings: `argusops.serverUrl`, `argusops.pollIntervalSeconds`, `argusops.notifications`. The key is kept in VS Code's secret storage and is only ever sent to the server it was issued by. A device key can read your agents and resume or stop them; it cannot change settings, billing, API keys or webhooks.
 
 ## Tests
 
@@ -107,6 +119,7 @@ src/lib/control-plane*.ts      policy, incidents, locks, agent limits, heartbeat
 src/lib/cli-sync.ts            what the CLI reports and what it is told to do
 src/app/api/device/            device pairing for `argus login`
 packages/cli/                  the `argus` command line tool (local proxy, loop detection, supervisor)
+packages/vscode/               the VS Code extension (Agents view, alerts, resume/stop)
 prisma/                  schema and seed
 .gsd/                    spec and roadmap
 docs/PRD.md              original product brief (v1.1); the spec above supersedes it where they differ
