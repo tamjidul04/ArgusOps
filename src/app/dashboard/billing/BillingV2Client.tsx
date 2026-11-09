@@ -297,7 +297,7 @@ export function BillingV2Client({
               </span>
             </div>
 
-            <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight font-mono">
+            <div className="text-2xl sm:text-3xl font-semibold text-slate-900 tracking-tight font-mono">
               {freeTokensCurrent.toLocaleString()} / {freeTokensMax.toLocaleString()}
             </div>
 
@@ -438,7 +438,7 @@ export function BillingV2Client({
                   <h3 className="text-xl font-bold text-slate-900">
                     Pro Swarm — $49/mo
                   </h3>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-extrabold uppercase bg-slate-900 text-white tracking-wider">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-semibold uppercase bg-slate-900 text-white tracking-wider">
                     POPULAR
                   </span>
                 </div>

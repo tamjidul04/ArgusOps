@@ -52,7 +52,7 @@ export function UsageClient({ initial }: { initial: UsageSummary }) {
       {/* header + the one filter row */}
       <div className="flex flex-col gap-3 border-b border-slate-200 pb-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">Usage &amp; Savings</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Usage &amp; Savings</h1>
           <p className="mt-1 text-sm text-slate-500">Measured from your agents&apos; real model calls. Costs are at list prices; your provider bills you directly.</p>
         </div>
         <div role="tablist" aria-label="Time range" className="flex w-fit items-center rounded-lg border border-slate-200 bg-slate-100 p-1">
@@ -109,11 +109,11 @@ export function UsageClient({ initial }: { initial: UsageSummary }) {
             emptyText="No model calls in this range."
           />
 
-          <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
+          <section className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft p-5">
             <h2 className="text-sm font-bold text-slate-900">Plan allowance</h2>
             <p className="mt-0.5 text-xs text-slate-500">{data.allowance.planName} plan, supervised tokens this period</p>
             <div className="mt-4 flex items-baseline justify-between">
-              <span className="font-mono text-2xl font-extrabold tracking-tight text-slate-900">{formatTokens(data.allowance.remaining)}</span>
+              <span className="font-mono text-2xl font-semibold tracking-tight text-slate-900">{formatTokens(data.allowance.remaining)}</span>
               <span className="text-xs text-slate-500">left of {formatTokens(data.allowance.included)}</span>
             </div>
             <div
@@ -143,11 +143,11 @@ export function UsageClient({ initial }: { initial: UsageSummary }) {
 
 function Tile({ icon: Icon, label, value, sub }: { icon: React.ElementType; label: string; value: string; sub: string }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
+    <div className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft p-4">
       <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
         <Icon className="h-3.5 w-3.5 text-slate-400" /> {label}
       </div>
-      <div className="mt-1.5 font-mono text-2xl font-extrabold tracking-tight text-slate-900">{value}</div>
+      <div className="mt-1.5 font-mono text-2xl font-semibold tracking-tight text-slate-900">{value}</div>
       <div className="mt-1 truncate text-[11px] text-slate-500" title={sub}>{sub}</div>
     </div>
   );
@@ -156,7 +156,7 @@ function Tile({ icon: Icon, label, value, sub }: { icon: React.ElementType; labe
 function Breakdown({ title, rows, emptyText }: { title: string; rows: Array<{ key: string; name: string; tokens: number; cost: number; calls: number; mono?: boolean }>; emptyText: string }) {
   const max = Math.max(1, ...rows.map((r) => r.tokens));
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
+    <section className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft p-5">
       <h2 className="text-sm font-bold text-slate-900">{title}</h2>
       {rows.length === 0 ? (
         <p className="mt-6 text-center text-xs text-slate-400">{emptyText}</p>
@@ -229,7 +229,7 @@ function TokenChart({ data }: { data: UsageSummary }) {
   const hb = hover !== null ? b[hover] : null;
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
+    <section className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-sm font-bold text-slate-900">Tokens per {data.range === "24h" ? "hour" : "day"}</h2>

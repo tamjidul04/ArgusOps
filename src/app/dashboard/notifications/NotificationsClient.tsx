@@ -132,7 +132,7 @@ export function NotificationsClient({ initialItems, initialUnread }: { initialIt
   return (
     <div className="space-y-6 pb-12">
       <div className="flex flex-col gap-1 border-b border-slate-200 pb-4">
-        <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">Notifications</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Notifications</h1>
         <p className="text-sm text-slate-500">You&apos;re told when an agent is paused or stopped, or your allowance runs out, wherever you choose below.</p>
       </div>
 
@@ -145,7 +145,7 @@ export function NotificationsClient({ initialItems, initialUnread }: { initialIt
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-5">
         {/* ---------------- recent ---------------- */}
-        <section className="rounded-xl border border-slate-200 bg-white shadow-xs xl:col-span-3">
+        <section className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft xl:col-span-3">
           <header className="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
             <h2 className="flex items-center gap-2 text-sm font-bold text-slate-900">
               <Bell className="h-4 w-4 text-slate-500" /> Recent
@@ -190,7 +190,7 @@ export function NotificationsClient({ initialItems, initialUnread }: { initialIt
 
         {/* ---------------- where alerts go ---------------- */}
         <section className="space-y-4 xl:col-span-2">
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
+          <div className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft p-5">
             <h2 className="text-sm font-bold text-slate-900">Where alerts go</h2>
             <ul className="mt-3 space-y-3 text-xs">
               <ChannelRow icon={MonitorSmartphone} title="In the dashboard" status="On" ok detail="The bell in the header, plus a pop-up while this site is open." />
@@ -221,7 +221,7 @@ export function NotificationsClient({ initialItems, initialUnread }: { initialIt
             </ul>
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
+          <div className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft p-5">
             <h2 className="flex items-center gap-2 text-sm font-bold text-slate-900">
               <Webhook className="h-4 w-4 text-slate-500" /> Webhooks
             </h2>
@@ -234,7 +234,7 @@ export function NotificationsClient({ initialItems, initialUnread }: { initialIt
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder="https://hooks.slack.com/services/…"
                 required
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 font-mono text-xs text-slate-900 placeholder:text-slate-400 focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                className="w-full rounded-full border border-slate-300 px-3 py-2 font-mono text-xs text-slate-900 placeholder:text-slate-400 focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
               />
               <div className="flex gap-2">
                 <input
@@ -242,9 +242,9 @@ export function NotificationsClient({ initialItems, initialUnread }: { initialIt
                   onChange={(e) => setLabel(e.target.value)}
                   placeholder="Label (optional), e.g. #alerts"
                   maxLength={80}
-                  className="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                  className="min-w-0 flex-1 rounded-full border border-slate-300 px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
                 />
-                <button type="submit" disabled={busy === "add"} className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-60">
+                <button type="submit" disabled={busy === "add"} className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-60">
                   {busy === "add" && <Loader2 className="h-3.5 w-3.5 animate-spin" />} Add
                 </button>
               </div>

@@ -105,7 +105,7 @@ export function OrchestratorClient({
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">
+            <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
               Task Decomposition &amp; Right-Sizing
             </h1>
             <span className="font-mono text-xs font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
@@ -121,7 +121,7 @@ export function OrchestratorClient({
           type="button"
           onClick={() => handleDecomposeSubmit()}
           disabled={isLoading}
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-slate-800 active:scale-95 transition-all disabled:opacity-60 shrink-0"
+          className="inline-flex items-center justify-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-slate-800 active:scale-95 transition-all disabled:opacity-60 shrink-0"
         >
           <Sparkles className="h-3.5 w-3.5 text-amber-400" />
           <span>{isLoading ? "Decomposing DAG..." : "Submit Project Prompt"}</span>
@@ -147,7 +147,7 @@ export function OrchestratorClient({
       {/* ================= TOP ROW: ALLOCATION & PROMPT BOX (Stitch Match) ================= */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Dynamic Swarm Allocation */}
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
+        <div className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft p-5 space-y-4">
           <div className="flex items-center justify-between">
             <span className="font-semibold text-xs text-slate-500 uppercase tracking-wider">
               Dynamic Swarm Allocation
@@ -159,7 +159,7 @@ export function OrchestratorClient({
 
           <div>
             <div className="flex items-baseline gap-2">
-              <span className="text-3xl font-extrabold text-slate-900 tracking-tight">
+              <span className="text-3xl font-semibold text-slate-900 tracking-tight">
                 {activeAgents} Active / {hibernatedAgents} Hibernated
               </span>
             </div>
@@ -185,7 +185,7 @@ export function OrchestratorClient({
         </div>
 
         {/* Active Project Prompt Card */}
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs space-y-3">
+        <div className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft p-5 space-y-3">
           <div className="flex items-center justify-between">
             <span className="font-semibold text-xs text-slate-500 uppercase tracking-wider">
               Active Project Prompt
@@ -240,7 +240,7 @@ export function OrchestratorClient({
       {/* ================= MIDDLE ROW: 3 TELEMETRY CARDS ================= */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Smart Model Router */}
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs space-y-3">
+        <div className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft p-5 space-y-3">
           <div className="flex items-center justify-between text-xs text-slate-500">
             <span className="font-semibold uppercase tracking-wider">Smart Model Router</span>
             <span className="font-mono text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
@@ -248,7 +248,7 @@ export function OrchestratorClient({
             </span>
           </div>
           <div>
-            <div className="text-3xl font-extrabold text-slate-900 tracking-tight font-mono">
+            <div className="text-3xl font-semibold text-slate-900 tracking-tight font-mono">
               64% Downgraded
             </div>
             <p className="text-xs text-slate-500 mt-1">
@@ -262,7 +262,7 @@ export function OrchestratorClient({
         </div>
 
         {/* Shared Context Cache */}
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs space-y-3">
+        <div className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft p-5 space-y-3">
           <div className="flex items-center justify-between text-xs text-slate-500">
             <span className="font-semibold uppercase tracking-wider">Shared Context Cache</span>
             <span className="font-mono text-[10px] text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 font-semibold">
@@ -270,7 +270,7 @@ export function OrchestratorClient({
             </span>
           </div>
           <div>
-            <div className="text-3xl font-extrabold text-slate-900 tracking-tight font-mono">
+            <div className="text-3xl font-semibold text-slate-900 tracking-tight font-mono">
               1.80M Cached
             </div>
             <p className="text-xs text-slate-500 mt-1">
@@ -283,7 +283,7 @@ export function OrchestratorClient({
         </div>
 
         {/* Quarantined Idle Swarm Pool */}
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs space-y-3">
+        <div className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft p-5 space-y-3">
           <div className="flex items-center justify-between text-xs text-slate-500">
             <span className="font-semibold uppercase tracking-wider">Quarantined Idle Swarm</span>
             <button
@@ -295,7 +295,7 @@ export function OrchestratorClient({
             </button>
           </div>
           <div>
-            <div className="text-2xl font-extrabold text-slate-900 tracking-tight font-mono">
+            <div className="text-2xl font-semibold text-slate-900 tracking-tight font-mono">
               Agents #31-#100
             </div>
             <p className="text-xs text-slate-500 mt-1">
@@ -310,7 +310,7 @@ export function OrchestratorClient({
       </div>
 
       {/* ================= ACTIVE SUB-TASK EXECUTION MATRIX TABLE ================= */}
-      <div className="rounded-xl border border-slate-200 bg-white shadow-xs overflow-hidden">
+      <div className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft overflow-hidden">
         <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
           <div className="flex items-center gap-2">
             <h2 className="font-bold text-sm text-slate-900 uppercase tracking-wider">
@@ -390,7 +390,7 @@ export function OrchestratorClient({
       {/* ================= BOTTOM ROW: 3 TECHNICAL BREAKDOWN BOXES ================= */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Box 1: Model Tier Allocation */}
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs space-y-3">
+        <div className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft p-5 space-y-3">
           <h3 className="font-bold text-xs uppercase tracking-wider text-slate-900">
             Model Tier Allocation (No-Graph Ledger)
           </h3>
@@ -411,7 +411,7 @@ export function OrchestratorClient({
         </div>
 
         {/* Box 2: Deduplicated Codebase Reads */}
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs space-y-3">
+        <div className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft p-5 space-y-3">
           <h3 className="font-bold text-xs uppercase tracking-wider text-slate-900">
             Deduplicated Codebase Reads
           </h3>
@@ -428,7 +428,7 @@ export function OrchestratorClient({
         </div>
 
         {/* Box 3: Triage Guardrails */}
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs space-y-3">
+        <div className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft p-5 space-y-3">
           <h3 className="font-bold text-xs uppercase tracking-wider text-slate-900">
             Triage Guardrails
           </h3>
