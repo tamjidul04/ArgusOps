@@ -45,6 +45,8 @@ describe("sanitizePolicyInput", () => {
   it("only accepts a real boolean for autoThrottleEnabled", () => {
     expect(sanitizePolicyInput({ autoThrottleEnabled: false })).toEqual({ autoThrottleEnabled: false });
     expect(sanitizePolicyInput({ autoThrottleEnabled: "false" })).toEqual({});
+    expect(sanitizePolicyInput({ autoApplyRewrites: true })).toEqual({ autoApplyRewrites: true });
+    expect(sanitizePolicyInput({ autoApplyRewrites: "yes" })).toEqual({});
     expect(sanitizePolicyInput(null)).toEqual({});
     expect(sanitizePolicyInput("x")).toEqual({});
   });
@@ -58,6 +60,7 @@ describe("policy mapping", () => {
       nudgeCompletionThreshold: 85,
       maxRamPerAgentMb: 300,
       autoThrottleEnabled: false,
+      autoApplyRewrites: true,
     });
     expect(update).toMatchObject({
       max_consecutive_retries: 4,
@@ -66,6 +69,7 @@ describe("policy mapping", () => {
       nudge_progress_pct: 85,
       ram_soft_limit_mb: 300,
       auto_downgrade_models: false,
+      auto_apply_rewrites: true,
     });
     expect(
       policyRowToDto({
@@ -75,6 +79,7 @@ describe("policy mapping", () => {
         max_consecutive_retries: 4,
         ram_soft_limit_mb: 300,
         auto_downgrade_models: false,
+        auto_apply_rewrites: true,
       })
     ).toEqual({
       maxConsecutiveRetries: 4,
@@ -82,6 +87,7 @@ describe("policy mapping", () => {
       nudgeCompletionThreshold: 85,
       maxRamPerAgentMb: 300,
       autoThrottleEnabled: false,
+      autoApplyRewrites: true,
     });
   });
 

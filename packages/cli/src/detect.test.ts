@@ -21,6 +21,12 @@ describe("LoopDetector: real stuck agents", () => {
     expect(v.interceptionMs).toBeLessThan(100);
   });
 
+  it("reports the error the agent keeps hitting, not just the call", () => {
+    const v = new LoopDetector().check(failingRetries(3));
+    expect(v.evidence.unit).toEqual([`Bash({"command":"npm test"})`, "error: FAIL: expected 200 got 500"]);
+    expect(v.evidence.repeats).toBe(3);
+  });
+
   it("trips on the same call repeated even when the results differ every time", () => {
     const m: unknown[] = [];
     for (let i = 0; i < 4; i++) m.push(call(`c${i}`, "Bash", { command: "curl localhost:3000/health" }), ok(`c${i}`, `timeout after ${i * 3}s`));

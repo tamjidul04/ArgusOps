@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useBrain } from "@/context/BrainContext";
 import {
   Shield,
@@ -114,9 +114,38 @@ export function GuardrailsClient({
 
   // Nudge Modal state
   const [nudgeModalAgent, setNudgeModalAgent] = useState<AgentData | null>(null);
-  const [nudgeHintText, setNudgeHintText] = useState(
-    "Skip foreign-key constraints in test environment and commit batch directly."
-  );
+  const [nudgeHintText, setNudgeHintText] = useState("");
+  const [suggestion, setSuggestion] = useState<{
+    id: string;
+    text: string;
+    observed: string;
+    tokensBefore: number;
+    tokensAfter: number;
+    source: string;
+  } | null>(null);
+  const [suggestionLoading, setSuggestionLoading] = useState(false);
+
+  useEffect(() => {
+    if (!nudgeModalAgent) return;
+    let cancelled = false;
+    (async () => {
+      setSuggestionLoading(true);
+      try {
+        const res = await fetch(`/api/rewrites?agentId=${encodeURIComponent(nudgeModalAgent.agent_id)}`, { cache: "no-store" });
+        const data = res.ok ? await res.json() : null;
+        if (cancelled) return;
+        setSuggestion(data?.suggestion ?? null);
+        setNudgeHintText(data?.suggestion?.text ?? "");
+      } catch {
+        if (!cancelled) setSuggestion(null);
+      } finally {
+        if (!cancelled) setSuggestionLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [nudgeModalAgent]);
 
   // Feedback notifications
   const [feedback, setFeedback] = useState<{
@@ -177,14 +206,43 @@ export function GuardrailsClient({
     executeGuardrailAction("UPDATE_POLICY", { policy });
   };
 
-  const handleConfirmNudge = () => {
+  const handleConfirmNudge = async () => {
     if (!nudgeModalAgent) return;
-    executeGuardrailAction("SEND_NUDGE", {
-      agentId: nudgeModalAgent.agent_id,
-      agentName: nudgeModalAgent.name,
-      hintText: nudgeHintText,
-    });
+    const agent = nudgeModalAgent;
     setNudgeModalAgent(null);
+    if (!suggestion) {
+      executeGuardrailAction("SEND_NUDGE", { agentId: agent.agent_id, agentName: agent.name, hintText: nudgeHintText });
+      return;
+    }
+    try {
+      const res = await fetch("/api/rewrites", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "apply", id: suggestion.id, text: nudgeHintText }),
+      });
+      const data = await res.json().catch(() => ({}));
+      setFeedback({ type: res.ok ? "success" : "error", text: data.message || data.error || "Done." });
+      const fresh = await fetch("/api/guardrails");
+      if (fresh.ok) {
+        const g = await fresh.json();
+        if (g.streamEvents) setEvents(g.streamEvents);
+        if (g.flaggedAgents) setFlaggedAgents(g.flaggedAgents);
+        if (g.activeAgents) setActiveAgents(g.activeAgents);
+      }
+    } catch {
+      setFeedback({ type: "error", text: "Couldn't reach the server." });
+    }
+  };
+
+  const handleDismissSuggestion = async () => {
+    if (!suggestion) return;
+    await fetch("/api/rewrites", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "dismiss", id: suggestion.id }),
+    }).catch(() => undefined);
+    setSuggestion(null);
+    setNudgeHintText("");
   };
 
   return (
@@ -427,6 +485,21 @@ export function GuardrailsClient({
               <span className="text-[10px] text-slate-400 block">Cgroups clamp resident memory to prevent host OOM.</span>
             </div>
 
+            <label className="flex items-start gap-2.5 rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <input
+                type="checkbox"
+                checked={policy.autoApplyRewrites}
+                onChange={(e) => setPolicy({ ...policy, autoApplyRewrites: e.target.checked })}
+                className="mt-0.5 h-3.5 w-3.5 accent-slate-900"
+              />
+              <span>
+                <span className="block text-slate-700 font-semibold">Auto-resume stuck agents</span>
+                <span className="block text-[10px] text-slate-400">
+                  Resume with the suggested instruction instead of waiting for you. At most once per 30 minutes per agent; you are still notified.
+                </span>
+              </span>
+            </label>
+
             <div className="pt-2">
               <button
                 type="button"
@@ -636,7 +709,7 @@ export function GuardrailsClient({
                 </div>
                 <div>
                   <h3 className="font-bold text-slate-900 text-base">
-                    Send Human Guidance Hint (Nudge)
+                    Resume with an instruction
                   </h3>
                   <p className="text-xs text-slate-500">
                     Target: <strong className="text-slate-900">{nudgeModalAgent.name}</strong>
@@ -652,19 +725,42 @@ export function GuardrailsClient({
               </button>
             </div>
 
+            {suggestionLoading && <p className="text-xs text-slate-400">Loading suggestion…</p>}
+            {suggestion && (
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50/60 p-3 text-xs space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-1.5 font-semibold text-emerald-800">
+                    <Sparkles className="h-3.5 w-3.5" /> Suggested instruction
+                  </span>
+                  <span className="text-[10px] font-medium text-emerald-700">
+                    {suggestion.source === "AI" ? "Written by AI from the repeated steps" : "Written by ArgusOps rules from the repeated steps"}
+                  </span>
+                </div>
+                <p className="text-slate-700">{suggestion.observed}</p>
+                {suggestion.tokensBefore > 0 && (
+                  <p className="text-[11px] text-slate-500">
+                    The loop cost about {suggestion.tokensBefore.toLocaleString()} tokens; this instruction adds about {suggestion.tokensAfter.toLocaleString()}.
+                  </p>
+                )}
+                <button type="button" onClick={handleDismissSuggestion} className="text-[11px] font-medium text-slate-500 underline underline-offset-2 hover:text-slate-800">
+                  Dismiss suggestion
+                </button>
+              </div>
+            )}
+
             <div className="space-y-2 text-xs">
               <label className="font-semibold text-slate-800 block">
-                Guidance Hint to Resolve Loop
+                {suggestion ? "Instruction to send (you can edit it)" : "Instruction to send"}
               </label>
               <textarea
                 value={nudgeHintText}
                 onChange={(e) => setNudgeHintText(e.target.value)}
-                rows={3}
+                rows={suggestion ? 6 : 3}
                 className="w-full rounded-lg border border-slate-300 bg-slate-50 p-3 font-mono text-xs text-slate-900 focus:bg-white focus:border-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 transition-all resize-none shadow-2xs"
-                placeholder="Enter prompt guidance for agent..."
+                placeholder="e.g. Stop re-running the tests; read the error and fix the cause first."
               />
               <p className="text-[11px] text-slate-500">
-                This hint is injected directly into the agent&apos;s context window, clearing its loop recursion score and resuming execution.
+                The agent resumes, and this text is added to its next request to the model.
               </p>
             </div>
 
@@ -682,7 +778,7 @@ export function GuardrailsClient({
                 className="px-4 py-2 rounded-md bg-emerald-700 hover:bg-emerald-800 text-xs font-semibold text-white transition-colors flex items-center gap-1.5 shadow-xs"
               >
                 <Send className="h-3.5 w-3.5" />
-                <span>Inject Hint &amp; Resume</span>
+                <span>{suggestion ? "Approve & resume" : "Send & resume"}</span>
               </button>
             </div>
           </div>

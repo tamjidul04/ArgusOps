@@ -304,12 +304,16 @@ model PromptRewrite {
   tokens_before    Int       @default(0)
   tokens_after     Int       @default(0)
   status           String    @default("PROPOSED") // "PROPOSED" | "APPROVED" | "APPLIED" | "REJECTED"
+  source           String    @default("RULES") @db.VarChar(10) // "RULES" | "AI"
+  auto_applied     Boolean   @default(false)
+  repeats          Int       @default(0)
   created_at       DateTime  @default(now())
   decided_at       DateTime?
 
   user             User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
   incident         Incident? @relation(fields: [incident_id], references: [id], onDelete: SetNull)
 
+  @@index([user_id, agent_id, status])
   @@map("Prompt_Rewrites")
 }
 
