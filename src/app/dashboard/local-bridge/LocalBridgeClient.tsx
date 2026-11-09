@@ -218,7 +218,7 @@ export function LocalBridgeClient({
   return (
     <div className="space-y-6">
       {/* ================= HEADER matching Stitch Export ================= */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-900/[0.07] pb-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
             Local PC Bridge &amp; API Keys
@@ -235,11 +235,11 @@ export function LocalBridgeClient({
       {feedback && (
         <div
           className={cn(
-            "p-3 rounded-lg text-xs flex items-center justify-between border animate-in fade-in duration-150",
+            "p-3 rounded-xl text-xs flex items-center justify-between border animate-in fade-in duration-150",
             feedback.type === "success" && "bg-emerald-50 text-emerald-900 border-emerald-200",
             feedback.type === "warning" && "bg-amber-50 text-amber-900 border-amber-200",
             feedback.type === "error" && "bg-rose-50 text-rose-900 border-rose-200",
-            feedback.type === "info" && "bg-slate-100 text-slate-800 border-slate-200"
+            feedback.type === "info" && "bg-slate-100 text-slate-800 border-slate-900/[0.07]"
           )}
         >
           <div className="flex items-center gap-2">
@@ -249,7 +249,7 @@ export function LocalBridgeClient({
             {feedback.type === "info" && <RefreshCw className="h-4 w-4 text-slate-600 animate-spin shrink-0" />}
             <span className="font-medium">{feedback.text}</span>
           </div>
-          <button type="button" onClick={() => setFeedback(null)} className="text-slate-400 hover:text-slate-700 font-bold">
+          <button type="button" onClick={() => setFeedback(null)} className="text-slate-500 hover:text-slate-700 font-semibold">
             ×
           </button>
         </div>
@@ -260,19 +260,19 @@ export function LocalBridgeClient({
         {/* Production API Key */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
               Active Daemon API Key
             </span>
-            <span className="font-mono text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 font-semibold">
+            <span className="font-mono text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 font-semibold">
               Live
             </span>
           </div>
-          <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2.5 font-mono text-xs">
+          <div className="flex items-center justify-between rounded-xl ring-1 ring-slate-900/[0.08] bg-slate-50 px-3.5 py-2.5 font-mono text-xs">
             <span className="text-slate-800 select-all font-semibold truncate">{primaryApiKey}</span>
             <button
               type="button"
               onClick={() => handleCopyKey(primaryApiKey)}
-              className="text-slate-400 hover:text-slate-900 flex items-center gap-1 font-sans text-xs font-semibold ml-2"
+              className="text-slate-500 hover:text-slate-900 flex items-center gap-1 font-sans text-xs font-semibold ml-2"
             >
               {copiedKey ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
               <span>{copiedKey ? "Copied" : "Copy"}</span>
@@ -283,11 +283,11 @@ export function LocalBridgeClient({
         {/* Desktop Bridge Command */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+            <span className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
               Desktop Bridge Command
             </span>
           </div>
-          <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2.5 font-mono text-xs">
+          <div className="flex items-center justify-between rounded-xl ring-1 ring-slate-900/[0.08] bg-slate-50 px-3.5 py-2.5 font-mono text-xs">
             <span className="text-slate-800 select-all font-semibold truncate">{defaultCliCmd}</span>
             <button
               type="button"
@@ -305,19 +305,19 @@ export function LocalBridgeClient({
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Agent 1: Claude */}
         <div className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft p-5 space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="flex items-center justify-between border-b border-slate-900/5 pb-3">
             <div>
-              <h3 className="font-bold text-sm text-slate-900">Claude (IDE Agent)</h3>
-              <span className="font-mono text-[11px] text-slate-400">
+              <h3 className="font-semibold text-sm text-slate-900">Claude (IDE Agent)</h3>
+              <span className="font-mono text-[11px] text-slate-500">
                 pid: {claudeAgent?.agent_id ? "49201" : "49201"} • /usr/bin/claude
               </span>
             </div>
             <span
               className={cn(
-                "inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded border",
+                "inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full border",
                 claudeAgent?.status === "ACTIVE"
                   ? "text-emerald-700 bg-emerald-50 border-emerald-200"
-                  : "text-slate-600 bg-slate-100 border-slate-200"
+                  : "text-slate-600 bg-slate-100 border-slate-900/[0.07]"
               )}
             >
               {claudeAgent?.status === "ACTIVE" && (
@@ -330,20 +330,20 @@ export function LocalBridgeClient({
           <div className="space-y-2 text-xs font-mono">
             <div className="flex justify-between items-center">
               <span className="text-slate-500">Memory:</span>
-              <strong className="text-slate-900 font-bold">
+              <strong className="text-slate-900 font-semibold">
                 {claudeAgent?.ram_usage ? `${claudeAgent.ram_usage.toFixed(1)} MB RAM` : "142 MB RAM"}
               </strong>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-slate-500">Context Cache:</span>
-              <span className="text-emerald-700 font-bold">
+              <span className="text-emerald-700 font-semibold">
                 {claudeAgent?.tokens_used
                   ? `${Math.round(claudeAgent.tokens_used / 1000)}k tokens saved`
                   : "28.4k tokens saved"}
               </span>
             </div>
-            <div className="pt-2 border-t border-slate-100 text-[11px] font-sans text-slate-600">
-              <span className="text-slate-400 block font-mono text-[10px]">Active Lock:</span>
+            <div className="pt-2 border-t border-slate-900/5 text-[11px] font-sans text-slate-600">
+              <span className="text-slate-500 block font-mono text-[10px]">Active Lock:</span>
               <code className="font-mono text-slate-800 font-semibold truncate block">
                 {claudeAgent?.locked_file_path || "src/lib/loop-detector.ts"}
               </code>
@@ -353,19 +353,19 @@ export function LocalBridgeClient({
 
         {/* Agent 2: Antigravity */}
         <div className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft p-5 space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="flex items-center justify-between border-b border-slate-900/5 pb-3">
             <div>
-              <h3 className="font-bold text-sm text-slate-900">Antigravity</h3>
-              <span className="font-mono text-[11px] text-slate-400">
+              <h3 className="font-semibold text-sm text-slate-900">Antigravity</h3>
+              <span className="font-mono text-[11px] text-slate-500">
                 pid: {antigravityAgent?.agent_id ? "49288" : "49288"} • /opt/antigravity
               </span>
             </div>
             <span
               className={cn(
-                "inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded border",
+                "inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full border",
                 antigravityAgent?.status === "ACTIVE"
                   ? "text-emerald-700 bg-emerald-50 border-emerald-200"
-                  : "text-slate-600 bg-slate-100 border-slate-200"
+                  : "text-slate-600 bg-slate-100 border-slate-900/[0.07]"
               )}
             >
               {antigravityAgent?.status === "ACTIVE" && (
@@ -378,7 +378,7 @@ export function LocalBridgeClient({
           <div className="space-y-2 text-xs font-mono">
             <div className="flex justify-between items-center">
               <span className="text-slate-500">Memory:</span>
-              <strong className="text-slate-900 font-bold">
+              <strong className="text-slate-900 font-semibold">
                 {antigravityAgent?.ram_usage
                   ? `${antigravityAgent.ram_usage.toFixed(1)} MB RAM`
                   : "84.5 MB RAM"}
@@ -386,14 +386,14 @@ export function LocalBridgeClient({
             </div>
             <div className="flex justify-between items-center">
               <span className="text-slate-500">Context Cache:</span>
-              <span className="text-emerald-700 font-bold">
+              <span className="text-emerald-700 font-semibold">
                 {antigravityAgent?.tokens_used
                   ? `${Math.round(antigravityAgent.tokens_used / 1000)}k tokens saved`
                   : "41.2k tokens saved"}
               </span>
             </div>
-            <div className="pt-2 border-t border-slate-100 text-[11px] font-sans text-slate-600">
-              <span className="text-slate-400 block font-mono text-[10px]">Active Lock:</span>
+            <div className="pt-2 border-t border-slate-900/5 text-[11px] font-sans text-slate-600">
+              <span className="text-slate-500 block font-mono text-[10px]">Active Lock:</span>
               <code className="font-mono text-slate-800 font-semibold truncate block">
                 {antigravityAgent?.locked_file_path || "src/app/dashboard/page.tsx"}
               </code>
@@ -403,19 +403,19 @@ export function LocalBridgeClient({
 
         {/* Agent 3: Hermes */}
         <div className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft p-5 space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="flex items-center justify-between border-b border-slate-900/5 pb-3">
             <div>
-              <h3 className="font-bold text-sm text-slate-900">Hermes</h3>
-              <span className="font-mono text-[11px] text-slate-400">
+              <h3 className="font-semibold text-sm text-slate-900">Hermes</h3>
+              <span className="font-mono text-[11px] text-slate-500">
                 pid: {hermesAgent?.agent_id ? "49310" : "49310"} • /usr/local/hermes
               </span>
             </div>
             <span
               className={cn(
-                "inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded border",
+                "inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full border",
                 hermesAgent?.status === "ACTIVE"
                   ? "text-emerald-700 bg-emerald-50 border-emerald-200"
-                  : "text-slate-600 bg-slate-100 border-slate-200"
+                  : "text-slate-600 bg-slate-100 border-slate-900/[0.07]"
               )}
             >
               {hermesAgent?.status === "ACTIVE" && (
@@ -428,7 +428,7 @@ export function LocalBridgeClient({
           <div className="space-y-2 text-xs font-mono">
             <div className="flex justify-between items-center">
               <span className="text-slate-500">Memory:</span>
-              <strong className="text-slate-900 font-bold">
+              <strong className="text-slate-900 font-semibold">
                 {hermesAgent?.ram_usage
                   ? `${hermesAgent.ram_usage.toFixed(1)} MB RAM`
                   : "45.3 MB RAM"}
@@ -436,14 +436,14 @@ export function LocalBridgeClient({
             </div>
             <div className="flex justify-between items-center">
               <span className="text-slate-500">Context Cache:</span>
-              <span className="text-emerald-700 font-bold">
+              <span className="text-emerald-700 font-semibold">
                 {hermesAgent?.tokens_used
                   ? `${Math.round(hermesAgent.tokens_used / 1000)}k tokens saved`
                   : "19.0k tokens saved"}
               </span>
             </div>
-            <div className="pt-2 border-t border-slate-100 text-[11px] font-sans text-slate-600">
-              <span className="text-slate-400 block font-mono text-[10px]">Active Lock:</span>
+            <div className="pt-2 border-t border-slate-900/5 text-[11px] font-sans text-slate-600">
+              <span className="text-slate-500 block font-mono text-[10px]">Active Lock:</span>
               <code className="font-mono text-slate-800 font-semibold truncate block">
                 {hermesAgent?.locked_file_path || "src/tests/billing.spec.ts"}
               </code>
@@ -454,9 +454,9 @@ export function LocalBridgeClient({
 
       {/* ================= ACTIVE FILE LOCKS (MUTEX CONFLICT PREVENTION) TABLE ================= */}
       <div className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
+        <div className="px-5 py-4 border-b border-slate-900/[0.07] flex items-center justify-between bg-slate-50/50">
           <div>
-            <h2 className="font-bold text-sm text-slate-900 uppercase tracking-wider flex items-center gap-2">
+            <h2 className="font-semibold text-base text-slate-900 tracking-tight flex items-center gap-2">
               <Lock className="h-4 w-4 text-slate-700" />
               <span>Active File Locks (Mutex Conflict Prevention)</span>
             </h2>
@@ -464,7 +464,7 @@ export function LocalBridgeClient({
               ArgusOps intercepts file save system calls to prevent concurrent overwrites between coding agents.
             </p>
           </div>
-          <span className="font-mono text-xs font-semibold bg-slate-100 text-slate-700 px-2.5 py-1 rounded border border-slate-200">
+          <span className="font-mono text-xs font-semibold bg-slate-100 text-slate-700 px-2.5 py-1 rounded ring-1 ring-slate-900/[0.08]">
             {locks.length} Locks Registered
           </span>
         </div>
@@ -472,7 +472,7 @@ export function LocalBridgeClient({
         <div className="overflow-x-auto">
           <table className="w-full text-xs text-left">
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold">
+              <tr className="border-b border-slate-900/[0.07] bg-slate-900/[0.02] text-slate-500 uppercase tracking-[0.12em] font-medium">
                 <th className="py-3 px-4">Workspace File Path</th>
                 <th className="py-3 px-4">Locked By</th>
                 <th className="py-3 px-4">Queued Agent (Overwrite Prevented)</th>
@@ -489,7 +489,7 @@ export function LocalBridgeClient({
                     lock.status === "CONFLICT_QUEUED" && "bg-amber-50/60"
                   )}
                 >
-                  <td className="py-3.5 px-4 font-bold text-slate-900 font-sans flex items-center gap-2">
+                  <td className="py-3.5 px-4 font-semibold text-slate-900 font-sans flex items-center gap-2">
                     <FileCode className="h-4 w-4 text-slate-500 shrink-0" />
                     <code className="font-mono font-semibold text-xs">{lock.filePath}</code>
                   </td>
@@ -503,7 +503,7 @@ export function LocalBridgeClient({
                         <span>{lock.queuedAgent}</span>
                       </span>
                     ) : (
-                      <span className="text-slate-400 font-normal">None (Clean write access)</span>
+                      <span className="text-slate-500 font-normal">None (Clean write access)</span>
                     )}
                   </td>
                   <td className="py-3.5 px-4 text-slate-500">{lock.acquiredAt}</td>
@@ -511,7 +511,7 @@ export function LocalBridgeClient({
                     <button
                       type="button"
                       onClick={() => handleReleaseLock(lock.id)}
-                      className="px-2.5 py-1 rounded border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-sans text-xs font-semibold shadow-2xs transition-colors"
+                      className="px-2.5 py-1 rounded ring-1 ring-slate-900/10 bg-white hover:bg-slate-50 text-slate-700 font-sans text-xs font-semibold shadow-2xs transition-colors"
                     >
                       Release Lock
                     </button>
@@ -527,19 +527,19 @@ export function LocalBridgeClient({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Permission & Zero-Trust Governance Layer */}
         <div className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft p-5 space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <h3 className="font-bold text-sm text-slate-900 uppercase tracking-wider flex items-center gap-2">
+          <div className="flex items-center justify-between border-b border-slate-900/5 pb-3">
+            <h3 className="font-semibold text-base text-slate-900 tracking-tight flex items-center gap-2">
               <Shield className="h-4 w-4 text-emerald-600" />
               <span>Permission &amp; Zero-Trust Governance Layer</span>
             </h3>
-            <span className="font-mono text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+            <span className="font-mono text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
               Hardware Enforced
             </span>
           </div>
 
           <div className="space-y-3 text-xs">
             {/* Toggle 1 */}
-            <div className="flex items-center justify-between p-3 rounded-lg border border-slate-200 bg-slate-50">
+            <div className="flex items-center justify-between p-3 rounded-xl ring-1 ring-slate-900/[0.08] bg-slate-50">
               <div className="space-y-0.5">
                 <span className="font-semibold text-slate-900">Monitor Local Agent Processes (PID/RAM/CPU)</span>
                 <p className="text-[11px] text-slate-500">Tracks per-agent resident sets against the &lt;150MB daemon cap.</p>
@@ -562,7 +562,7 @@ export function LocalBridgeClient({
             </div>
 
             {/* Toggle 2 */}
-            <div className="flex items-center justify-between p-3 rounded-lg border border-slate-200 bg-slate-50">
+            <div className="flex items-center justify-between p-3 rounded-xl ring-1 ring-slate-900/[0.08] bg-slate-50">
               <div className="space-y-0.5">
                 <span className="font-semibold text-slate-900">Enforce Workspace File-Locking (Mutex)</span>
                 <p className="text-[11px] text-slate-500">Blocks concurrent conflicting edits across Antigravity, Claude, and Hermes.</p>
@@ -585,7 +585,7 @@ export function LocalBridgeClient({
             </div>
 
             {/* Toggle 3 */}
-            <div className="flex items-center justify-between p-3 rounded-lg border border-slate-200 bg-slate-50">
+            <div className="flex items-center justify-between p-3 rounded-xl ring-1 ring-slate-900/[0.08] bg-slate-50">
               <div className="space-y-0.5">
                 <span className="font-semibold text-slate-900">Intercept Redundant API Calls</span>
                 <p className="text-[11px] text-slate-500">Feeds cached AST tokens across local agents without duplicate billing.</p>
@@ -608,7 +608,7 @@ export function LocalBridgeClient({
             </div>
 
             {/* Toggle 4 */}
-            <div className="flex items-center justify-between p-3 rounded-lg border border-slate-200 bg-slate-50">
+            <div className="flex items-center justify-between p-3 rounded-xl ring-1 ring-slate-900/[0.08] bg-slate-50">
               <div className="space-y-0.5">
                 <span className="font-semibold text-slate-900">Zero-Trust Code Privacy</span>
                 <p className="text-[11px] text-slate-500">Guarantees raw project source code never leaves this workstation.</p>
@@ -634,8 +634,8 @@ export function LocalBridgeClient({
 
         {/* API Key & SDK Manager */}
         <div className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft p-5 space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <h3 className="font-bold text-sm text-slate-900 uppercase tracking-wider flex items-center gap-2">
+          <div className="flex items-center justify-between border-b border-slate-900/5 pb-3">
+            <h3 className="font-semibold text-base text-slate-900 tracking-tight flex items-center gap-2">
               <Key className="h-4 w-4 text-slate-700" />
               <span>API Key &amp; SDK Manager</span>
             </h3>
@@ -653,7 +653,7 @@ export function LocalBridgeClient({
             {keys.map((k) => (
               <div
                 key={k.id}
-                className="p-3 rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-between gap-3"
+                className="p-3 rounded-xl ring-1 ring-slate-900/[0.08] bg-slate-50 flex items-center justify-between gap-3"
               >
                 <div className="space-y-0.5 truncate">
                   <div className="font-semibold text-slate-900">{k.label}</div>
@@ -664,7 +664,7 @@ export function LocalBridgeClient({
                   <button
                     type="button"
                     onClick={() => handleCopyKey(k.masked_key)}
-                    className="p-1 text-slate-400 hover:text-slate-800"
+                    className="p-1 text-slate-500 hover:text-slate-800"
                     title="Copy key"
                   >
                     <Copy className="h-3.5 w-3.5" />
@@ -683,7 +683,7 @@ export function LocalBridgeClient({
           </div>
 
           {/* Connect Command Helper */}
-          <div className="pt-3 border-t border-slate-100">
+          <div className="pt-3 border-t border-slate-900/5">
             <span className="text-[11px] font-semibold text-slate-500 block mb-1">
               One-line Daemon Handshake:
             </span>
@@ -704,16 +704,16 @@ export function LocalBridgeClient({
       {/* CREATE KEY MODAL */}
       {showCreateModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="font-bold text-slate-900 text-base">Generate New API Key</h3>
+          <div className="w-full max-w-md rounded-2xl ring-1 ring-slate-900/[0.08] bg-white p-6 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-900/5 pb-3">
+              <h3 className="font-semibold text-slate-900 text-base">Generate New API Key</h3>
               <button
                 type="button"
                 onClick={() => {
                   setShowCreateModal(false);
                   setCreatedKeyRaw(null);
                 }}
-                className="text-slate-400 hover:text-slate-700"
+                className="text-slate-500 hover:text-slate-700"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -721,8 +721,8 @@ export function LocalBridgeClient({
 
             {createdKeyRaw ? (
               <div className="space-y-3">
-                <div className="p-3 rounded-lg border border-emerald-200 bg-emerald-50 text-xs text-emerald-900 space-y-1">
-                  <span className="font-bold block">Key Generated Successfully!</span>
+                <div className="p-3 rounded-xl border border-emerald-200 bg-emerald-50 text-xs text-emerald-900 space-y-1">
+                  <span className="font-semibold block">Key Generated Successfully!</span>
                   <p className="text-[11px]">Copy this key now. For your security, it will not be displayed again.</p>
                 </div>
                 <div className="p-3 rounded bg-slate-900 text-white font-mono text-xs break-all select-all flex items-center justify-between">
@@ -756,14 +756,14 @@ export function LocalBridgeClient({
                     onChange={(e) => setNewKeyLabel(e.target.value)}
                     placeholder="e.g. Workstation 02 Daemon"
                     required
-                    className="w-full rounded-md border border-slate-300 p-2 text-xs text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900"
+                    className="w-full rounded-md ring-1 ring-slate-900/10 p-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900"
                   />
                 </div>
                 <div className="flex justify-end gap-2 pt-2">
                   <button
                     type="button"
                     onClick={() => setShowCreateModal(false)}
-                    className="px-3 py-1.5 rounded border border-slate-200 text-xs text-slate-700 hover:bg-slate-50"
+                    className="px-3 py-1.5 rounded ring-1 ring-slate-900/[0.08] text-xs text-slate-700 hover:bg-slate-50"
                   >
                     Cancel
                   </button>

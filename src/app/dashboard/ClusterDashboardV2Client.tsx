@@ -280,7 +280,7 @@ export function ClusterDashboardV2Client({
       {toastMessage && (
         <div
           className={cn(
-            "fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border text-sm font-medium transition-all animate-in fade-in slide-in-from-bottom-2",
+            "fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg border text-sm font-medium transition-all animate-in fade-in slide-in-from-bottom-2",
             toastMessage.type === "success" &&
               "bg-emerald-50 border-emerald-200 text-emerald-800",
             toastMessage.type === "error" &&
@@ -309,9 +309,9 @@ export function ClusterDashboardV2Client({
       )}
 
       {/* Page Header matching 03-dashboard-cluster-v2.png */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-900/[0.07] pb-5">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
             Agent cluster telemetry and loop interception
           </h1>
           <p className="text-xs text-slate-500 mt-1">
@@ -328,7 +328,7 @@ export function ClusterDashboardV2Client({
                 text: "Live telemetry stream synchronized across cluster.",
               });
             }}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 shadow-2xs transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl ring-1 ring-slate-900/[0.08] bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 shadow-2xs transition-colors cursor-pointer"
           >
             <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
             Sync Live
@@ -338,7 +338,7 @@ export function ClusterDashboardV2Client({
             onClick={() => {
               handleClusterAction("AUTO_RIGHT_SIZE");
             }}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-black hover:bg-slate-800 text-xs font-bold text-white shadow-xs transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-black hover:bg-slate-800 text-xs font-semibold text-white shadow-xs transition-colors cursor-pointer"
           >
             Deploy Agent
           </button>
@@ -352,12 +352,12 @@ export function ClusterDashboardV2Client({
           {/* Sub-row 1: 2 Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Card 1: Active vs. Hibernated Allocation */}
-            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex flex-col justify-between">
+            <div className="bg-white ring-1 ring-slate-900/[0.08] rounded-xl p-5 shadow-xs flex flex-col justify-between">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-medium text-slate-500">
                   Active vs. Hibernated Allocation
                 </span>
-                <span className="px-2 py-0.5 rounded text-[11px] font-mono bg-slate-100 text-slate-600 border border-slate-200">
+                <span className="px-2 py-0.5 rounded-full text-[11px] font-mono bg-slate-100 text-slate-600 ring-1 ring-slate-900/[0.08]">
                   6 nodes pool
                 </span>
               </div>
@@ -378,12 +378,12 @@ export function ClusterDashboardV2Client({
             </div>
 
             {/* Card 2: Tokens Saved */}
-            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex flex-col justify-between">
+            <div className="bg-white ring-1 ring-slate-900/[0.08] rounded-xl p-5 shadow-xs flex flex-col justify-between">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-medium text-slate-500">
                   Tokens Saved
                 </span>
-                <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                   +9.4x eff
                 </span>
               </div>
@@ -391,10 +391,10 @@ export function ClusterDashboardV2Client({
                 <div className="text-3xl font-semibold text-slate-900 tracking-tight font-mono">
                   1.24M
                 </div>
-                <div className="text-xs text-slate-400 mt-1">
+                <div className="text-xs text-slate-500 mt-1">
                   AST Cache Traps Active
                 </div>
-                <div className="text-xs text-slate-400">
+                <div className="text-xs text-slate-500">
                   Deduplication Active
                 </div>
               </div>
@@ -404,19 +404,19 @@ export function ClusterDashboardV2Client({
           {/* Sub-row 2: 3 Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {/* Card 3: Free Token Balance */}
-            <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs flex flex-col justify-between">
+            <div className="bg-white ring-1 ring-slate-900/[0.08] rounded-xl p-4 shadow-xs flex flex-col justify-between">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs font-medium text-slate-500">
                   Free Token Balance
                 </span>
-                <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-slate-100 text-slate-600 border border-slate-200">
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono bg-slate-100 text-slate-600 ring-1 ring-slate-900/[0.08]">
                   {profile.planName}
                 </span>
               </div>
               <div className="text-2xl font-semibold text-slate-900 tracking-tight font-mono mt-1">
                 {freeTokens.toLocaleString()}
               </div>
-              <div className="flex items-center justify-between text-[11px] text-slate-400 mt-3 border-t border-slate-100 pt-2">
+              <div className="flex items-center justify-between text-[11px] text-slate-500 mt-3 border-t border-slate-900/5 pt-2">
                 <span>Paid: {profile.paidTokens.toLocaleString()}</span>
                 <span>
                   {profile.activeAgents}/{profile.maxAgents} agents
@@ -425,28 +425,28 @@ export function ClusterDashboardV2Client({
             </div>
 
             {/* Card 4: Cost Saved */}
-            <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs flex flex-col justify-between">
+            <div className="bg-white ring-1 ring-slate-900/[0.08] rounded-xl p-4 shadow-xs flex flex-col justify-between">
               <div className="text-xs font-medium text-slate-500 mb-1">
                 Cost Saved
               </div>
               <div className="text-2xl font-semibold text-slate-900 tracking-tight font-mono mt-1">
                 ${costSaved.toFixed(2)}
               </div>
-              <div className="text-[11px] text-slate-400 mt-3 border-t border-slate-100 pt-2">
+              <div className="text-[11px] text-slate-500 mt-3 border-t border-slate-900/5 pt-2">
                 <div>from cached context</div>
                 <div className="text-[10px]">Estimate at list price</div>
               </div>
             </div>
 
             {/* Card 5: Memory */}
-            <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs flex flex-col justify-between">
+            <div className="bg-white ring-1 ring-slate-900/[0.08] rounded-xl p-4 shadow-xs flex flex-col justify-between">
               <div className="text-xs font-medium text-slate-500 mb-1">
                 Memory
               </div>
               <div className="text-2xl font-semibold text-slate-900 tracking-tight font-mono mt-1">
                 1.42 GB
               </div>
-              <div className="text-[11px] text-slate-400 mt-3 border-t border-slate-100 pt-2">
+              <div className="text-[11px] text-slate-500 mt-3 border-t border-slate-900/5 pt-2">
                 <div>&lt;8.00 GB limit</div>
                 <div className="text-[10px]">Pool headroom</div>
               </div>
@@ -455,22 +455,22 @@ export function ClusterDashboardV2Client({
         </div>
 
         {/* Right 1 Col: Loop Interception Panel matching 03-dashboard-cluster-v2.png */}
-        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex flex-col justify-between">
+        <div className="bg-white ring-1 ring-slate-900/[0.08] rounded-xl p-5 shadow-xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <span className="h-2.5 w-2.5 rounded-full bg-rose-500 animate-pulse" />
-                <span className="text-xs font-bold text-slate-900">
+                <span className="text-xs font-semibold text-slate-900">
                   Loop Intercepted: Agent #02
                 </span>
               </div>
-              <span className="px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-rose-950 text-rose-300">
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-[0.12em] bg-rose-950 text-rose-300">
                 94% SIMILARITY
               </span>
             </div>
 
             {/* Code Box */}
-            <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono text-slate-700 leading-relaxed mb-4">
+            <div className="p-3 bg-slate-50 ring-1 ring-slate-900/[0.08] rounded-xl text-xs font-mono text-slate-700 leading-relaxed mb-4">
               <span className="font-semibold text-slate-900">
                 fetch_vector_chunks
               </span>{" "}
@@ -487,16 +487,16 @@ export function ClusterDashboardV2Client({
             </div>
           </div>
 
-          <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+          <div className="flex items-center gap-2 pt-2 border-t border-slate-900/5">
             <button
               onClick={handleNudgeAndPause}
-              className="flex-1 py-2 px-3 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg transition-colors text-center cursor-pointer"
+              className="flex-1 py-2 px-3 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 ring-1 ring-slate-900/10 rounded-xl transition-colors text-center cursor-pointer"
             >
               Nudge &amp; Pause
             </button>
             <button
               onClick={handleKillSwitch}
-              className="flex-1 py-2 px-3 text-xs font-semibold text-white bg-black hover:bg-slate-800 rounded-lg transition-colors inline-flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
+              className="flex-1 py-2 px-3 text-xs font-semibold text-white bg-black hover:bg-slate-800 rounded-xl transition-colors inline-flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
             >
               <span className="h-2 w-2 rounded-full bg-rose-500" />
               Kill Switch (Terminate)
@@ -508,14 +508,14 @@ export function ClusterDashboardV2Client({
       {/* MIDDLE SECTION: ACTIVE SWARM PROCESS MATRIX + HIBERNATED OVERVIEW */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Left Column (2 Cols): Active Swarm Process Matrix */}
-        <div className="lg:col-span-2 bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden flex flex-col justify-between">
+        <div className="lg:col-span-2 bg-white ring-1 ring-slate-900/[0.08] rounded-xl shadow-xs overflow-hidden flex flex-col justify-between">
           <div>
-            <div className="p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="p-5 border-b border-slate-900/[0.07] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div className="flex items-center gap-3">
-                <h2 className="text-sm font-bold text-slate-900">
+                <h2 className="text-sm font-semibold text-slate-900">
                   Active Swarm Process Matrix
                 </h2>
-                <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-[11px]">
+                <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-xl ring-1 ring-slate-900/[0.08] text-[11px]">
                   <button
                     onClick={() => setActiveTab("matrix")}
                     className={cn(
@@ -541,7 +541,7 @@ export function ClusterDashboardV2Client({
                 </div>
               </div>
 
-              <span className="text-xs text-slate-400 font-mono">
+              <span className="text-xs text-slate-500 font-mono">
                 Zero-trust local code privacy
               </span>
             </div>
@@ -550,7 +550,7 @@ export function ClusterDashboardV2Client({
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
-                    <tr className="bg-slate-50/70 border-b border-slate-200 text-slate-500 uppercase tracking-wider font-semibold">
+                    <tr className="bg-slate-900/[0.02] border-b border-slate-900/[0.07] text-slate-500 uppercase tracking-[0.12em] font-medium">
                       <th className="py-3 px-5">Agent</th>
                       <th className="py-3 px-5">Process Path</th>
                       <th className="py-3 px-5">Status</th>
@@ -559,13 +559,13 @@ export function ClusterDashboardV2Client({
                       <th className="py-3 px-5 text-right">Control</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
+                  <tbody className="divide-y divide-slate-900/5 text-slate-700 font-medium">
                     {/* Row 1: Agent #01 (Claude) */}
                     <tr className="hover:bg-slate-50/60 transition-colors">
                       <td className="py-3.5 px-5">
                         <div className="flex items-center gap-2">
                           <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                          <span className="font-bold text-slate-900">
+                          <span className="font-semibold text-slate-900">
                             Agent #01
                           </span>
                           <span className="text-slate-500 font-normal">
@@ -578,7 +578,7 @@ export function ClusterDashboardV2Client({
                         <div>/usr/bin/claude</div>
                       </td>
                       <td className="py-3.5 px-5">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                           Running
                         </span>
                       </td>
@@ -596,7 +596,7 @@ export function ClusterDashboardV2Client({
                               targetStatus: "HIBERNATED",
                             })
                           }
-                          className="px-2.5 py-1 text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 rounded transition-colors shadow-2xs"
+                          className="px-2.5 py-1 text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 ring-1 ring-slate-900/10 rounded transition-colors shadow-2xs"
                         >
                           Pause
                         </button>
@@ -608,7 +608,7 @@ export function ClusterDashboardV2Client({
                       <td className="py-3.5 px-5">
                         <div className="flex items-center gap-2">
                           <span className="h-2 w-2 rounded-full bg-rose-500 animate-pulse" />
-                          <span className="font-bold text-rose-900">
+                          <span className="font-semibold text-rose-900">
                             Agent #02
                           </span>
                           <span className="text-rose-700 font-medium">
@@ -621,11 +621,11 @@ export function ClusterDashboardV2Client({
                         <div>/opt/antigravity</div>
                       </td>
                       <td className="py-3.5 px-5">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
                           Paused Loop
                         </span>
                       </td>
-                      <td className="py-3.5 px-5 font-mono text-rose-900 font-bold">
+                      <td className="py-3.5 px-5 font-mono text-rose-900 font-semibold">
                         680 MB
                       </td>
                       <td className="py-3.5 px-5 font-mono text-slate-900">
@@ -635,7 +635,7 @@ export function ClusterDashboardV2Client({
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             onClick={handleNudgeAndPause}
-                            className="px-2 py-1 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 rounded transition-colors"
+                            className="px-2 py-1 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 ring-1 ring-slate-900/10 rounded transition-colors"
                           >
                             Nudge
                           </button>
@@ -654,7 +654,7 @@ export function ClusterDashboardV2Client({
                       <td className="py-3.5 px-5">
                         <div className="flex items-center gap-2">
                           <span className="h-2 w-2 rounded-full bg-slate-400" />
-                          <span className="font-bold text-slate-900">
+                          <span className="font-semibold text-slate-900">
                             Agent #03
                           </span>
                           <span className="text-slate-500 font-normal">
@@ -667,7 +667,7 @@ export function ClusterDashboardV2Client({
                         <div>/usr/local/hermes</div>
                       </td>
                       <td className="py-3.5 px-5">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-600 ring-1 ring-slate-900/[0.08]">
                           Standby
                         </span>
                       </td>
@@ -685,7 +685,7 @@ export function ClusterDashboardV2Client({
                               targetStatus: "ACTIVE",
                             })
                           }
-                          className="px-2.5 py-1 text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 rounded transition-colors shadow-2xs"
+                          className="px-2.5 py-1 text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 ring-1 ring-slate-900/10 rounded transition-colors shadow-2xs"
                         >
                           Wake / Inspect
                         </button>
@@ -697,7 +697,7 @@ export function ClusterDashboardV2Client({
             ) : (
               /* All 100 Cluster Nodes View */
               <div className="p-4 space-y-3">
-                <div className="flex items-center justify-between text-xs text-slate-500 pb-2 border-b border-slate-100">
+                <div className="flex items-center justify-between text-xs text-slate-500 pb-2 border-b border-slate-900/5">
                   <span>Displaying 100-Agent Cloud Cluster Swarm</span>
                   <div className="flex items-center gap-2">
                     {["ALL", "ACTIVE", "HIBERNATED", "PAUSED_NUDGE", "KILLED_LOOP"].map((st) => (
@@ -705,7 +705,7 @@ export function ClusterDashboardV2Client({
                         key={st}
                         onClick={() => setStatusFilter(st)}
                         className={cn(
-                          "px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider",
+                          "px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-[0.12em]",
                           statusFilter === st
                             ? "bg-slate-900 text-white"
                             : "bg-slate-100 text-slate-600 hover:bg-slate-200"
@@ -740,7 +740,7 @@ export function ClusterDashboardV2Client({
                         <span className="font-semibold text-slate-900">
                           {ag.name}
                         </span>
-                        <span className="text-slate-400 font-mono text-[11px]">
+                        <span className="text-slate-500 font-mono text-[11px]">
                           {ag.agent_type}
                         </span>
                       </div>
@@ -750,7 +750,7 @@ export function ClusterDashboardV2Client({
                         <span>{ag.tokens_used.toLocaleString()} tok</span>
                         <span
                           className={cn(
-                            "px-1.5 py-0.2 rounded text-[10px] font-bold uppercase",
+                            "px-1.5 py-0.2 rounded-full text-[10px] font-medium uppercase",
                             ag.status === "ACTIVE"
                               ? "bg-emerald-50 text-emerald-700"
                               : ag.status === "PAUSED_NUDGE"
@@ -772,22 +772,22 @@ export function ClusterDashboardV2Client({
         </div>
 
         {/* Right Column (1 Col): Hibernated & Bridge Overview */}
-        <div className="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden flex flex-col justify-between">
+        <div className="bg-white ring-1 ring-slate-900/[0.08] rounded-xl shadow-xs overflow-hidden flex flex-col justify-between">
           <div>
-            <div className="p-5 border-b border-slate-200 flex items-center justify-between">
-              <h2 className="text-sm font-bold text-slate-900">
+            <div className="p-5 border-b border-slate-900/[0.07] flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-slate-900">
                 Hibernated &amp; Bridge Overview
               </h2>
-              <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-600 border border-slate-200">
+              <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-600 ring-1 ring-slate-900/[0.08]">
                 Subsystems
               </span>
             </div>
 
             <div className="p-5 space-y-4">
               {/* Hermes Pool (4 Workers) */}
-              <div className="p-3.5 bg-slate-50/70 border border-slate-200 rounded-lg flex items-center justify-between">
+              <div className="p-3.5 bg-slate-50/70 ring-1 ring-slate-900/[0.08] rounded-xl flex items-center justify-between">
                 <div>
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-900">
                     <span className="h-2 w-2 rounded-full bg-slate-400" />
                     Hermes Pool (4 Workers)
                   </div>
@@ -797,7 +797,7 @@ export function ClusterDashboardV2Client({
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-600 ring-1 ring-slate-900/[0.08]">
                     Hibernated
                   </span>
                   <button
@@ -807,7 +807,7 @@ export function ClusterDashboardV2Client({
                         targetStatus: "ACTIVE",
                       })
                     }
-                    className="px-2 py-0.5 text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 rounded"
+                    className="px-2 py-0.5 text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 ring-1 ring-slate-900/10 rounded"
                   >
                     Wake
                   </button>
@@ -815,9 +815,9 @@ export function ClusterDashboardV2Client({
               </div>
 
               {/* Local PC Bridge */}
-              <div className="p-3.5 bg-slate-50/70 border border-slate-200 rounded-lg flex items-center justify-between">
+              <div className="p-3.5 bg-slate-50/70 ring-1 ring-slate-900/[0.08] rounded-xl flex items-center justify-between">
                 <div>
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-slate-900">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-900">
                     <span className="h-2 w-2 rounded-full bg-emerald-500" />
                     Local PC Bridge
                   </div>
@@ -838,8 +838,8 @@ export function ClusterDashboardV2Client({
             </div>
           </div>
 
-          <div className="p-4 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between text-xs">
-            <span className="text-slate-400">Zero-Token Standby</span>
+          <div className="p-4 bg-slate-50/50 border-t border-slate-900/5 flex items-center justify-between text-xs">
+            <span className="text-slate-500">Zero-Token Standby</span>
             <span className="font-semibold text-emerald-600">
               Auto-wake Ready
             </span>
@@ -850,13 +850,13 @@ export function ClusterDashboardV2Client({
       {/* BOTTOM SECTION: 3 CARDS SIDE-BY-SIDE matching 03-dashboard-cluster-v2.png */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         {/* Card 1: Local PC File-Locking Mutex */}
-        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex flex-col justify-between">
+        <div className="bg-white ring-1 ring-slate-900/[0.08] rounded-xl p-5 shadow-xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-bold text-slate-900">
+              <h3 className="text-sm font-semibold text-slate-900">
                 Local PC File-Locking Mutex
               </h3>
-              <span className="text-xs text-slate-400 font-mono">
+              <span className="text-xs text-slate-500 font-mono">
                 {mutexLocks.length} Active Locks
               </span>
             </div>
@@ -869,16 +869,16 @@ export function ClusterDashboardV2Client({
                   <div
                     key={lock.id}
                     className={cn(
-                      "p-3 rounded-lg border text-xs flex items-center justify-between transition-all",
+                      "p-3 rounded-xl border text-xs flex items-center justify-between transition-all",
                       isPausedLoop
                         ? "bg-rose-50/30 border-rose-200"
-                        : "bg-slate-50/70 border-slate-200"
+                        : "bg-slate-50/70 border-slate-900/[0.07]"
                     )}
                   >
                     <div>
                       <div
                         className={cn(
-                          "font-mono font-bold",
+                          "font-mono font-semibold",
                           isPausedLoop ? "text-rose-900" : "text-slate-900"
                         )}
                       >
@@ -907,7 +907,7 @@ export function ClusterDashboardV2Client({
                       ) : (
                         <button
                           onClick={() => handleReleaseLock(lock.id)}
-                          className="px-2.5 py-1 text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 rounded transition-colors"
+                          className="px-2.5 py-1 text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 ring-1 ring-slate-900/10 rounded transition-colors"
                         >
                           Release
                         </button>
@@ -921,13 +921,13 @@ export function ClusterDashboardV2Client({
         </div>
 
         {/* Card 2: Model Router & Shared Context Cache */}
-        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex flex-col justify-between">
+        <div className="bg-white ring-1 ring-slate-900/[0.08] rounded-xl p-5 shadow-xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-bold text-slate-900">
+              <h3 className="text-sm font-semibold text-slate-900">
                 Model Router &amp; Shared Context Cache
               </h3>
-              <span className="px-2 py-0.5 rounded text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <span className="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                 98.4% Hit
               </span>
             </div>
@@ -938,25 +938,25 @@ export function ClusterDashboardV2Client({
                   <span className="font-semibold text-slate-800">
                     Shared AST Context Graph
                   </span>
-                  <span className="font-mono font-bold text-slate-900">
+                  <span className="font-mono font-semibold text-slate-900">
                     1.80M tokens
                   </span>
                 </div>
-                <div className="text-[11px] text-slate-400 mt-0.5">
+                <div className="text-[11px] text-slate-500 mt-0.5">
                   Zero duplicated tokens across concurrent agent sessions
                 </div>
               </div>
 
-              <div className="border-t border-slate-100 pt-3">
+              <div className="border-t border-slate-900/5 pt-3">
                 <div className="flex items-center justify-between">
                   <span className="font-semibold text-slate-800">
                     Smart Model Downgrading
                   </span>
-                  <span className="font-mono font-bold text-slate-900">
+                  <span className="font-mono font-semibold text-slate-900">
                     64% routed
                   </span>
                 </div>
-                <div className="text-[11px] text-slate-400 mt-0.5">
+                <div className="text-[11px] text-slate-500 mt-0.5">
                   Fast/local models assigned for repetitive leaf executions
                 </div>
               </div>
@@ -965,35 +965,35 @@ export function ClusterDashboardV2Client({
         </div>
 
         {/* Card 3: Hardware & Quota Guardrails */}
-        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex flex-col justify-between">
+        <div className="bg-white ring-1 ring-slate-900/[0.08] rounded-xl p-5 shadow-xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-bold text-slate-900">
+              <h3 className="text-sm font-semibold text-slate-900">
                 Hardware &amp; Quota Guardrails
               </h3>
-              <span className="text-xs font-mono text-slate-400">
+              <span className="text-xs font-mono text-slate-500">
                 Enforced
               </span>
             </div>
 
             <div className="space-y-3 text-xs">
-              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-900/5">
                 <span className="text-slate-600">PC Daemon Ceiling</span>
-                <span className="font-mono font-bold text-slate-900">
+                <span className="font-mono font-semibold text-slate-900">
                   68 MB / 150 MB Max
                 </span>
               </div>
 
-              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-900/5">
                 <span className="text-slate-600">Loop Kill Threshold</span>
-                <span className="font-mono font-bold text-rose-600">
+                <span className="font-mono font-semibold text-rose-600">
                   &lt; 100ms / 14 retries
                 </span>
               </div>
 
               <div className="flex items-center justify-between">
                 <span className="text-slate-600">Free Tier Agent Cap</span>
-                <span className="font-mono font-bold text-slate-900">
+                <span className="font-mono font-semibold text-slate-900">
                   2 / 3 Active Slots
                 </span>
               </div>
@@ -1005,25 +1005,25 @@ export function ClusterDashboardV2Client({
       {/* Agent Detail Modal (if clicked) */}
       {selectedAgent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4 animate-in zoom-in-95">
+          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl ring-1 ring-slate-900/[0.08] space-y-4 animate-in zoom-in-95">
             <div className="flex items-start justify-between">
               <div>
-                <h3 className="text-base font-bold text-slate-900">
+                <h3 className="text-base font-semibold text-slate-900">
                   Agent Inspector: {selectedAgent.name}
                 </h3>
-                <p className="text-xs text-slate-400 font-mono mt-0.5">
+                <p className="text-xs text-slate-500 font-mono mt-0.5">
                   ID: {selectedAgent.agent_id}
                 </p>
               </div>
               <button
                 onClick={() => setSelectedAgent(null)}
-                className="text-slate-400 hover:text-slate-600 p-1"
+                className="text-slate-500 hover:text-slate-600 p-1"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-2 text-xs">
+            <div className="bg-slate-50 ring-1 ring-slate-900/[0.08] rounded-xl p-3 space-y-2 text-xs">
               <div className="flex justify-between">
                 <span className="text-slate-500">Status:</span>
                 <strong className="text-slate-900">{selectedAgent.status}</strong>
@@ -1058,7 +1058,7 @@ export function ClusterDashboardV2Client({
                   handleClusterAction("SIMULATE_ROGUE_LOOP", { agentId: selectedAgent.agent_id });
                   setSelectedAgent(null);
                 }}
-                className="px-3 py-1.5 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-lg"
+                className="px-3 py-1.5 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-xl"
               >
                 Stop agent
               </button>
@@ -1068,7 +1068,7 @@ export function ClusterDashboardV2Client({
       )}
 
       {/* Footer Info Strip matching 03-dashboard-cluster-v2.png */}
-      <div className="pt-6 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2">
+      <div className="pt-6 border-t border-slate-900/[0.07] flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2">
         <div className="flex items-center gap-2">
           <span>
             Plan: <span className="font-mono text-slate-700">{profile.planName}</span>

@@ -239,7 +239,7 @@ export function BillingV2Client({
       {toastMessage && (
         <div
           className={cn(
-            "fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border text-sm font-medium transition-all animate-in fade-in slide-in-from-bottom-2",
+            "fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg border text-sm font-medium transition-all animate-in fade-in slide-in-from-bottom-2",
             toastMessage.type === "success" &&
               "bg-emerald-50 border-emerald-200 text-emerald-800",
             toastMessage.type === "error" &&
@@ -262,9 +262,9 @@ export function BillingV2Client({
       )}
 
       {/* Header Row matching 06-billing-v2.png */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-900/[0.07] pb-5">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
             Billing, Token Wallet &amp; Plan Quota
           </h1>
         </div>
@@ -274,7 +274,7 @@ export function BillingV2Client({
             href={"/api/billing/invoice"}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 hover:text-slate-900 shadow-xs transition-colors"
+            className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-white ring-1 ring-slate-900/10 rounded-xl hover:bg-slate-50 hover:text-slate-900 shadow-xs transition-colors"
           >
             <FileText className="w-4 h-4 text-slate-500" />
             Download Invoices (PDF)
@@ -287,12 +287,12 @@ export function BillingV2Client({
         {/* ==================== LEFT COLUMN ==================== */}
         <div className="space-y-6">
           {/* 1. Free Token Allowance Card */}
-          <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs">
+          <div className="bg-white ring-1 ring-slate-900/[0.08] rounded-xl p-6 shadow-xs">
             <div className="flex items-center justify-between mb-3">
               <span className="text-sm font-medium text-slate-500">
                 Free Token Allowance
               </span>
-              <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 text-slate-600 border border-slate-200">
+              <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 text-slate-600 ring-1 ring-slate-900/[0.08]">
                 Auto-Reset
               </span>
             </div>
@@ -318,15 +318,15 @@ export function BillingV2Client({
           {/* 2. Middle Row: Paid Token Balance + Upgrade Approval Status */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Paid Token Balance */}
-            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex flex-col justify-between">
+            <div className="bg-white ring-1 ring-slate-900/[0.08] rounded-xl p-5 shadow-xs flex flex-col justify-between">
               <div>
                 <span className="text-xs font-medium text-slate-500 block mb-1">
                   Paid Token Balance
                 </span>
-                <div className="text-2xl font-bold text-slate-900 font-mono">
+                <div className="text-2xl font-semibold text-slate-900 font-mono">
                   {paidTokensCurrent.toLocaleString()}
                 </div>
-                <p className="text-xs text-slate-400 mt-1">
+                <p className="text-xs text-slate-500 mt-1">
                   Unmetered pay-as-you-go
                 </p>
               </div>
@@ -334,7 +334,7 @@ export function BillingV2Client({
               <div className="mt-4 pt-2">
                 <button
                   onClick={() => setTopupModalOpen(true)}
-                  className="w-full py-2 px-3 text-xs font-semibold text-slate-800 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg transition-colors text-center"
+                  className="w-full py-2 px-3 text-xs font-semibold text-slate-800 bg-slate-50 hover:bg-slate-100 ring-1 ring-slate-900/[0.08] rounded-xl transition-colors text-center"
                 >
                   + Top Up
                 </button>
@@ -342,7 +342,7 @@ export function BillingV2Client({
             </div>
 
             {/* Upgrade Approval Status */}
-            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex flex-col justify-between">
+            <div className="bg-white ring-1 ring-slate-900/[0.08] rounded-xl p-5 shadow-xs flex flex-col justify-between">
               <div>
                 <span className="text-xs font-medium text-slate-500 block mb-1">
                   Upgrade Approval Status
@@ -358,11 +358,11 @@ export function BillingV2Client({
                         : "bg-slate-700"
                     )}
                   />
-                  <span className="text-sm font-bold text-slate-900">
+                  <span className="text-sm font-semibold text-slate-900">
                     {isPendingApproval ? "Pending Approval" : purchaseStatus === "APPROVED" ? "Approved" : "Standard Quota"}
                   </span>
                 </div>
-                <p className="text-xs text-slate-400 mt-1">
+                <p className="text-xs text-slate-500 mt-1">
                   {isPendingApproval
                     ? "Pro Swarm ($49/mo) queued"
                     : `${currentPlanName} active`}
@@ -370,7 +370,7 @@ export function BillingV2Client({
               </div>
 
               <div className="mt-4 pt-2">
-                <div className="w-full py-2 px-3 text-xs font-medium text-slate-500 bg-slate-50 border border-slate-200 rounded-lg text-center select-none">
+                <div className="w-full py-2 px-3 text-xs font-medium text-slate-500 bg-slate-50 ring-1 ring-slate-900/[0.08] rounded-xl text-center select-none">
                   {isPendingApproval ? "Admin Review Active" : "No Review Required"}
                 </div>
               </div>
@@ -378,14 +378,14 @@ export function BillingV2Client({
           </div>
 
           {/* 3. Free Tier — $0 Card */}
-          <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs flex flex-col justify-between">
+          <div className="bg-white ring-1 ring-slate-900/[0.08] rounded-xl p-6 shadow-xs flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between">
-                <h3 className="text-xl font-bold text-slate-900">
+                <h3 className="text-xl font-semibold text-slate-900">
                   Free Tier — $0
                 </h3>
                 {isFreePlan && (
-                  <span className="px-2.5 py-0.5 rounded-md text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
+                  <span className="px-2.5 py-0.5 rounded-md text-xs font-medium bg-slate-100 text-slate-600 ring-1 ring-slate-900/[0.08]">
                     Current Plan
                   </span>
                 )}
@@ -420,7 +420,7 @@ export function BillingV2Client({
             <div className="mt-6 pt-2">
               <button
                 disabled
-                className="w-full py-2.5 px-4 text-center rounded-lg text-xs font-semibold bg-slate-100 text-slate-400 border border-slate-200 cursor-default"
+                className="w-full py-2.5 px-4 text-center rounded-xl text-xs font-semibold bg-slate-100 text-slate-500 ring-1 ring-slate-900/[0.08] cursor-default"
               >
                 Current Plan
               </button>
@@ -435,10 +435,10 @@ export function BillingV2Client({
             <div>
               <div className="flex items-baseline justify-between">
                 <div className="flex items-center gap-2">
-                  <h3 className="text-xl font-bold text-slate-900">
+                  <h3 className="text-xl font-semibold text-slate-900">
                     Pro Swarm — $49/mo
                   </h3>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-semibold uppercase bg-slate-900 text-white tracking-wider">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase bg-slate-900 text-white tracking-[0.12em]">
                     POPULAR
                   </span>
                 </div>
@@ -451,19 +451,19 @@ export function BillingV2Client({
               {/* 2-Column feature checklist matching 06-billing-v2.png */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2.5 my-5 text-xs text-slate-700 font-medium">
                 <div className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-slate-900 shrink-0 font-bold" />
+                  <Check className="w-4 h-4 text-slate-900 shrink-0 font-semibold" />
                   <span>Up to 25 concurrent agents</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-slate-900 shrink-0 font-bold" />
+                  <Check className="w-4 h-4 text-slate-900 shrink-0 font-semibold" />
                   <span>2,000,000 monthly tokens</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-slate-900 shrink-0 font-bold" />
+                  <Check className="w-4 h-4 text-slate-900 shrink-0 font-semibold" />
                   <span>File-locking mutex for PC agents</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-slate-900 shrink-0 font-bold" />
+                  <Check className="w-4 h-4 text-slate-900 shrink-0 font-semibold" />
                   <span>Semantic vector loop detection</span>
                 </div>
               </div>
@@ -473,14 +473,14 @@ export function BillingV2Client({
               {isPro ? (
                 <button
                   disabled
-                  className="w-full py-3 px-4 text-center rounded-lg text-xs font-semibold bg-slate-100 text-slate-500 border border-slate-200 cursor-default"
+                  className="w-full py-3 px-4 text-center rounded-xl text-xs font-semibold bg-slate-100 text-slate-500 ring-1 ring-slate-900/[0.08] cursor-default"
                 >
                   Current Plan
                 </button>
               ) : isPendingApproval ? (
                 <button
                   disabled
-                  className="w-full py-3 px-4 text-center rounded-lg text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 cursor-not-allowed"
+                  className="w-full py-3 px-4 text-center rounded-xl text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 cursor-not-allowed"
                 >
                   Upgrade Request Queued (Pending Approval)
                 </button>
@@ -488,7 +488,7 @@ export function BillingV2Client({
                 <button
                   onClick={() => handleRequestUpgrade("Pro Tier", 49.0, "plan_pro")}
                   disabled={submitting}
-                  className="w-full py-3 px-4 text-center rounded-lg text-xs font-bold bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50 transition-colors shadow-sm cursor-pointer"
+                  className="w-full py-3 px-4 text-center rounded-xl text-xs font-semibold bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50 transition-colors shadow-sm cursor-pointer"
                 >
                   {submitting ? "Submitting..." : "Upgrade via Stripe / PayPal"}
                 </button>
@@ -499,9 +499,9 @@ export function BillingV2Client({
           {/* 2. Bottom Row: Enterprise — Custom + Ledger Stats */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Enterprise — Custom */}
-            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex flex-col justify-between">
+            <div className="bg-white ring-1 ring-slate-900/[0.08] rounded-xl p-5 shadow-xs flex flex-col justify-between">
               <div>
-                <h3 className="text-base font-bold text-slate-900">
+                <h3 className="text-base font-semibold text-slate-900">
                   Enterprise — Custom
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
@@ -528,14 +528,14 @@ export function BillingV2Client({
                 {isEnterprise ? (
                   <button
                     disabled
-                    className="w-full py-2.5 px-3 text-center rounded-lg text-xs font-semibold bg-slate-100 text-slate-500 border border-slate-200 cursor-default"
+                    className="w-full py-2.5 px-3 text-center rounded-xl text-xs font-semibold bg-slate-100 text-slate-500 ring-1 ring-slate-900/[0.08] cursor-default"
                   >
                     Current Plan
                   </button>
                 ) : isPendingApproval ? (
                   <button
                     disabled
-                    className="w-full py-2.5 px-3 text-center rounded-lg text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 cursor-not-allowed"
+                    className="w-full py-2.5 px-3 text-center rounded-xl text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 cursor-not-allowed"
                   >
                     Pending Review
                   </button>
@@ -545,7 +545,7 @@ export function BillingV2Client({
                       handleRequestUpgrade("Enterprise", 299.0, "plan_enterprise")
                     }
                     disabled={submitting}
-                    className="w-full py-2.5 px-3 text-center rounded-lg text-xs font-semibold bg-white border border-slate-900 text-slate-900 hover:bg-slate-50 disabled:opacity-50 transition-colors shadow-2xs"
+                    className="w-full py-2.5 px-3 text-center rounded-xl text-xs font-semibold bg-white border border-slate-900 text-slate-900 hover:bg-slate-50 disabled:opacity-50 transition-colors shadow-2xs"
                   >
                     {submitting ? "Submitting..." : "Request Admin Approval"}
                   </button>
@@ -554,13 +554,13 @@ export function BillingV2Client({
             </div>
 
             {/* Ledger Stats */}
-            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex flex-col justify-between">
+            <div className="bg-white ring-1 ring-slate-900/[0.08] rounded-xl p-5 shadow-xs flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-bold text-slate-900">
+                  <span className="text-xs font-semibold text-slate-900">
                     Ledger Stats
                   </span>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-100 text-slate-600 border border-slate-200">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-medium uppercase bg-slate-100 text-slate-600 ring-1 ring-slate-900/[0.08]">
                     ACTIVE
                   </span>
                 </div>
@@ -568,11 +568,11 @@ export function BillingV2Client({
                 <div className="space-y-2 text-xs">
                   <div className="flex items-center justify-between">
                     <span className="text-slate-500">Saved via Hibernation</span>
-                    <span className="font-mono font-bold text-slate-900">&mdash;</span>
+                    <span className="font-mono font-semibold text-slate-900">&mdash;</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-slate-500">Last Invoice</span>
-                    <span className="font-mono font-bold text-slate-900">
+                    <span className="font-mono font-semibold text-slate-900">
                       {lastInvoiceAmount}
                     </span>
                   </div>
@@ -586,7 +586,7 @@ export function BillingV2Client({
               </div>
 
               <div className="mt-4 pt-2">
-                <div className="w-full py-1.5 px-2 bg-slate-50 border border-slate-200 text-[11px] text-slate-500 rounded-md font-mono text-center select-none">
+                <div className="w-full py-1.5 px-2 bg-slate-50 ring-1 ring-slate-900/[0.08] text-[11px] text-slate-500 rounded-md font-mono text-center select-none">
                   PCI-DSS Level 1 Compliant
                 </div>
               </div>
@@ -596,10 +596,10 @@ export function BillingV2Client({
       </div>
 
       {/* Invoice & Transaction Approval Queue History Table */}
-      <div className="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden mt-8">
-        <div className="p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div className="bg-white ring-1 ring-slate-900/[0.08] rounded-xl shadow-xs overflow-hidden mt-8">
+        <div className="p-5 border-b border-slate-900/[0.07] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <h2 className="text-base font-bold text-slate-900">
+            <h2 className="text-base font-semibold text-slate-900">
               Billing Ledger &amp; Transaction Approval History
             </h2>
             <p className="text-xs text-slate-500">
@@ -619,7 +619,7 @@ export function BillingV2Client({
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-500 uppercase tracking-wider font-semibold">
+                <tr className="bg-slate-900/[0.02] border-b border-slate-900/[0.07] text-slate-500 uppercase tracking-[0.12em] font-medium">
                   <th className="py-3 px-6">Transaction ID</th>
                   <th className="py-3 px-6">Requested Tier / Item</th>
                   <th className="py-3 px-6">Amount</th>
@@ -628,10 +628,10 @@ export function BillingV2Client({
                   <th className="py-3 px-6 text-right">Receipt</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
+              <tbody className="divide-y divide-slate-900/5 text-slate-700 font-medium">
                 {transactions.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-6 text-center text-slate-400">
+                    <td colSpan={6} className="py-6 text-center text-slate-500">
                       No billing records found in workspace ledger.
                     </td>
                   </tr>
@@ -674,7 +674,7 @@ export function BillingV2Client({
                           href={`/api/billing/invoice?txId=${tx.tx_id}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-slate-700 hover:text-slate-900 font-semibold text-[11px] px-2.5 py-1 rounded border border-slate-200 hover:bg-white bg-slate-50 shadow-2xs"
+                          className="inline-flex items-center gap-1 text-slate-700 hover:text-slate-900 font-semibold text-[11px] px-2.5 py-1 rounded-full ring-1 ring-slate-900/[0.08] hover:bg-white bg-slate-50 shadow-2xs"
                         >
                           <Download className="w-3 h-3 text-slate-500" />
                           PDF
@@ -692,10 +692,10 @@ export function BillingV2Client({
       {/* Token Top-Up Modal */}
       {topupModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95">
+          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl ring-1 ring-slate-900/[0.08] space-y-5 animate-in zoom-in-95">
             <div className="flex items-start justify-between">
               <div>
-                <h3 className="text-lg font-bold text-slate-900">
+                <h3 className="text-lg font-semibold text-slate-900">
                   Instant Token Top-Up
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
@@ -704,7 +704,7 @@ export function BillingV2Client({
               </div>
               <button
                 onClick={() => setTopupModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-1"
+                className="text-slate-500 hover:text-slate-600 p-1"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -721,22 +721,22 @@ export function BillingV2Client({
                   type="button"
                   onClick={() => setSelectedTopupAmount(pack)}
                   className={cn(
-                    "w-full flex items-center justify-between p-3.5 rounded-lg border text-left text-xs font-medium transition-all",
+                    "w-full flex items-center justify-between p-3.5 rounded-xl border text-left text-xs font-medium transition-all",
                     selectedTopupAmount.tokens === pack.tokens
                       ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900 font-semibold text-slate-900"
-                      : "border-slate-200 hover:border-slate-300 text-slate-700 bg-white"
+                      : "border-slate-900/[0.07] hover:border-slate-300 text-slate-700 bg-white"
                   )}
                 >
                   <div className="flex items-center gap-2.5">
                     <Coins className="w-4 h-4 text-amber-500" />
                     <span>{pack.label}</span>
                   </div>
-                  <span className="font-mono font-bold text-slate-900">${pack.price}</span>
+                  <span className="font-mono font-semibold text-slate-900">${pack.price}</span>
                 </button>
               ))}
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-900/5">
               <button
                 type="button"
                 onClick={() => setTopupModalOpen(false)}
@@ -748,7 +748,7 @@ export function BillingV2Client({
                 type="button"
                 disabled={submitting}
                 onClick={handleTopupTokens}
-                className="px-5 py-2 text-xs font-semibold text-white bg-slate-900 rounded-lg hover:bg-slate-800 disabled:opacity-50 transition-colors shadow-sm"
+                className="px-5 py-2 text-xs font-semibold text-white bg-slate-900 rounded-xl hover:bg-slate-800 disabled:opacity-50 transition-colors shadow-sm"
               >
                 {submitting ? "Purchasing..." : `Purchase ${selectedTopupAmount.tokens.toLocaleString()} Tokens`}
               </button>
@@ -758,7 +758,7 @@ export function BillingV2Client({
       )}
 
       {/* Bottom Footer Info Strip matching 06-billing-v2.png */}
-      <div className="pt-6 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2">
+      <div className="pt-6 border-t border-slate-900/[0.07] flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2">
         <div className="flex items-center gap-2">
           <span>ArgusOps v0.2</span>
           <span>&bull;</span>
