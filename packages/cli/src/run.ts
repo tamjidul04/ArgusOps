@@ -5,6 +5,7 @@ import { CloudClient, CloudError, type SyncPayload } from "./api";
 import { LoopDetector } from "./detect";
 import { startProxy, type IncidentOut, type UsageOut } from "./proxy";
 import { ControlState } from "./state";
+import { desktopNotify } from "./notify";
 
 export interface RunOptions {
   label: string; // "Claude Code"
@@ -77,8 +78,13 @@ export async function runAgent(opts: RunOptions): Promise<number> {
       const before = state.desired;
       state.apply(reply, epoch);
       if (state.desired !== before) {
-        if (state.desired === "PAUSE") say(`Paused: ${state.reason || "paused from the dashboard"}`);
-        else if (state.desired === "KILL") say(`Stopping: ${state.reason || "stopped from the dashboard"}`);
+        if (state.desired === "PAUSE") {
+          say(`Paused: ${state.reason || "paused from the dashboard"}`);
+          desktopNotify(`${agentName} paused`, state.reason || "Paused from the dashboard.");
+        } else if (state.desired === "KILL") {
+          say(`Stopping: ${state.reason || "stopped from the dashboard"}`);
+          desktopNotify(`${agentName} stopped`, state.reason || "Stopped from the dashboard.");
+        }
       }
     } catch (e) {
       queue.unshift(...batch);
@@ -115,7 +121,11 @@ export async function runAgent(opts: RunOptions): Promise<number> {
     state,
     detector,
     onUsage: (u: UsageOut) => enqueue({ type: "usage", ...u }),
-    onIncident: (i: IncidentOut) => enqueue({ type: "incident", ...i }),
+    onIncident: (i: IncidentOut) => {
+      enqueue({ type: "incident", ...i });
+      // the moment it happens, even if the cloud is unreachable
+      desktopNotify(`${agentName} paused`, `${i.detail}. Resume or stop it from the ArgusOps dashboard.`);
+    },
     onNotice: say,
   });
 

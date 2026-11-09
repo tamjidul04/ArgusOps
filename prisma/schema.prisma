@@ -263,8 +263,11 @@ model NotificationChannel {
   id         String   @id @default(cuid())
   user_id    String
   kind       String   // "EMAIL" | "WEBHOOK"
-  target     String   // address or URL
+  target     String   @db.VarChar(1024) // address or URL
+  label      String?  @db.VarChar(80)
   enabled    Boolean  @default(true)
+  last_delivered_at DateTime?
+  last_error String?  @db.VarChar(300)
   created_at DateTime @default(now())
 
   user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
@@ -276,7 +279,8 @@ model Notification {
   id          String    @id @default(cuid())
   user_id     String
   incident_id String?
-  title       String
+  agent_id    String?
+  title       String    @db.VarChar(200)
   body        String    @db.Text
   level       String    @default("INFO") // "INFO" | "WARN" | "CRITICAL"
   read_at     DateTime?
