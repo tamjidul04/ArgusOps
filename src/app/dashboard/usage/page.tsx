@@ -1,12 +1,13 @@
 import React, { Suspense } from "react";
 import { Metadata } from "next";
 import { DashboardShell } from "@/components/layout";
+import { PageLoading } from "@/components/ui";
 import { requirePageUser } from "@/lib/auth";
 import { getUsageSummary } from "@/lib/usage";
 import { UsageClient } from "./UsageClient";
 
 export const metadata: Metadata = {
-  title: "Usage & Savings | ArgusOps",
+  title: "Usage & Savings",
   description: "Real token usage, estimated cost, loops caught and cache savings for your supervised agents.",
 };
 

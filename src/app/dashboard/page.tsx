@@ -1,6 +1,7 @@
 import React, { Suspense } from "react";
 import { Metadata } from "next";
 import { DashboardShell } from "@/components/layout";
+import { PageLoading } from "@/components/ui";
 import {
   ClusterDashboardV2Client,
   ClusterTelemetryData,
@@ -9,7 +10,7 @@ import { prisma } from "@/lib/prisma";
 import { requirePageUser } from "@/lib/auth";
 
 export const metadata: Metadata = {
-  title: "Agent Cluster Telemetry & Loop Interception | ArgusOps v1.1",
+  title: "Agent Cluster Telemetry & Loop Interception",
   description:
     "Real-time supervisor orchestrating autonomous nodes, AST recursion traps, and memory bus quota.",
 };
@@ -123,29 +124,7 @@ export default function DashboardPage() {
   return (
     <DashboardShell>
       <Suspense
-        fallback={
-          <div className="space-y-6 animate-pulse">
-            <div className="h-8 bg-slate-200 rounded w-1/3"></div>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-              <div className="lg:col-span-2 space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="h-28 bg-slate-200 rounded-xl"></div>
-                  <div className="h-28 bg-slate-200 rounded-xl"></div>
-                </div>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="h-24 bg-slate-200 rounded-xl"></div>
-                  <div className="h-24 bg-slate-200 rounded-xl"></div>
-                  <div className="h-24 bg-slate-200 rounded-xl"></div>
-                </div>
-              </div>
-              <div className="h-56 bg-slate-200 rounded-xl"></div>
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-              <div className="lg:col-span-2 h-64 bg-slate-200 rounded-xl"></div>
-              <div className="h-64 bg-slate-200 rounded-xl"></div>
-            </div>
-          </div>
-        }
+        fallback={<PageLoading label="Loading overview" />}
       >
         <DashboardDataLoader />
       </Suspense>
