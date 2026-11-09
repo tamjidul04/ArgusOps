@@ -328,7 +328,7 @@ export function AdminClient({
       {toastMessage && (
         <div
           className={cn(
-            "fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border text-sm font-medium transition-all animate-in fade-in slide-in-from-bottom-2",
+            "fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg border text-sm font-medium transition-all animate-in fade-in slide-in-from-bottom-2",
             toastMessage.type === "success" &&
               "bg-emerald-50 border-emerald-200 text-emerald-800",
             toastMessage.type === "error" &&
@@ -351,9 +351,9 @@ export function AdminClient({
       )}
 
       {/* Page Header matching 07-admin-panel.png */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-900/[0.07] pb-5">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
             Admin Control: Pricing, Approvals &amp; User Access
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
@@ -369,7 +369,7 @@ export function AdminClient({
                 text: "Platform configuration synced across US-East cluster (instant propagation).",
               });
             }}
-            className="px-5 py-2.5 rounded-lg text-xs font-semibold bg-black text-white hover:bg-slate-800 shadow-sm transition-colors cursor-pointer"
+            className="px-5 py-2.5 rounded-xl text-xs font-semibold bg-black text-white hover:bg-slate-800 shadow-sm transition-colors cursor-pointer"
           >
             Save Configuration
           </button>
@@ -377,19 +377,19 @@ export function AdminClient({
       </div>
 
       {/* SECTION 1: PURCHASE & UPGRADE APPROVAL QUEUE (Section 4.6.2) */}
-      <div className="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden">
+      <div className="bg-white ring-1 ring-slate-900/[0.08] rounded-xl shadow-xs overflow-hidden">
         {/* Header Bar */}
-        <div className="p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="p-5 border-b border-slate-900/[0.07] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-3">
-            <h2 className="text-base font-bold text-slate-900">
+            <h2 className="text-base font-semibold text-slate-900">
               Purchase &amp; Upgrade Approval Queue
             </h2>
-            <span className="px-2.5 py-0.5 rounded-md text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+            <span className="px-2.5 py-0.5 rounded-md text-xs font-semibold bg-slate-100 text-slate-700 ring-1 ring-slate-900/[0.08]">
               {pendingCount} Pending
             </span>
           </div>
 
-          <div className="text-xs text-slate-400 font-mono">
+          <div className="text-xs text-slate-500 font-mono">
             Automatic circuit-breaker: Zero manual bypass
           </div>
         </div>
@@ -398,7 +398,7 @@ export function AdminClient({
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="bg-slate-50/70 border-b border-slate-200 text-slate-500 uppercase tracking-wider font-semibold">
+              <tr className="bg-slate-900/[0.02] border-b border-slate-900/[0.07] text-slate-500 uppercase tracking-[0.12em] font-medium">
                 <th className="py-3 px-6">Transaction ID</th>
                 <th className="py-3 px-6">User Email</th>
                 <th className="py-3 px-6">Requested Tier</th>
@@ -407,10 +407,10 @@ export function AdminClient({
                 <th className="py-3 px-6 text-right">Admin Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
+            <tbody className="divide-y divide-slate-900/5 text-slate-700 font-medium">
               {queue.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-slate-400">
+                  <td colSpan={6} className="py-8 text-center text-slate-500">
                     No transactions currently in queue.
                   </td>
                 </tr>
@@ -426,7 +426,7 @@ export function AdminClient({
                     <td className="py-4 px-6 text-slate-900">
                       {tx.requested_plan}
                     </td>
-                    <td className="py-4 px-6 font-mono font-bold text-slate-900">
+                    <td className="py-4 px-6 font-mono font-semibold text-slate-900">
                       ${tx.amount.toFixed(2)}
                     </td>
                     <td className="py-4 px-6">
@@ -460,13 +460,13 @@ export function AdminClient({
                           <button
                             onClick={() => handleReject(tx.tx_id)}
                             disabled={submitting}
-                            className="px-3 py-1 text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 rounded transition-colors cursor-pointer"
+                            className="px-3 py-1 text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 ring-1 ring-slate-900/10 rounded transition-colors cursor-pointer"
                           >
                             Reject
                           </button>
                         </div>
                       ) : (
-                        <span className="text-[11px] text-slate-400 font-mono">
+                        <span className="text-[11px] text-slate-500 font-mono">
                           {tx.admin_status.toLowerCase()}
                         </span>
                       )}
@@ -482,11 +482,11 @@ export function AdminClient({
       {/* BOTTOM 2-COLUMN GRID matching 07-admin-panel.png */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* ==================== LEFT CARD: PRICING & TIER PARAMETERS (Section 4.6.1) ==================== */}
-        <div className="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden flex flex-col justify-between">
+        <div className="bg-white ring-1 ring-slate-900/[0.08] rounded-xl shadow-xs overflow-hidden flex flex-col justify-between">
           <div>
-            <div className="p-5 border-b border-slate-200 flex items-start justify-between">
+            <div className="p-5 border-b border-slate-900/[0.07] flex items-start justify-between">
               <div>
-                <h3 className="text-base font-bold text-slate-900">
+                <h3 className="text-base font-semibold text-slate-900">
                   Pricing &amp; Tier Parameters
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
@@ -515,18 +515,18 @@ export function AdminClient({
                       description: "",
                     });
                   }}
-                  className="px-2.5 py-1 text-[11px] font-semibold text-slate-700 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded"
+                  className="px-2.5 py-1 text-[11px] font-semibold text-slate-700 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 ring-1 ring-slate-900/[0.08] rounded-full"
                 >
                   + Add Tier
                 </button>
-                <span className="text-xs font-mono text-slate-400">schema.v1</span>
+                <span className="text-xs font-mono text-slate-500">schema.v1</span>
               </div>
             </div>
 
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="bg-slate-50/50 border-b border-slate-200 text-slate-500 uppercase tracking-wider font-semibold">
+                  <tr className="bg-slate-900/[0.02] border-b border-slate-900/[0.07] text-slate-500 uppercase tracking-[0.12em] font-medium">
                     <th className="py-3 px-5">Tier</th>
                     <th className="py-3 px-5">Price</th>
                     <th className="py-3 px-5">Agent Cap</th>
@@ -534,13 +534,13 @@ export function AdminClient({
                     <th className="py-3 px-5 text-right">Edit</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
+                <tbody className="divide-y divide-slate-900/5 text-slate-700 font-medium">
                   {plans.map((plan) => {
                     const isFree = plan.price === 0;
 
                     return (
                       <tr key={plan.plan_id} className="hover:bg-slate-50/60 transition-colors">
-                        <td className="py-4 px-5 font-bold text-slate-900">
+                        <td className="py-4 px-5 font-semibold text-slate-900">
                           {plan.name}
                         </td>
                         <td className="py-4 px-5 font-semibold text-slate-900">
@@ -590,7 +590,7 @@ export function AdminClient({
                               setPlanForm(plan);
                               setEditPlanModal(plan);
                             }}
-                            className="p-1 text-slate-400 hover:text-slate-700 rounded hover:bg-slate-100"
+                            className="p-1 text-slate-500 hover:text-slate-700 rounded hover:bg-slate-100"
                           >
                             <Edit className="w-3.5 h-3.5" />
                           </button>
@@ -604,25 +604,25 @@ export function AdminClient({
           </div>
 
           {/* Footer Sync Strip */}
-          <div className="p-4 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
+          <div className="p-4 bg-slate-50/50 border-t border-slate-900/5 flex items-center justify-between text-xs text-slate-500">
             <span>Active plan registry synced across US-East cluster</span>
             <span className="font-mono">sync: instant</span>
           </div>
         </div>
 
         {/* ==================== RIGHT CARD: USER GOVERNANCE & TOKEN INJECTION (Section 4.6.3) ==================== */}
-        <div className="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden flex flex-col justify-between">
+        <div className="bg-white ring-1 ring-slate-900/[0.08] rounded-xl shadow-xs overflow-hidden flex flex-col justify-between">
           <div>
-            <div className="p-5 border-b border-slate-200 flex items-start justify-between">
+            <div className="p-5 border-b border-slate-900/[0.07] flex items-start justify-between">
               <div>
-                <h3 className="text-base font-bold text-slate-900">
+                <h3 className="text-base font-semibold text-slate-900">
                   User Governance &amp; Token Injection
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
                   Inspect tenant identity, inject emergency quotas, or clamp execution access.
                 </p>
               </div>
-              <span className="text-xs font-mono text-slate-400">rbac::active</span>
+              <span className="text-xs font-mono text-slate-500">rbac::active</span>
             </div>
 
             <div className="divide-y divide-slate-100 p-2">
@@ -641,25 +641,25 @@ export function AdminClient({
                 return (
                   <div
                     key={user.id}
-                    className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 hover:bg-slate-50/60 rounded-lg transition-colors"
+                    className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 hover:bg-slate-50/60 rounded-xl transition-colors"
                   >
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-slate-900">
+                        <span className="text-xs font-semibold text-slate-900">
                           {user.email}
                         </span>
                         {isBanned && (
-                          <span className="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+                          <span className="px-1.5 py-0.2 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
                             BANNED
                           </span>
                         )}
                         {user.role === "ADMIN" && (
-                          <span className="px-1.5 py-0.2 rounded text-[10px] font-semibold bg-slate-900 text-white">
+                          <span className="px-1.5 py-0.2 rounded-full text-[10px] font-semibold bg-slate-900 text-white">
                             ADMIN
                           </span>
                         )}
                       </div>
-                      <div className="text-[11px] text-slate-400 mt-0.5">
+                      <div className="text-[11px] text-slate-500 mt-0.5">
                         PID: {pid} &bull; {statusSubtitle}
                       </div>
                     </div>
@@ -672,7 +672,7 @@ export function AdminClient({
                           setInjectPaidAmount(0);
                           setInjectMaxAgents(user.max_agents);
                         }}
-                        className="px-3 py-1.5 text-xs font-semibold text-white bg-black hover:bg-slate-800 rounded-lg transition-colors cursor-pointer shadow-2xs"
+                        className="px-3 py-1.5 text-xs font-semibold text-white bg-black hover:bg-slate-800 rounded-xl transition-colors cursor-pointer shadow-2xs"
                       >
                         Inject Free Tokens
                       </button>
@@ -680,7 +680,7 @@ export function AdminClient({
                       <button
                         onClick={() => handleToggleBan(user)}
                         className={cn(
-                          "px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors cursor-pointer",
+                          "px-3 py-1.5 text-xs font-medium rounded-xl border transition-colors cursor-pointer",
                           isBanned
                             ? "bg-rose-50 text-rose-700 border-rose-300 hover:bg-rose-100"
                             : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50"
@@ -696,7 +696,7 @@ export function AdminClient({
           </div>
 
           {/* Footer Sync Strip */}
-          <div className="p-4 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
+          <div className="p-4 bg-slate-50/50 border-t border-slate-900/5 flex items-center justify-between text-xs text-slate-500">
             <span>Token injections bypass billing ledger directly</span>
             <span className="font-mono">zero-trust: verified</span>
           </div>
@@ -706,10 +706,10 @@ export function AdminClient({
       {/* MODAL 1: TOKEN INJECTION & CAPACITY OVERRIDE (Section 4.6.3) */}
       {injectModalUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95">
+          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl ring-1 ring-slate-900/[0.08] space-y-5 animate-in zoom-in-95">
             <div className="flex items-start justify-between">
               <div>
-                <h3 className="text-lg font-bold text-slate-900">
+                <h3 className="text-lg font-semibold text-slate-900">
                   Manual Token &amp; Quota Injection
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
@@ -718,7 +718,7 @@ export function AdminClient({
               </div>
               <button
                 onClick={() => setInjectModalUser(null)}
-                className="text-slate-400 hover:text-slate-600 p-1"
+                className="text-slate-500 hover:text-slate-600 p-1"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -739,7 +739,7 @@ export function AdminClient({
                         "py-1.5 px-2 rounded border text-center font-semibold transition-all",
                         injectFreeAmount === amt
                           ? "bg-slate-900 text-white border-slate-900"
-                          : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                          : "bg-slate-50 text-slate-700 border-slate-900/[0.07] hover:bg-slate-100"
                       )}
                     >
                       +{(amt / 1000).toLocaleString()}k
@@ -750,7 +750,7 @@ export function AdminClient({
                   type="number"
                   value={injectFreeAmount}
                   onChange={(e) => setInjectFreeAmount(Number(e.target.value))}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-900 font-mono focus:outline-none focus:ring-1 focus:ring-slate-900"
+                  className="w-full px-3 py-2 ring-1 ring-slate-900/10 rounded-xl text-slate-900 font-mono focus:outline-none focus:ring-2 focus:ring-slate-900"
                 />
               </div>
 
@@ -763,7 +763,7 @@ export function AdminClient({
                   value={injectPaidAmount}
                   onChange={(e) => setInjectPaidAmount(Number(e.target.value))}
                   placeholder="0"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-900 font-mono focus:outline-none focus:ring-1 focus:ring-slate-900"
+                  className="w-full px-3 py-2 ring-1 ring-slate-900/10 rounded-xl text-slate-900 font-mono focus:outline-none focus:ring-2 focus:ring-slate-900"
                 />
               </div>
 
@@ -775,14 +775,14 @@ export function AdminClient({
                   type="number"
                   value={injectMaxAgents}
                   onChange={(e) => setInjectMaxAgents(Number(e.target.value))}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-900 font-mono focus:outline-none focus:ring-1 focus:ring-slate-900"
+                  className="w-full px-3 py-2 ring-1 ring-slate-900/10 rounded-xl text-slate-900 font-mono focus:outline-none focus:ring-2 focus:ring-slate-900"
                 />
-                <span className="text-[11px] text-slate-400 mt-1 block">
+                <span className="text-[11px] text-slate-500 mt-1 block">
                   Current limit: {injectModalUser.max_agents} agents
                 </span>
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-900/5">
                 <button
                   type="button"
                   onClick={() => setInjectModalUser(null)}
@@ -793,7 +793,7 @@ export function AdminClient({
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-5 py-2 text-xs font-semibold text-white bg-black rounded-lg hover:bg-slate-800 disabled:opacity-50 transition-colors shadow-sm"
+                  className="px-5 py-2 text-xs font-semibold text-white bg-black rounded-xl hover:bg-slate-800 disabled:opacity-50 transition-colors shadow-sm"
                 >
                   {submitting ? "Injecting..." : "Inject Quota Now"}
                 </button>
@@ -806,10 +806,10 @@ export function AdminClient({
       {/* MODAL 2: PRICING PLAN CRUD (Section 4.6.1) */}
       {editPlanModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95">
+          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl ring-1 ring-slate-900/[0.08] space-y-5 animate-in zoom-in-95">
             <div className="flex items-start justify-between">
               <div>
-                <h3 className="text-lg font-bold text-slate-900">
+                <h3 className="text-lg font-semibold text-slate-900">
                   {editPlanModal.plan_id ? "Edit Pricing Tier" : "Create Pricing Tier"}
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
@@ -818,7 +818,7 @@ export function AdminClient({
               </div>
               <button
                 onClick={() => setEditPlanModal(null)}
-                className="text-slate-400 hover:text-slate-600 p-1"
+                className="text-slate-500 hover:text-slate-600 p-1"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -832,7 +832,7 @@ export function AdminClient({
                   required
                   value={planForm.name || ""}
                   onChange={(e) => setPlanForm({ ...planForm, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900"
+                  className="w-full px-3 py-2 ring-1 ring-slate-900/10 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900"
                 />
               </div>
 
@@ -845,7 +845,7 @@ export function AdminClient({
                     required
                     value={planForm.price ?? 0}
                     onChange={(e) => setPlanForm({ ...planForm, price: parseFloat(e.target.value) })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-900 font-mono focus:outline-none focus:ring-1 focus:ring-slate-900"
+                    className="w-full px-3 py-2 ring-1 ring-slate-900/10 rounded-xl text-slate-900 font-mono focus:outline-none focus:ring-2 focus:ring-slate-900"
                   />
                 </div>
                 <div>
@@ -855,7 +855,7 @@ export function AdminClient({
                     required
                     value={planForm.agent_limit ?? 3}
                     onChange={(e) => setPlanForm({ ...planForm, agent_limit: parseInt(e.target.value, 10) })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-900 font-mono focus:outline-none focus:ring-1 focus:ring-slate-900"
+                    className="w-full px-3 py-2 ring-1 ring-slate-900/10 rounded-xl text-slate-900 font-mono focus:outline-none focus:ring-2 focus:ring-slate-900"
                   />
                 </div>
               </div>
@@ -868,11 +868,11 @@ export function AdminClient({
                   required
                   value={planForm.included_tokens ?? 50000}
                   onChange={(e) => setPlanForm({ ...planForm, included_tokens: parseInt(e.target.value, 10) })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-slate-900 font-mono focus:outline-none focus:ring-1 focus:ring-slate-900"
+                  className="w-full px-3 py-2 ring-1 ring-slate-900/10 rounded-xl text-slate-900 font-mono focus:outline-none focus:ring-2 focus:ring-slate-900"
                 />
               </div>
 
-              <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200">
+              <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl ring-1 ring-slate-900/[0.08]">
                 <div>
                   <div className="font-semibold text-slate-900">Require Admin Approval</div>
                   <div className="text-[11px] text-slate-500">Gate checkouts through the manual approval queue</div>
@@ -885,7 +885,7 @@ export function AdminClient({
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-900/5">
                 <button
                   type="button"
                   onClick={() => setEditPlanModal(null)}
@@ -896,7 +896,7 @@ export function AdminClient({
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-5 py-2 text-xs font-semibold text-white bg-black rounded-lg hover:bg-slate-800 disabled:opacity-50 transition-colors shadow-sm"
+                  className="px-5 py-2 text-xs font-semibold text-white bg-black rounded-xl hover:bg-slate-800 disabled:opacity-50 transition-colors shadow-sm"
                 >
                   {submitting ? "Saving..." : "Save Pricing Tier"}
                 </button>
@@ -907,7 +907,7 @@ export function AdminClient({
       )}
 
       {/* Footer Info Strip matching 07-admin-panel.png */}
-      <div className="pt-6 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2">
+      <div className="pt-6 border-t border-slate-900/[0.07] flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2">
         <div className="flex items-center gap-2">
           <span>ArgusOps v0.2</span>
           <span>&bull;</span>

@@ -332,7 +332,7 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
           {children}
 
           <footer className="flex flex-col items-center justify-between gap-3 border-t border-slate-900/5 pb-2 pt-6 text-xs text-slate-500 sm:flex-row">
-            <div className="flex items-center gap-2 font-mono text-[11px]">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[11px]">
               <span>ArgusOps v0.2</span>
               <span>•</span>
               <span>Your prompts and code stay on your machine</span>

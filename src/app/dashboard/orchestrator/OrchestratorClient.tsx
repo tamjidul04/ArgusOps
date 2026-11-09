@@ -102,7 +102,7 @@ export function OrchestratorClient({
   return (
     <div className="space-y-6">
       {/* ================= PAGE TITLE & SUBMIT BAR ================= */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-900/[0.07] pb-4">
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
@@ -129,7 +129,7 @@ export function OrchestratorClient({
       </div>
 
       {statusMsg && (
-        <div className="p-3 rounded-lg border border-emerald-200 bg-emerald-50 text-xs text-emerald-900 flex items-center justify-between animate-in fade-in duration-150">
+        <div className="p-3 rounded-xl border border-emerald-200 bg-emerald-50 text-xs text-emerald-900 flex items-center justify-between animate-in fade-in duration-150">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
             <span className="font-medium">{statusMsg}</span>
@@ -137,7 +137,7 @@ export function OrchestratorClient({
           <button
             type="button"
             onClick={() => setStatusMsg("")}
-            className="text-emerald-700 hover:text-emerald-950 font-bold"
+            className="text-emerald-700 hover:text-emerald-950 font-semibold"
           >
             ×
           </button>
@@ -149,10 +149,10 @@ export function OrchestratorClient({
         {/* Dynamic Swarm Allocation */}
         <div className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft p-5 space-y-4">
           <div className="flex items-center justify-between">
-            <span className="font-semibold text-xs text-slate-500 uppercase tracking-wider">
+            <span className="font-semibold text-xs text-slate-500 uppercase tracking-[0.12em]">
               Dynamic Swarm Allocation
             </span>
-            <span className="font-mono text-[11px] bg-slate-100 px-2 py-0.5 rounded border border-slate-200 text-slate-600 font-medium">
+            <span className="font-mono text-[11px] bg-slate-100 px-2 py-0.5 rounded-full ring-1 ring-slate-900/[0.08] text-slate-600 font-medium">
               {clusterSize}-agent cluster
             </span>
           </div>
@@ -176,9 +176,9 @@ export function OrchestratorClient({
             />
           </div>
 
-          <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600">
+          <div className="pt-2 border-t border-slate-900/5 flex items-center justify-between text-xs text-slate-600">
             <span className="font-medium">Zero-Token Hibernation Pool:</span>
-            <span className="font-mono font-bold text-slate-900">
+            <span className="font-mono font-semibold text-slate-900">
               {hibernatedAgents} Nodes (0 tok/s)
             </span>
           </div>
@@ -187,10 +187,10 @@ export function OrchestratorClient({
         {/* Active Project Prompt Card */}
         <div className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft p-5 space-y-3">
           <div className="flex items-center justify-between">
-            <span className="font-semibold text-xs text-slate-500 uppercase tracking-wider">
+            <span className="font-semibold text-xs text-slate-500 uppercase tracking-[0.12em]">
               Active Project Prompt
             </span>
-            <span className="font-mono text-[10px] font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+            <span className="font-mono text-[10px] font-semibold text-slate-900 bg-slate-100 px-2 py-0.5 rounded-full ring-1 ring-slate-900/[0.08]">
               DAG Triage Active
             </span>
           </div>
@@ -199,29 +199,29 @@ export function OrchestratorClient({
             value={promptText}
             onChange={(e) => setPromptText(e.target.value)}
             rows={2}
-            className="w-full rounded-lg border border-slate-200 bg-slate-50 p-3 font-mono text-xs text-slate-900 focus:bg-white focus:border-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 transition-all resize-none shadow-2xs"
+            className="w-full rounded-xl ring-1 ring-slate-900/[0.08] bg-slate-50 p-3 font-mono text-xs text-slate-900 focus:bg-white focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 transition-all resize-none shadow-2xs"
             placeholder="Enter complex multi-agent prompt or repository task..."
           />
 
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs border-t border-slate-100 pt-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs border-t border-slate-900/5 pt-3">
             <div>
               <span className="text-slate-500 block text-[11px]">Est. Run Cost:</span>
               <div className="font-mono">
-                <strong className="text-slate-900 font-bold">$108.00</strong>{" "}
-                <span className="text-slate-400 line-through">(vs $420.00 unthrottled)</span>
+                <strong className="text-slate-900 font-semibold">$108.00</strong>{" "}
+                <span className="text-slate-500 line-through">(vs $420.00 unthrottled)</span>
               </div>
             </div>
 
             <div className="text-right sm:text-left">
               <span className="text-slate-500 block text-[11px]">Tokens:</span>
-              <span className="font-mono font-bold text-slate-900">34,700 Tokens</span>
+              <span className="font-mono font-semibold text-slate-900">34,700 Tokens</span>
             </div>
 
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => handleDecomposeSubmit()}
-                className="px-3 py-1.5 rounded border border-slate-200 bg-slate-50 hover:bg-slate-100 text-xs font-semibold text-slate-700 transition-colors"
+                className="px-3 py-1.5 rounded ring-1 ring-slate-900/[0.08] bg-slate-50 hover:bg-slate-100 text-xs font-semibold text-slate-700 transition-colors"
               >
                 Re-Triage
               </button>
@@ -242,8 +242,8 @@ export function OrchestratorClient({
         {/* Smart Model Router */}
         <div className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft p-5 space-y-3">
           <div className="flex items-center justify-between text-xs text-slate-500">
-            <span className="font-semibold uppercase tracking-wider">Smart Model Router</span>
-            <span className="font-mono text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+            <span className="font-semibold uppercase tracking-[0.12em]">Smart Model Router</span>
+            <span className="font-mono text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
               +64% routed
             </span>
           </div>
@@ -255,7 +255,7 @@ export function OrchestratorClient({
               Simple JSON, regex, and tests routed to fast/local models.
             </p>
           </div>
-          <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-600 font-mono">
+          <div className="pt-2 border-t border-slate-900/5 flex items-center justify-between text-[11px] text-slate-600 font-mono">
             <span>Frontier: 36%</span>
             <span>Downgraded: 64%</span>
           </div>
@@ -264,8 +264,8 @@ export function OrchestratorClient({
         {/* Shared Context Cache */}
         <div className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft p-5 space-y-3">
           <div className="flex items-center justify-between text-xs text-slate-500">
-            <span className="font-semibold uppercase tracking-wider">Shared Context Cache</span>
-            <span className="font-mono text-[10px] text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 font-semibold">
+            <span className="font-semibold uppercase tracking-[0.12em]">Shared Context Cache</span>
+            <span className="font-mono text-[10px] text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full ring-1 ring-slate-900/[0.08] font-semibold">
               AST SHA256
             </span>
           </div>
@@ -277,7 +277,7 @@ export function OrchestratorClient({
               Single codebase read shared across swarm without redundant tokens.
             </p>
           </div>
-          <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500 font-mono truncate">
+          <div className="pt-2 border-t border-slate-900/5 flex items-center justify-between text-[11px] text-slate-500 font-mono truncate">
             <span className="truncate">Hash: {contextHash}</span>
           </div>
         </div>
@@ -285,7 +285,7 @@ export function OrchestratorClient({
         {/* Quarantined Idle Swarm Pool */}
         <div className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft p-5 space-y-3">
           <div className="flex items-center justify-between text-xs text-slate-500">
-            <span className="font-semibold uppercase tracking-wider">Quarantined Idle Swarm</span>
+            <span className="font-semibold uppercase tracking-[0.12em]">Quarantined Idle Swarm</span>
             <button
               type="button"
               onClick={handleWakePool}
@@ -302,21 +302,21 @@ export function OrchestratorClient({
               {hibernatedAgents} Nodes in hibernation • Target: <code className="font-mono text-slate-700">--hibernated (0 Tok)</code>
             </p>
           </div>
-          <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-600">
+          <div className="pt-2 border-t border-slate-900/5 flex items-center justify-between text-[11px] text-slate-600">
             <span>RAM Saved: <strong className="font-mono text-slate-900">5.60 GB Dormant</strong></span>
-            <span className="font-mono text-slate-400">Locked</span>
+            <span className="font-mono text-slate-500">Locked</span>
           </div>
         </div>
       </div>
 
       {/* ================= ACTIVE SUB-TASK EXECUTION MATRIX TABLE ================= */}
       <div className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
+        <div className="px-5 py-4 border-b border-slate-900/[0.07] flex items-center justify-between bg-slate-50/50">
           <div className="flex items-center gap-2">
-            <h2 className="font-bold text-sm text-slate-900 uppercase tracking-wider">
+            <h2 className="font-semibold text-base text-slate-900 tracking-tight">
               Active Sub-Task Execution Matrix
             </h2>
-            <span className="font-mono text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+            <span className="font-mono text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded ring-1 ring-slate-900/[0.08]">
               {subtasks.length} Sub-Tasks
             </span>
           </div>
@@ -326,7 +326,7 @@ export function OrchestratorClient({
         <div className="overflow-x-auto">
           <table className="w-full text-xs text-left">
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-50 text-slate-500 uppercase tracking-wider font-semibold">
+              <tr className="border-b border-slate-900/[0.07] bg-slate-900/[0.02] text-slate-500 uppercase tracking-[0.12em] font-medium">
                 <th className="py-3 px-4">Step</th>
                 <th className="py-3 px-4">Sub-Task</th>
                 <th className="py-3 px-4">Assigned Agent</th>
@@ -339,7 +339,7 @@ export function OrchestratorClient({
             <tbody className="divide-y divide-slate-100 font-mono">
               {subtasks.map((task) => (
                 <tr key={task.step} className="hover:bg-slate-50/60 transition-colors">
-                  <td className="py-3 px-4 font-bold text-slate-400">{task.step}</td>
+                  <td className="py-3 px-4 font-semibold text-slate-500">{task.step}</td>
                   <td className="py-3 px-4 font-sans font-semibold text-slate-900">
                     {task.subtask}
                   </td>
@@ -347,10 +347,10 @@ export function OrchestratorClient({
                   <td className="py-3 px-4">
                     <span
                       className={cn(
-                        "inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold border",
+                        "inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border",
                         task.model_tier === "FRONTIER"
                           ? "bg-indigo-50 text-indigo-700 border-indigo-200"
-                          : "bg-slate-100 text-slate-700 border-slate-200"
+                          : "bg-slate-100 text-slate-700 border-slate-900/[0.07]"
                       )}
                     >
                       {task.routed_model}
@@ -364,18 +364,18 @@ export function OrchestratorClient({
                   </td>
                   <td className="py-3 px-4 text-right">
                     {task.state === "Done" && (
-                      <span className="inline-flex items-center gap-1 font-sans text-[11px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                      <span className="inline-flex items-center gap-1 font-sans text-[11px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full ring-1 ring-slate-900/[0.08]">
                         Done
                       </span>
                     )}
                     {task.state === "Run" && (
-                      <span className="inline-flex items-center gap-1 font-sans text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                      <span className="inline-flex items-center gap-1 font-sans text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
                         <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                         Run
                       </span>
                     )}
                     {task.state === "Queued" && (
-                      <span className="inline-flex items-center gap-1 font-sans text-[11px] font-semibold text-slate-400 bg-slate-50 px-2 py-0.5 rounded border border-slate-200">
+                      <span className="inline-flex items-center gap-1 font-sans text-[11px] font-semibold text-slate-500 bg-slate-50 px-2 py-0.5 rounded-full ring-1 ring-slate-900/[0.08]">
                         Queued
                       </span>
                     )}
@@ -391,15 +391,15 @@ export function OrchestratorClient({
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Box 1: Model Tier Allocation */}
         <div className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft p-5 space-y-3">
-          <h3 className="font-bold text-xs uppercase tracking-wider text-slate-900">
+          <h3 className="font-medium text-xs uppercase tracking-[0.12em] text-slate-900">
             Model Tier Allocation (No-Graph Ledger)
           </h3>
           <div className="space-y-2 text-xs font-mono">
-            <div className="flex justify-between items-center py-1.5 border-b border-slate-100">
+            <div className="flex justify-between items-center py-1.5 border-b border-slate-900/5">
               <span className="font-semibold text-slate-800">Tier 1: Sonnet 3.7</span>
               <span className="text-slate-500">10 Claude Nodes • 18.4k tok</span>
             </div>
-            <div className="flex justify-between items-center py-1.5 border-b border-slate-100">
+            <div className="flex justify-between items-center py-1.5 border-b border-slate-900/5">
               <span className="font-semibold text-slate-800">Tier 2: Haiku Router</span>
               <span className="text-slate-500">10 Antigravity Nodes • 12.1k tok</span>
             </div>
@@ -412,15 +412,15 @@ export function OrchestratorClient({
 
         {/* Box 2: Deduplicated Codebase Reads */}
         <div className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft p-5 space-y-3">
-          <h3 className="font-bold text-xs uppercase tracking-wider text-slate-900">
+          <h3 className="font-medium text-xs uppercase tracking-[0.12em] text-slate-900">
             Deduplicated Codebase Reads
           </h3>
           <div className="space-y-2 text-xs font-mono">
-            <div className="p-2.5 rounded bg-slate-50 border border-slate-200 flex justify-between items-center">
+            <div className="p-2.5 rounded bg-slate-50 ring-1 ring-slate-900/[0.08] flex justify-between items-center">
               <span className="truncate text-slate-800 max-w-[140px]">db/migrations/schema.sql</span>
               <span className="text-emerald-700 font-semibold">Read 1x • Shared 10x</span>
             </div>
-            <div className="p-2.5 rounded bg-slate-50 border border-slate-200 flex justify-between items-center">
+            <div className="p-2.5 rounded bg-slate-50 ring-1 ring-slate-900/[0.08] flex justify-between items-center">
               <span className="truncate text-slate-800 max-w-[140px]">src/rag/index.ts</span>
               <span className="text-emerald-700 font-semibold">Read 1x • Shared 20x</span>
             </div>
@@ -429,17 +429,17 @@ export function OrchestratorClient({
 
         {/* Box 3: Triage Guardrails */}
         <div className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft p-5 space-y-3">
-          <h3 className="font-bold text-xs uppercase tracking-wider text-slate-900">
+          <h3 className="font-medium text-xs uppercase tracking-[0.12em] text-slate-900">
             Triage Guardrails
           </h3>
           <div className="space-y-2.5 text-xs font-mono">
-            <div className="flex justify-between items-center py-1.5 border-b border-slate-100">
+            <div className="flex justify-between items-center py-1.5 border-b border-slate-900/5">
               <span className="text-slate-600">Concurrency Ceiling</span>
-              <span className="font-bold text-slate-900">30 / 100 Max</span>
+              <span className="font-semibold text-slate-900">30 / 100 Max</span>
             </div>
             <div className="flex justify-between items-center py-1.5">
               <span className="text-slate-600">Redundant Prompt Block</span>
-              <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+              <span className="font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                 Enabled
               </span>
             </div>

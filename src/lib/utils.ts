@@ -88,22 +88,22 @@ export const STATUS_STYLES: Record<
   }
 > = {
   ACTIVE: {
-    badge: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    badge: "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-600/20",
     dot: "bg-emerald-500",
     label: "Active",
   },
   HIBERNATED: {
-    badge: "bg-slate-100 text-slate-600 border-slate-200",
+    badge: "bg-slate-900/[0.05] text-slate-700 ring-1 ring-slate-900/10",
     dot: "bg-slate-400",
     label: "Hibernated (Zero-Token)",
   },
   PAUSED_NUDGE: {
-    badge: "bg-amber-50 text-amber-700 border-amber-200",
+    badge: "bg-amber-50 text-amber-800 ring-1 ring-amber-600/25",
     dot: "bg-amber-500",
     label: "Paused (Nudge)",
   },
   KILLED_LOOP: {
-    badge: "bg-rose-50 text-rose-700 border-rose-200",
+    badge: "bg-red-50 text-red-800 ring-1 ring-red-600/20",
     dot: "bg-rose-500",
     label: "Killed (Loop Breaker)",
   },
@@ -116,6 +116,6 @@ export function getStatusBadgeClasses(status: AgentStatus | string): string {
   if (status in STATUS_STYLES) {
     return STATUS_STYLES[status as AgentStatus].badge;
   }
-  return "bg-slate-100 text-slate-600 border-slate-200";
+  return "bg-slate-900/[0.05] text-slate-700 ring-1 ring-slate-900/10";
 }
 

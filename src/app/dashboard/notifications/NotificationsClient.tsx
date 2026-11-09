@@ -131,13 +131,13 @@ export function NotificationsClient({ initialItems, initialUnread }: { initialIt
 
   return (
     <div className="space-y-6 pb-12">
-      <div className="flex flex-col gap-1 border-b border-slate-200 pb-4">
+      <div className="flex flex-col gap-1 border-b border-slate-900/[0.07] pb-4">
         <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Notifications</h1>
         <p className="text-sm text-slate-500">You&apos;re told when an agent is paused or stopped, or your allowance runs out, wherever you choose below.</p>
       </div>
 
       {flash && (
-        <div role="status" className={cn("flex items-start gap-2 rounded-lg border p-3 text-xs", flash.ok ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-rose-200 bg-rose-50 text-rose-700")}>
+        <div role="status" className={cn("flex items-start gap-2 rounded-xl border p-3 text-xs", flash.ok ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-rose-200 bg-rose-50 text-rose-700")}>
           {flash.ok ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" /> : <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />}
           <span>{flash.text}</span>
         </div>
@@ -146,10 +146,10 @@ export function NotificationsClient({ initialItems, initialUnread }: { initialIt
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-5">
         {/* ---------------- recent ---------------- */}
         <section className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft xl:col-span-3">
-          <header className="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
-            <h2 className="flex items-center gap-2 text-sm font-bold text-slate-900">
+          <header className="flex items-center justify-between border-b border-slate-900/5 px-5 py-3.5">
+            <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
               <Bell className="h-4 w-4 text-slate-500" /> Recent
-              {unread > 0 && <span className="rounded-full bg-rose-600 px-2 py-0.5 text-[10px] font-bold text-white">{unread} unread</span>}
+              {unread > 0 && <span className="rounded-full bg-rose-600 px-2 py-0.5 text-[10px] font-semibold text-white">{unread} unread</span>}
             </h2>
             {unread > 0 && (
               <button type="button" onClick={markAll} className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-900">
@@ -169,17 +169,17 @@ export function NotificationsClient({ initialItems, initialUnread }: { initialIt
                 const { icon: Icon, tone, label: tag } = LEVEL[n.level] ?? LEVEL.INFO;
                 return (
                   <li key={n.id} className={cn("flex gap-3 px-5 py-3.5", !n.read && "bg-slate-50/70")}>
-                    <span className={cn("mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border", tone)}>
+                    <span className={cn("mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border", tone)}>
                       <Icon className="h-4 w-4" />
                     </span>
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="text-sm font-semibold text-slate-900">{n.title}</span>
-                        <span className={cn("rounded border px-1.5 py-px text-[10px] font-semibold", tone)}>{tag}</span>
+                        <span className={cn("rounded-full border px-1.5 py-px text-[10px] font-semibold", tone)}>{tag}</span>
                         {!n.read && <span className="h-1.5 w-1.5 rounded-full bg-rose-600" aria-label="unread" />}
                       </div>
                       <p className="mt-0.5 whitespace-pre-line text-xs leading-relaxed text-slate-600">{n.body}</p>
-                      <p className="mt-1 text-[11px] text-slate-400">{when(n.createdAt)}</p>
+                      <p className="mt-1 text-[11px] text-slate-500">{when(n.createdAt)}</p>
                     </div>
                   </li>
                 );
@@ -191,12 +191,12 @@ export function NotificationsClient({ initialItems, initialUnread }: { initialIt
         {/* ---------------- where alerts go ---------------- */}
         <section className="space-y-4 xl:col-span-2">
           <div className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft p-5">
-            <h2 className="text-sm font-bold text-slate-900">Where alerts go</h2>
+            <h2 className="text-sm font-semibold text-slate-900">Where alerts go</h2>
             <ul className="mt-3 space-y-3 text-xs">
               <ChannelRow icon={MonitorSmartphone} title="In the dashboard" status="On" ok detail="The bell in the header, plus a pop-up while this site is open." />
               <ChannelRow icon={Laptop} title="Desktop pop-up from the CLI" status="On" ok detail="argus run shows a system notification on your computer. Set ARGUS_NO_DESKTOP_NOTIFY=1 to turn it off." />
               <li className="flex items-start gap-3">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl ring-1 ring-slate-900/[0.08] bg-slate-50">
                   <Globe className="h-3.5 w-3.5 text-slate-500" />
                 </span>
                 <div className="min-w-0 flex-1">
@@ -205,9 +205,9 @@ export function NotificationsClient({ initialItems, initialUnread }: { initialIt
                     {browserPerm === "granted" ? (
                       <span className="font-semibold text-emerald-700">On</span>
                     ) : browserPerm === "denied" ? (
-                      <span className="font-semibold text-slate-400">Blocked in browser settings</span>
+                      <span className="font-semibold text-slate-500">Blocked in browser settings</span>
                     ) : browserPerm === "unsupported" ? (
-                      <span className="text-slate-400">Not supported</span>
+                      <span className="text-slate-500">Not supported</span>
                     ) : (
                       <button type="button" onClick={enableBrowser} className="rounded-md bg-slate-900 px-2 py-1 text-[11px] font-semibold text-white hover:bg-slate-800">
                         Turn on
@@ -222,7 +222,7 @@ export function NotificationsClient({ initialItems, initialUnread }: { initialIt
           </div>
 
           <div className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft p-5">
-            <h2 className="flex items-center gap-2 text-sm font-bold text-slate-900">
+            <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
               <Webhook className="h-4 w-4 text-slate-500" /> Webhooks
             </h2>
             <p className="mt-1 text-xs text-slate-500">Paste a Slack or Discord incoming-webhook URL, or any https endpoint. We POST a JSON message there.</p>
@@ -234,7 +234,7 @@ export function NotificationsClient({ initialItems, initialUnread }: { initialIt
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder="https://hooks.slack.com/services/…"
                 required
-                className="w-full rounded-full border border-slate-300 px-3 py-2 font-mono text-xs text-slate-900 placeholder:text-slate-400 focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                className="w-full rounded-full ring-1 ring-slate-900/10 px-3 py-2 font-mono text-xs text-slate-900 placeholder:text-slate-400 focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
               />
               <div className="flex gap-2">
                 <input
@@ -242,7 +242,7 @@ export function NotificationsClient({ initialItems, initialUnread }: { initialIt
                   onChange={(e) => setLabel(e.target.value)}
                   placeholder="Label (optional), e.g. #alerts"
                   maxLength={80}
-                  className="min-w-0 flex-1 rounded-full border border-slate-300 px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
+                  className="min-w-0 flex-1 rounded-full ring-1 ring-slate-900/10 px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/10"
                 />
                 <button type="submit" disabled={busy === "add"} className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-60">
                   {busy === "add" && <Loader2 className="h-3.5 w-3.5 animate-spin" />} Add
@@ -251,9 +251,9 @@ export function NotificationsClient({ initialItems, initialUnread }: { initialIt
             </form>
 
             <ul className="mt-4 space-y-2">
-              {channels.length === 0 && <li className="rounded-lg border border-dashed border-slate-200 px-3 py-4 text-center text-xs text-slate-400">No webhooks yet.</li>}
+              {channels.length === 0 && <li className="rounded-xl border border-dashed border-slate-900/[0.07] px-3 py-4 text-center text-xs text-slate-500">No webhooks yet.</li>}
               {channels.map((c) => (
-                <li key={c.id} className="rounded-lg border border-slate-200 p-3">
+                <li key={c.id} className="rounded-xl ring-1 ring-slate-900/[0.08] p-3">
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0">
                       <p className="truncate text-xs font-semibold text-slate-900">{c.label || "Webhook"}</p>
@@ -265,14 +265,14 @@ export function NotificationsClient({ initialItems, initialUnread }: { initialIt
                     </label>
                   </div>
                   <div className="mt-2 flex items-center justify-between gap-2 text-[11px]">
-                    <span className={cn("truncate", c.lastError ? "text-rose-600" : "text-slate-400")}>
+                    <span className={cn("truncate", c.lastError ? "text-rose-600" : "text-slate-500")}>
                       {c.lastError ? `Last attempt failed: ${c.lastError}` : c.lastDeliveredAt ? `Last delivered ${when(c.lastDeliveredAt)}` : "Not used yet"}
                     </span>
                     <span className="flex shrink-0 gap-1">
-                      <button type="button" onClick={() => channelAction({ action: "test", id: c.id }, `test-${c.id}`)} disabled={busy === `test-${c.id}`} className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60">
+                      <button type="button" onClick={() => channelAction({ action: "test", id: c.id }, `test-${c.id}`)} disabled={busy === `test-${c.id}`} className="inline-flex items-center gap-1 rounded-md ring-1 ring-slate-900/[0.08] px-2 py-1 font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60">
                         {busy === `test-${c.id}` ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />} Test
                       </button>
-                      <button type="button" onClick={() => removeChannel(c.id)} disabled={busy === `del-${c.id}`} aria-label="Remove webhook" className="rounded-md border border-slate-200 px-2 py-1 text-slate-500 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 disabled:opacity-60">
+                      <button type="button" onClick={() => removeChannel(c.id)} disabled={busy === `del-${c.id}`} aria-label="Remove webhook" className="rounded-md ring-1 ring-slate-900/[0.08] px-2 py-1 text-slate-500 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 disabled:opacity-60">
                         <Trash2 className="h-3 w-3" />
                       </button>
                     </span>
@@ -290,13 +290,13 @@ export function NotificationsClient({ initialItems, initialUnread }: { initialIt
 function ChannelRow({ icon: Icon, title, status, detail, ok }: { icon: React.ElementType; title: string; status: string; detail: string; ok?: boolean }) {
   return (
     <li className="flex items-start gap-3">
-      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50">
+      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl ring-1 ring-slate-900/[0.08] bg-slate-50">
         <Icon className="h-3.5 w-3.5 text-slate-500" />
       </span>
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">
           <span className="font-semibold text-slate-900">{title}</span>
-          <span className={cn("font-semibold", ok ? "text-emerald-700" : "text-slate-400")}>{status}</span>
+          <span className={cn("font-semibold", ok ? "text-emerald-700" : "text-slate-500")}>{status}</span>
         </div>
         <p className="mt-0.5 text-slate-500">{detail}</p>
       </div>
