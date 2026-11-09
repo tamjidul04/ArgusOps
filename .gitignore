@@ -55,3 +55,6 @@ stitch-export/
 # built extension and packages
 /packages/vscode/out/
 *.vsix
+
+# the website serves this installer
+!public/downloads/argusops-vscode.vsix

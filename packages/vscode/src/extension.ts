@@ -63,6 +63,17 @@ export class ArgusController implements vscode.TreeDataProvider<Node>, vscode.Di
     await this.loadCredentials();
     await this.refresh();
     this.schedule();
+    this.welcome();
+  }
+
+  /** Once, right after install: say the extension is running and offer to sign in (so it can't go unnoticed). */
+  private welcome() {
+    const state = this.context.globalState;
+    if (!state || this.signedIn || state.get<boolean>("argusops.welcomed")) return;
+    void state.update("argusops.welcomed", true);
+    void vscode.window.showInformationMessage("ArgusOps is installed. Sign in to see your coding agents and get told when one is stuck.", "Sign in", "Later").then((c) => {
+      if (c === "Sign in") void this.signIn();
+    });
   }
 
   dispose() {
