@@ -14,7 +14,10 @@
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "cli:build": "node packages/cli/build.mjs",
     "test:e2e": "node packages/cli/build.mjs && node packages/cli/e2e/run-e2e.cjs",
-    "test:claude": "node packages/cli/build.mjs && node packages/cli/e2e/real-claude.cjs"
+    "test:claude": "node packages/cli/build.mjs && node packages/cli/e2e/real-claude.cjs",
+    "vscode:build": "node packages/vscode/build.mjs",
+    "vscode:package": "node packages/vscode/build.mjs && cd packages/vscode && npx --yes @vscode/vsce package --no-dependencies",
+    "test:vscode": "node packages/vscode/build.mjs && node packages/vscode/test/e2e/run.mjs"
   },
   "dependencies": {
     "@prisma/client": "6.19.3",
@@ -30,6 +33,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/vscode": "^1.85.0",
     "eslint": "^9",
     "eslint-config-next": "16.4.3",
     "prisma": "6.19.3",
