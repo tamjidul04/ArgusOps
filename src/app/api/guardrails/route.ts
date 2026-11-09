@@ -75,14 +75,18 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const auth = await requireAuth(req);
   if (auth instanceof NextResponse) return auth;
-  if (auth.via !== "session") {
-    return NextResponse.json({ error: "Sign in to change guardrails." }, { status: 403 });
-  }
   const userId = auth.user.id;
 
   try {
     const body = await req.json().catch(() => ({}));
     const { action } = body as { action?: string };
+
+    // Controlling a running agent (resume / stop) is allowed with a device key, so the VS Code extension works.
+    // Changing settings (policy, throttling) needs a browser session.
+    const controlOnly = action === "SEND_NUDGE" || action === "TRIGGER_KILL_SWITCH";
+    if (auth.via !== "session" && !controlOnly) {
+      return NextResponse.json({ error: "Sign in to change guardrails." }, { status: 403 });
+    }
     const agentIdOf = (): string | null => (typeof body.agentId === "string" && body.agentId ? body.agentId : null);
 
     switch (action) {
