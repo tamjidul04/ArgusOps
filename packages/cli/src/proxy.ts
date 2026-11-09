@@ -28,6 +28,7 @@ export interface IncidentOut {
   score: number;
   detail: string;
   interception_ms: number;
+  evidence: { unit: string[]; repeats: number };
 }
 
 export interface ProxyOptions {
@@ -173,6 +174,7 @@ export function startProxy(opts: ProxyOptions): Promise<RunningProxy> {
           score: verdict.score,
           detail: verdict.reason,
           interception_ms: verdict.interceptionMs,
+          evidence: verdict.evidence,
         });
         opts.onNotice?.(`Paused: ${verdict.reason}. Resume or stop it from the ArgusOps dashboard (Guardrails).`);
       }

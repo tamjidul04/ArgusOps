@@ -113,13 +113,32 @@ export async function notify(userId: string, input: NotifyInput) {
 /** The standard message for an agent that was paused or stopped by loop detection. */
 export function notifyLoop(
   userId: string,
-  args: { agentName: string; agentId?: string | null; incidentId?: string | null; action: "PAUSED" | "KILLED"; detail: string }
+  args: {
+    agentName: string;
+    agentId?: string | null;
+    incidentId?: string | null;
+    action: "PAUSED" | "KILLED";
+    detail: string;
+    /** "ready": a suggested instruction is waiting for approval. "applied": the agent was resumed with it automatically. */
+    suggestion?: "ready" | "applied";
+  }
 ) {
   const paused = args.action === "PAUSED";
+  if (paused && args.suggestion === "applied") {
+    return notify(userId, {
+      title: `${args.agentName} was un-stuck automatically`,
+      body: `It looked stuck: ${args.detail}\nArgusOps resumed it with a suggested instruction (your auto-resume setting is on).`,
+      level: "INFO",
+      agentId: args.agentId,
+      incidentId: args.incidentId,
+      linkPath: "/dashboard/guardrails",
+    });
+  }
+  const suggestionLine = paused && args.suggestion === "ready" ? "\nA suggested instruction is ready: approve or edit it to resume." : "";
   return notify(userId, {
     title: paused ? `${args.agentName} was paused` : `${args.agentName} was stopped`,
     body: paused
-      ? `It looked stuck: ${args.detail}\nNo more tokens are spent until you resume or stop it.`
+      ? `It looked stuck: ${args.detail}\nNo more tokens are spent until you resume or stop it.${suggestionLine}`
       : `It was stopped because it looked stuck: ${args.detail}`,
     level: paused ? "WARN" : "CRITICAL",
     agentId: args.agentId,
