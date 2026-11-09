@@ -88,12 +88,12 @@ To poke at it by hand: `node packages/cli/e2e/fake-anthropic.mjs 8787 --loop`, t
 
 `packages/vscode` is the editor companion to the CLI. It shows the agents you run with `argus run`, alerts you when one is paused, and lets you approve ArgusOps' suggested instruction (or edit it), resume, or stop the agent without leaving VS Code.
 
-```bash
-npm run vscode:package      # builds packages/vscode/argusops-<version>.vsix
-code --install-extension packages/vscode/argusops-0.2.0.vsix
-```
+**Install (no terminal):** sign in to the website, open **Local PC Bridge**, click **Download extension**, then in VS Code open the Extensions panel (`Ctrl+Shift+X`), click the `⋯` menu, choose **Install from VSIX…** and pick the file. Reload if asked.
 
-Then run **ArgusOps: Sign in** from the command palette (it opens the same browser approval page as `argus login`). Settings: `argusops.serverUrl`, `argusops.pollIntervalSeconds`, `argusops.notifications`. The key is kept in VS Code's secret storage and is only ever sent to the server it was issued by. A device key can read your agents and resume or stop them; it cannot change settings, billing, API keys or webhooks.
+**For maintainers:** `npm run vscode:release` builds the extension and refreshes `public/downloads/argusops-vscode.vsix`, which the website serves. Run it whenever the extension changes, and commit the result. `npm run vscode:package` builds a versioned `.vsix` inside `packages/vscode` instead.
+
+**Marketplace (so users can install from the Extensions search box):** create a free publisher at https://marketplace.visualstudio.com/manage, create an Azure DevOps personal access token with the *Marketplace > Manage* scope, then from `packages/vscode` run `npx @vscode/vsce login tamjidul04` and `npx @vscode/vsce publish`. The publisher id in `packages/vscode/package.json` must match the one you create. Open VSX (https://open-vsx.org) works the same way for VS Code forks.
+After installing, a shield icon named **ArgusOps** appears in the left bar and a first-run message offers to sign in; you can also run **ArgusOps: Sign in** from the command palette (it opens the same browser approval page as `argus login`). Settings: `argusops.serverUrl`, `argusops.pollIntervalSeconds`, `argusops.notifications`. The key is kept in VS Code's secret storage and is only ever sent to the server it was issued by. A device key can read your agents and resume or stop them; it cannot change settings, billing, API keys or webhooks.
 
 ## Tests
 

@@ -81,12 +81,16 @@ afterEach(async () => {
 
 const disposables: Array<{ dispose(): void }> = [];
 const secrets = new Map<string, string>();
+const globalState = new Map<string, unknown>();
 
-async function boot(opts: { signedIn?: boolean } = {}): Promise<ArgusController> {
+async function boot(opts: { signedIn?: boolean; fresh?: boolean } = {}): Promise<ArgusController> {
   secrets.clear();
+  globalState.clear();
+  if (!opts.fresh) globalState.set("argusops.welcomed", true); // most tests are not about the first-run message
   if (opts.signedIn) secrets.set("argusops.credentials", JSON.stringify({ url: server.url, key: "argus_live_testkey" }));
   const context = {
     subscriptions: disposables,
+    globalState: { get: (k: string) => globalState.get(k), update: async (k: string, v: unknown) => void globalState.set(k, v) },
     secrets: {
       get: async (k: string) => secrets.get(k),
       store: async (k: string, v: string) => void secrets.set(k, v),
@@ -121,6 +125,33 @@ describe("signed out", () => {
   it("registers all its commands", async () => {
     await boot();
     for (const id of ["signIn", "signOut", "refresh", "resumeAgent", "stopAgent", "openDashboard", "showAgents"]) expect(mock.commands.has(`argusops.${id}`), id).toBe(true);
+  });
+});
+
+describe("first run", () => {
+  it("says hello once after install and offers to sign in", async () => {
+    mock.respond = (_t, items) => (items.includes("Sign in") ? undefined : undefined);
+    await boot({ fresh: true });
+    const hello = mock.shown.filter((m) => m.text.startsWith("ArgusOps is installed"));
+    expect(hello).toHaveLength(1);
+    expect(hello[0].items).toEqual(["Sign in", "Later"]);
+    expect(globalState.get("argusops.welcomed")).toBe(true);
+  });
+
+  it("clicking Sign in starts the sign-in menu", async () => {
+    mock.respond = (_t, items) => (items.includes("Sign in") ? "Sign in" : undefined);
+    mock.quickPick = () => undefined;
+    await boot({ fresh: true });
+    await sleep(60);
+    expect(mock.quickPickItems).toHaveLength(1);
+  });
+
+  it("does not repeat on later starts, and not when already signed in", async () => {
+    await boot({ fresh: false });
+    expect(mock.shown.some((m) => m.text.startsWith("ArgusOps is installed"))).toBe(false);
+    mock.shown = [];
+    await boot({ fresh: true, signedIn: true });
+    expect(mock.shown.some((m) => m.text.startsWith("ArgusOps is installed"))).toBe(false);
   });
 });
 

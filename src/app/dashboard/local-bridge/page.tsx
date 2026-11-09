@@ -2,6 +2,7 @@ import React, { Suspense } from "react";
 import { Metadata } from "next";
 import { DashboardShell } from "@/components/layout";
 import { LocalBridgeClient } from "./LocalBridgeClient";
+import { VsCodeExtensionCard } from "@/components/VsCodeExtensionCard";
 import { prisma } from "@/lib/prisma";
 import { requirePageUser } from "@/lib/auth";
 import { getPermissions, listLocks } from "@/lib/control-plane";
@@ -51,12 +52,15 @@ async function LocalBridgeLoader() {
   }));
 
   return (
-    <LocalBridgeClient
-      initialAgents={localAgents}
-      initialLocks={locks}
-      initialKeys={apiKeys}
-      initialPermissions={permissions}
-    />
+    <div className="space-y-6">
+      <VsCodeExtensionCard />
+      <LocalBridgeClient
+        initialAgents={localAgents}
+        initialLocks={locks}
+        initialKeys={apiKeys}
+        initialPermissions={permissions}
+      />
+    </div>
   );
 }
 
