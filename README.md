@@ -15,6 +15,7 @@ A supervisor for AI coding agents. ArgusOps watches the agents you run (Claude C
 | Control plane | Per-user policy, incident log, file locks with expiry, pause / resume / stop state, all stored in MySQL |
 | Dashboard | Cluster view, guardrails, local bridge and API keys, billing, admin panel |
 | `argus` CLI | `argus login` (browser approval, no pasted keys), `argus run claude` supervises Claude Code through a proxy on your own machine, reads real token usage, pauses a stuck agent, delivers your hint on resume, and can stop it |
+| Usage & Savings page | Real tokens, estimated spend at list prices, model calls, loops caught and savings from prompt caching, per hour or day over 24h / 7d / 30d, by agent and by model, with the plan allowance |
 | Notifications | When an agent is paused or stopped, or the token allowance runs out: a bell and pop-up in the dashboard, an optional browser alert, a desktop pop-up from the CLI (Windows, macOS, Linux), and webhooks (Slack, Discord or any https endpoint) |
 | Proxy `/api/v1/proxy` (legacy, server-side) | Authenticated by API key (hash lookup only). It meters requests, applies the loop breaker and wallet checks, but **does not call a real model yet**: replies are simulated |
 
