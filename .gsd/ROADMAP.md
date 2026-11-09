@@ -18,7 +18,7 @@
 - [x] Forwarding proxy for Anthropic (Claude Code), local to the user's machine, with provider-reported usage into `UsageEvent` (bring-your-own-key); OpenAI and Google adapters still to do
 - [ ] Detectors: waste (context bloat, burn rate) and wrong/unclear prompt check (loop detector already policy-driven)
 - [x] `packages/cli`: `argus login` (device pairing), `argus run claude`, pause by holding requests, resume with a hint, stop, plan limits at start; `argus resume` and Codex/Gemini still to do
-- [ ] Prompt rewrite flow with approval and diff (`PromptRewrite`)
+- [x] Prompt rewrite: suggested instruction from the repeated steps and error, real loop cost, approve/edit/dismiss, optional auto-resume (30-min cooldown), optional AI polish with the server's own key
 - [x] Notifications: in-app bell + toast, browser alerts, CLI desktop pop-up, webhooks (Slack/Discord/https, private addresses blocked); email and VS Code still to do
 - [x] Usage & savings page from `UsageEvent` (tokens, spend, calls, loops caught, cache savings; by agent and model); device pairing page; incidents feed in Guardrails and Notifications
 - [ ] `packages/vscode` extension
