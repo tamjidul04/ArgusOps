@@ -100,7 +100,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    if ((error as any)?.digest?.startsWith("NEXT_")) {
+    if ((error as { digest?: string })?.digest?.startsWith("NEXT_")) {
       throw error;
     }
     console.error("Admin API GET error:", error);
@@ -423,7 +423,11 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const updateData: any = {};
+      const updateData: {
+        free_tokens?: { increment: number };
+        paid_tokens?: { increment: number };
+        max_agents?: number;
+      } = {};
       if (Number(freeTokens) !== 0) {
         updateData.free_tokens = { increment: Number(freeTokens) };
       }
@@ -456,7 +460,7 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   } catch (error) {
-    if ((error as any)?.digest?.startsWith("NEXT_")) {
+    if ((error as { digest?: string })?.digest?.startsWith("NEXT_")) {
       throw error;
     }
     console.error("Admin API POST error:", error);

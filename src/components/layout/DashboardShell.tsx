@@ -70,7 +70,7 @@ const NAV_ITEMS: NavItem[] = [
 function DashboardShellInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { profile, loading, environment, setEnvironment, signOut } = useDashboard();
-  const { hardware, wallet, interceptionLatencyMs } = useBrain();
+  const { wallet, interceptionLatencyMs } = useBrain();
   const [accountOpen, setAccountOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -220,7 +220,7 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
               )}
             >
               <Cloud className="h-3.5 w-3.5 text-sky-600" />
-              <span>Cloud Swarm (100 Agents)</span>
+              <span>Cloud</span>
             </button>
             <button
               type="button"
@@ -233,7 +233,7 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
               )}
             >
               <Laptop className="h-3.5 w-3.5 text-indigo-600" />
-              <span>Local PC Bridge (Claude/Hermes/Antigravity)</span>
+              <span>Local PC</span>
             </button>
           </div>
 
@@ -246,26 +246,11 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
               </span>
               <span className="font-mono text-slate-900 font-semibold">
-                Loop Guard: {interceptionLatencyMs || 18}ms
+                Loop Guard: {interceptionLatencyMs > 0 ? `${Math.round(interceptionLatencyMs)}ms` : "idle"}
               </span>
               <span className="text-slate-300">|</span>
               <span className="font-mono text-emerald-700 font-medium text-[11px]">
                 &lt;100ms SLA
-              </span>
-            </div>
-
-            {/* Live PC Host RAM Badge */}
-            <div className="hidden md:flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-mono text-slate-700 shadow-xs">
-              <span className="text-slate-500 font-sans text-[11px]">Host RAM:</span>
-              <strong className="text-slate-900 font-bold">
-                {hardware ? `${hardware.usedRamGb.toFixed(2)} GB` : "21.88 GB"}
-              </strong>
-              <span className="text-slate-300">/</span>
-              <span className="text-slate-500 text-[11px]">
-                {hardware ? `${hardware.totalRamGb.toFixed(2)} GB` : "31.19 GB"}
-              </span>
-              <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 ml-0.5">
-                {hardware ? `${hardware.ramUsagePercent}%` : "70%"}
               </span>
             </div>
 
@@ -357,15 +342,16 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
         <main className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden p-6 space-y-6">
           {children}
 
-          {/* Persistent Shell Footer matching Stitch export */}
           <footer className="pt-6 pb-2 border-t border-slate-200 text-xs text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-3">
             <div className="flex items-center gap-2 font-mono text-[11px]">
-              <span>Cluster ID: <strong className="text-slate-700 font-semibold">us-east-cluster-09</strong></span>
+              <span>ArgusOps v0.2</span>
               <span>•</span>
-              <span>Daemon: <strong className="text-slate-700 font-semibold">v1.4.0 (Zero-Trust Local Code)</strong></span>
+              <span>Zero-trust local code privacy</span>
             </div>
-            <div>
-              <span>Owner: <strong className="text-slate-900 font-semibold">MD.Tamjidul Islam</strong></span>
+            <div className="flex items-center gap-4">
+              <a href="/docs" className="hover:text-slate-900">Docs</a>
+              <a href="/status" className="hover:text-slate-900">Status</a>
+              <a href="/privacy" className="hover:text-slate-900">Privacy</a>
             </div>
           </footer>
         </main>
