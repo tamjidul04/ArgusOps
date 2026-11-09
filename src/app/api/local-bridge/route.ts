@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
       listLocks(userId),
       getPermissions(userId),
       prisma.cliDevice.findMany({
-        where: { user_id: userId, status: "APPROVED" },
+        where: { user_id: userId, status: "ACTIVE" },
         select: { name: true, last_seen_at: true },
       }),
     ]);
