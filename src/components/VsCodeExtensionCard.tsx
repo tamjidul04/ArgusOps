@@ -7,7 +7,7 @@ import { buttonClasses } from "@/components/ui/Button";
 const kbd = "rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] text-slate-700 ring-1 ring-slate-900/10";
 
 /** Offers the VS Code extension for download with click-through install steps (no terminal needed). */
-export function VsCodeExtensionCard() {
+export function VsCodeExtensionCard({ variant = "bezel" }: { variant?: "bezel" | "panel" }) {
   const steps = [
     <>Download the file with the button on the right.</>,
     <>
@@ -23,8 +23,14 @@ export function VsCodeExtensionCard() {
     </>,
   ];
 
-  return (
-    <Bezel innerClassName="sm:p-8">
+  const wrap = (children: React.ReactNode) =>
+    variant === "panel" ? (
+      <div className="rounded-2xl bg-white p-5 shadow-soft ring-1 ring-slate-900/5 sm:p-6">{children}</div>
+    ) : (
+      <Bezel innerClassName="sm:p-8">{children}</Bezel>
+    );
+
+  return wrap(
       <section aria-labelledby="vscode-ext-title" id="vscode">
         <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0 flex-1">
@@ -55,6 +61,5 @@ export function VsCodeExtensionCard() {
           </div>
         </div>
       </section>
-    </Bezel>
   );
 }
