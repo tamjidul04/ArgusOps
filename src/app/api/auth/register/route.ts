@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createSession, hashPassword, validatePasswordStrength } from "@/lib/auth";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { createUserOnFreePlan, PlansNotSeededError } from "@/lib/provision";
 
 export async function POST(req: NextRequest) {
   try {
@@ -37,50 +38,26 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const freePlan = await prisma.pricingPlan.findUnique({ where: { plan_id: "plan_free" } });
-    if (!freePlan) {
-      return NextResponse.json(
-        { error: "Plans are not provisioned yet. Run the database seed." },
-        { status: 503 }
-      );
-    }
-
-    const user = await prisma.user.create({
-      data: {
+    let user;
+    try {
+      user = await createUserOnFreePlan({
         email: trimmedEmail,
         name: trimmedName,
-        password_hash: hashPassword(password),
-        role: "USER",
-        status: "ACTIVE",
-        subscription: {
-          create: {
-            plan_id: freePlan.plan_id,
-            free_tokens: freePlan.included_tokens,
-            paid_tokens: 0,
-            max_agents: freePlan.agent_limit,
-            purchase_status: "NONE",
-          },
-        },
-        policy: { create: {} },
-        clusters: {
-          create: {
-            name: `${trimmedName}'s Workspace`,
-            environment: "LOCAL_PC",
-            active_agents: 0,
-            hibernated_agents: 0,
-            zero_trust_local: true,
-          },
-        },
-      },
-      include: { subscription: true },
-    });
+        passwordHash: hashPassword(password),
+      });
+    } catch (e) {
+      if (e instanceof PlansNotSeededError) {
+        return NextResponse.json({ error: e.message }, { status: 503 });
+      }
+      throw e;
+    }
 
     await createSession(user.id, req.headers.get("user-agent"));
 
     return NextResponse.json(
       {
         success: true,
-        message: `Free plan provisioned: ${freePlan.agent_limit} concurrent agents and ${freePlan.included_tokens.toLocaleString()} tokens.`,
+        message: `Free plan provisioned: ${user.subscription?.max_agents} concurrent agents and ${user.subscription?.free_tokens.toLocaleString()} tokens.`,
         user: {
           id: user.id,
           email: user.email,

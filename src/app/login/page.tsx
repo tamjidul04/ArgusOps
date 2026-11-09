@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { Suspense, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AlertCircle, KeyRound, Loader2 } from "lucide-react";
 import { AuthShell, Field } from "@/components/auth/AuthShell";
+import { OAuthButtons, OrDivider, oauthErrorMessage } from "@/components/auth/OAuthButtons";
 
 /** Only same-site relative paths are allowed as a post-login target. */
 function safeNext(): string | null {
@@ -12,13 +13,18 @@ function safeNext(): string | null {
   return next && next.startsWith("/") && !next.startsWith("//") ? next : null;
 }
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const params = useSearchParams();
+  const next = params.get("next");
+  const oauthError = oauthErrorMessage(params.get("error"));
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [otp, setOtp] = useState("");
   const [needsOtp, setNeedsOtp] = useState(false);
-  const [error, setError] = useState("");
+  const [formError, setFormError] = useState("");
+  const error = formError || oauthError || "";
+  const setError = setFormError;
   const [loading, setLoading] = useState(false);
 
   async function onSubmit(e: React.FormEvent) {
@@ -63,7 +69,10 @@ export default function LoginPage() {
         </>
       }
     >
-      <form onSubmit={onSubmit} className="space-y-4" noValidate={false}>
+      <OAuthButtons next={next} />
+      <OrDivider />
+
+      <form onSubmit={onSubmit} className="space-y-4">
         {error && (
           <div role="alert" className="flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -125,5 +134,13 @@ export default function LoginPage() {
         </button>
       </form>
     </AuthShell>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
   );
 }

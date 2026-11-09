@@ -16,6 +16,7 @@ const PUBLIC_API_PREFIXES = [
   "/api/auth/login",
   "/api/auth/register",
   "/api/auth/logout",
+  "/api/auth/oauth", // Google/GitHub sign-in start and callback
   "/api/device/code", // CLI starts the device flow anonymously
   "/api/device/token", // CLI polls with its secret device_code
   "/api/v1/proxy", // authenticates with its own API key

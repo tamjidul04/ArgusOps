@@ -30,6 +30,7 @@ model User {
   notifications      Notification[]
   notification_channels NotificationChannel[]
   prompt_rewrites    PromptRewrite[]
+  oauth_accounts     OAuthAccount[]
 
   @@map("Users")
 }
@@ -325,3 +326,19 @@ model ModelPrice {
   @@map("Model_Prices")
 }
 
+
+/// A Google/GitHub identity linked to a user. Sign-in resolves (provider, provider_account_id) first.
+model OAuthAccount {
+  id                  String   @id @default(cuid())
+  user_id             String
+  provider            String   @db.VarChar(20)  // "google" | "github"
+  provider_account_id String   @db.VarChar(191)
+  email               String?
+  created_at          DateTime @default(now())
+
+  user                User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([provider, provider_account_id])
+  @@index([user_id])
+  @@map("OAuth_Accounts")
+}
