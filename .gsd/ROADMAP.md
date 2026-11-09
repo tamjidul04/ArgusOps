@@ -20,7 +20,7 @@
 - [x] `packages/cli`: `argus login` (device pairing), `argus run claude`, pause by holding requests, resume with a hint, stop, plan limits at start; `argus resume` and Codex/Gemini still to do
 - [ ] Prompt rewrite flow with approval and diff (`PromptRewrite`)
 - [x] Notifications: in-app bell + toast, browser alerts, CLI desktop pop-up, webhooks (Slack/Discord/https, private addresses blocked); email and VS Code still to do
-- [ ] Dashboard rebuilt on real data: incidents feed, usage and savings from `UsageEvent`, device pairing page
+- [x] Usage & savings page from `UsageEvent` (tokens, spend, calls, loops caught, cache savings; by agent and model); device pairing page; incidents feed in Guardrails and Notifications
 - [ ] `packages/vscode` extension
 - [ ] Stripe billing; monthly token reset
 - [ ] Email verification at sign-up (then the OAuth link-wipes-password rule can be relaxed)
