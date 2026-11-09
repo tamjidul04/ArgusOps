@@ -64,7 +64,7 @@ export function BillingV2Client({
   initialPlans,
   initialTransactions,
 }: BillingV2ClientProps) {
-  const { persona, profile } = useDashboard();
+  const { profile } = useDashboard();
 
   const [subscription, setSubscription] = useState<UserSubscriptionData | null>(
     initialSubscription
@@ -93,31 +93,11 @@ export function BillingV2Client({
   useEffect(() => {
     async function loadUserData() {
       try {
-        const res = await fetch(`/api/billing/upgrade?userId=${profile.id}`);
+        const res = await fetch("/api/billing/upgrade", { cache: "no-store" });
         const data = await res.json();
         if (data.success) {
           if (data.subscription) {
             setSubscription(data.subscription);
-          } else {
-            setSubscription({
-              id: `sub_${profile.id}`,
-              user_id: profile.id,
-              user_name: profile.name,
-              user_email: profile.email,
-              plan_id: profile.planName.toLowerCase().includes("free")
-                ? "plan_free"
-                : "plan_enterprise",
-              plan_name: profile.planName,
-              plan_price: profile.planName.toLowerCase().includes("free")
-                ? 0
-                : 299,
-              free_tokens: profile.freeTokens,
-              paid_tokens: profile.paidTokens,
-              max_agents: profile.maxAgents,
-              purchase_status:
-                profile.status === "PENDING" ? "PENDING" : "APPROVED",
-              updated_at: new Date().toISOString(),
-            });
           }
           if (data.plans?.length > 0) {
             setPlans(data.plans);
@@ -132,7 +112,7 @@ export function BillingV2Client({
     }
 
     loadUserData();
-  }, [profile.id, profile.name, profile.email, profile.planName, profile.freeTokens, profile.paidTokens, profile.maxAgents, profile.status]);
+  }, [profile.id]);
 
   // Flash toast auto-dismiss
   useEffect(() => {
@@ -150,7 +130,6 @@ export function BillingV2Client({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId: profile.id,
           planId: planId || (planName.includes("Pro") ? "plan_pro" : "plan_enterprise"),
           planName,
           amount,
@@ -202,10 +181,13 @@ export function BillingV2Client({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId: profile.id,
           action: "topup_tokens",
-          tokenCount: selectedTopupAmount.tokens,
-          amount: selectedTopupAmount.price,
+          pack:
+            selectedTopupAmount.tokens >= 10000000
+              ? "large"
+              : selectedTopupAmount.tokens >= 2000000
+                ? "medium"
+                : "small",
         }),
       });
       const data = await res.json();
@@ -214,13 +196,12 @@ export function BillingV2Client({
           type: "success",
           text: data.message,
         });
-        setSubscription((prev) =>
-          prev ? { ...prev, paid_tokens: data.paid_tokens } : null
-        );
         if (data.transaction) {
           setTransactions((prev) => [data.transaction, ...prev]);
         }
         setTopupModalOpen(false);
+      } else {
+        setToastMessage({ type: "error", text: data.error || "Top-up request failed." });
       }
     } catch (err) {
       console.error("Topup error:", err);
@@ -290,7 +271,7 @@ export function BillingV2Client({
 
         <div>
           <a
-            href={`/api/billing/invoice?userId=${profile.id}`}
+            href={"/api/billing/invoice"}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 hover:text-slate-900 shadow-xs transition-colors"
@@ -690,7 +671,7 @@ export function BillingV2Client({
                       </td>
                       <td className="py-3.5 px-6 text-right">
                         <a
-                          href={`/api/billing/invoice?txId=${tx.tx_id}&userId=${profile.id}`}
+                          href={`/api/billing/invoice?txId=${tx.tx_id}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-1 text-slate-700 hover:text-slate-900 font-semibold text-[11px] px-2.5 py-1 rounded border border-slate-200 hover:bg-white bg-slate-50 shadow-2xs"
