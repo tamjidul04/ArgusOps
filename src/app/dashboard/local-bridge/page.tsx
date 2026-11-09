@@ -3,6 +3,7 @@ import { Metadata } from "next";
 import { DashboardShell } from "@/components/layout";
 import { LocalBridgeClient } from "./LocalBridgeClient";
 import { prisma } from "@/lib/prisma";
+import { requirePageUser } from "@/lib/auth";
 import { FileMutexLock } from "@/app/api/local-bridge/route";
 
 export const metadata: Metadata = {
@@ -12,12 +13,13 @@ export const metadata: Metadata = {
 };
 
 async function LocalBridgeLoader() {
+  const user = await requirePageUser();
   let localAgents: any[] = [];
   let apiKeys: any[] = [];
 
   try {
     const cluster = await prisma.clusterAndWorkspace.findFirst({
-      where: { environment: "LOCAL_PC" },
+      where: { environment: "LOCAL_PC", user_id: user.id },
       include: {
         agents: {
           orderBy: { name: "asc" },
@@ -41,6 +43,7 @@ async function LocalBridgeLoader() {
     }
 
     const dbKeys = await prisma.apiKey.findMany({
+      where: { user_id: user.id, revoked_at: null },
       orderBy: { created_at: "desc" },
     });
 

@@ -1,5 +1,5 @@
 datasource db {
-  provider = "sqlite"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
@@ -15,12 +15,21 @@ model User {
   role               String                    @default("USER") // "USER" | "ADMIN"
   status             String                    @default("ACTIVE") // "ACTIVE" | "BANNED"
   two_factor_enabled Boolean                   @default(false)
+  two_factor_secret  String?
   created_at         DateTime                  @default(now())
 
   subscription       SubscriptionAndWallet?
   clusters           ClusterAndWorkspace[]
   transactions       TransactionApprovalQueue[]
   api_keys           ApiKey[]
+  sessions           Session[]
+  cli_devices        CliDevice[]
+  usage_events       UsageEvent[]
+  incidents          Incident[]
+  policy             Policy?
+  notifications      Notification[]
+  notification_channels NotificationChannel[]
+  prompt_rewrites    PromptRewrite[]
 
   @@map("Users")
 }
@@ -31,7 +40,7 @@ model SubscriptionAndWallet {
   plan_id         String
   free_tokens     Int         @default(50000)
   paid_tokens     Int         @default(0)
-  max_agents      Int         @default(3)
+  max_agents      Int         @default(2)
   purchase_status String      @default("NONE") // "NONE" | "PENDING" | "APPROVED" | "REJECTED"
   updated_at      DateTime    @updatedAt
 
@@ -49,7 +58,7 @@ model PricingPlan {
   included_tokens         Int
   is_public               Boolean                 @default(true)
   requires_admin_approval Boolean                 @default(false)
-  description             String
+  description             String                  @db.Text
 
   subscriptions           SubscriptionAndWallet[]
 
@@ -85,8 +94,8 @@ model Agent {
   ram_usage          Float               @default(0)
   cpu_usage          Float               @default(0)
   tokens_used        Int                 @default(0)
-  current_task       String?
-  locked_file_path   String?
+  current_task       String?             @db.Text
+  locked_file_path   String?             @db.VarChar(512)
   loop_score         Float               @default(0)
   last_heartbeat_at  DateTime            @default(now())
 
@@ -98,7 +107,7 @@ model Agent {
 model TaskAndLog {
   task_id          String              @id @default(cuid())
   cluster_id       String
-  prompt_summary   String
+  prompt_summary   String              @db.Text
   complexity_score Int
   assigned_agents  Int
   hibernated_count Int
@@ -134,10 +143,185 @@ model ApiKey {
   key_prefix   String
   key_hash     String    @unique
   last_used_at DateTime?
+  revoked_at   DateTime?
   created_at   DateTime  @default(now())
 
   user         User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@map("Api_Keys")
+}
+
+// ───────────────────────── Phase 0 additions ─────────────────────────
+
+/// Browser/CLI login session. Only a SHA-256 hash of the token is stored.
+model Session {
+  id          String   @id @default(cuid())
+  user_id     String
+  token_hash  String   @unique
+  user_agent  String?  @db.VarChar(255)
+  expires_at  DateTime
+  created_at  DateTime @default(now())
+
+  user        User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@map("Sessions")
+}
+
+/// A machine paired with the account through `argus login` (device flow).
+model CliDevice {
+  id           String    @id @default(cuid())
+  user_id      String?
+  device_code  String    @unique // secret polled by the CLI
+  user_code    String    @unique // short code the user types on the website
+  name         String?
+  status       String    @default("PENDING") // "PENDING" | "APPROVED" | "DENIED" | "EXPIRED"
+  api_key_id   String?
+  expires_at   DateTime
+  last_seen_at DateTime?
+  created_at   DateTime  @default(now())
+
+  user         User?     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("Cli_Devices")
+}
+
+/// One row per upstream model request, with provider-reported usage.
+model UsageEvent {
+  id             String   @id @default(cuid())
+  user_id        String
+  agent_id       String?
+  run_id         String?  // CLI run id
+  provider       String   // "anthropic" | "openai" | "google"
+  model          String
+  input_tokens   Int      @default(0)
+  output_tokens  Int      @default(0)
+  cost_usd       Float    @default(0)
+  latency_ms     Int      @default(0)
+  cache_hit      Boolean  @default(false)
+  tokens_saved   Int      @default(0)
+  created_at     DateTime @default(now())
+
+  user           User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id, created_at])
+  @@index([agent_id])
+  @@map("Usage_Events")
+}
+
+/// A detected problem: loop, waste, bad prompt, budget, RAM.
+model Incident {
+  id              String          @id @default(cuid())
+  user_id         String
+  agent_id        String?
+  kind            String          // "LOOP" | "WASTE" | "BAD_PROMPT" | "BUDGET" | "RAM" | "MUTEX"
+  severity        String          @default("WARN") // "INFO" | "WARN" | "CRITICAL"
+  action          String          @default("NONE") // "NONE" | "PAUSED" | "KILLED" | "THROTTLED" | "REWRITE_PROPOSED"
+  status          String          @default("OPEN") // "OPEN" | "RESOLVED" | "DISMISSED"
+  score           Float           @default(0)
+  detail          String          @db.Text
+  interception_ms Int             @default(0)
+  created_at      DateTime        @default(now())
+  resolved_at     DateTime?
+
+  user            User            @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  rewrites        PromptRewrite[]
+
+  @@index([user_id, created_at])
+  @@map("Incidents")
+}
+
+/// Per-user guardrail policy (replaces the in-memory policy store).
+model Policy {
+  id                       String   @id @default(cuid())
+  user_id                  String   @unique
+  loop_score_threshold     Float    @default(0.85)
+  exact_repeat_limit       Int      @default(2)
+  nudge_progress_pct       Int      @default(80)
+  max_consecutive_retries  Int      @default(3)
+  ram_soft_limit_mb        Int      @default(250)
+  ram_hard_limit_mb        Int      @default(512)
+  token_burn_per_min_limit Int      @default(40000)
+  auto_apply_rewrites      Boolean  @default(false)
+  auto_downgrade_models    Boolean  @default(true)
+  updated_at               DateTime @updatedAt
+
+  user                     User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("Policies")
+}
+
+model NotificationChannel {
+  id         String   @id @default(cuid())
+  user_id    String
+  kind       String   // "EMAIL" | "WEBHOOK"
+  target     String   // address or URL
+  enabled    Boolean  @default(true)
+  created_at DateTime @default(now())
+
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("Notification_Channels")
+}
+
+model Notification {
+  id          String    @id @default(cuid())
+  user_id     String
+  incident_id String?
+  title       String
+  body        String    @db.Text
+  level       String    @default("INFO") // "INFO" | "WARN" | "CRITICAL"
+  read_at     DateTime?
+  created_at  DateTime  @default(now())
+
+  user        User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id, created_at])
+  @@map("Notifications")
+}
+
+/// A proposed (or applied) prompt rewrite with a stored diff.
+model PromptRewrite {
+  id               String    @id @default(cuid())
+  user_id          String
+  incident_id      String?
+  agent_id         String?
+  original_prompt  String    @db.LongText
+  rewritten_prompt String    @db.LongText
+  rationale        String    @db.Text
+  tokens_before    Int       @default(0)
+  tokens_after     Int       @default(0)
+  status           String    @default("PROPOSED") // "PROPOSED" | "APPROVED" | "APPLIED" | "REJECTED"
+  created_at       DateTime  @default(now())
+  decided_at       DateTime?
+
+  user             User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  incident         Incident? @relation(fields: [incident_id], references: [id], onDelete: SetNull)
+
+  @@map("Prompt_Rewrites")
+}
+
+/// Advisory file lock shared by agents (replaces in-memory local-bridge locks).
+model FileLock {
+  id          String   @id @default(cuid())
+  user_id     String
+  file_path   String   @db.VarChar(512)
+  holder      String
+  holder_pid  Int?
+  expires_at  DateTime
+  created_at  DateTime @default(now())
+
+  @@unique([user_id, file_path])
+  @@map("File_Locks")
+}
+
+/// USD price per million tokens, used for real cost accounting.
+model ModelPrice {
+  model           String @id
+  provider        String
+  input_per_mtok  Float
+  output_per_mtok Float
+
+  @@map("Model_Prices")
 }
 

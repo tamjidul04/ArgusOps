@@ -8,6 +8,7 @@ import {
   UserItem,
 } from "./AdminClient";
 import { prisma } from "@/lib/prisma";
+import { requirePageAdmin } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "Admin Control: Pricing, Approvals & User Access | ArgusOps v1.1",
@@ -16,6 +17,7 @@ export const metadata: Metadata = {
 };
 
 async function AdminDataLoader() {
+  await requirePageAdmin();
   let queue: QueueItem[] = [];
   let plans: PricingPlanItem[] = [];
   let users: UserItem[] = [];

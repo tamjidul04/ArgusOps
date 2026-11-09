@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireAuth } from "@/lib/auth";
 import { evaluateAgentStreamForLoops } from "@/lib/guardrails-engine";
 
 export interface GuardrailPolicy {
@@ -71,6 +72,8 @@ const streamEvents: StreamEvent[] = [
 ];
 
 export async function GET(req: NextRequest) {
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
   try {
     const { searchParams } = new URL(req.url);
     const clusterId = searchParams.get("clusterId") || "cluster_cloud_useast";
@@ -118,6 +121,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
   try {
     const body = await req.json();
     const { action, agentId, hintText, policy } = body;

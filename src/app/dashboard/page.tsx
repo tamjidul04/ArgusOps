@@ -6,6 +6,7 @@ import {
   ClusterTelemetryData,
 } from "./ClusterDashboardV2Client";
 import { prisma } from "@/lib/prisma";
+import { requirePageUser } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "Agent Cluster Telemetry & Loop Interception | ArgusOps v1.1",
@@ -14,13 +15,14 @@ export const metadata: Metadata = {
 };
 
 async function DashboardDataLoader() {
+  const user = await requirePageUser();
   let cloudCluster: ClusterTelemetryData | null = null;
   let localCluster: ClusterTelemetryData | null = null;
 
   try {
     // 1. Fetch Cloud Cluster and 100 agents
     const dbCloud = await prisma.clusterAndWorkspace.findFirst({
-      where: { environment: "CLOUD" },
+      where: { environment: "CLOUD", user_id: user.id },
       include: {
         agents: {
           orderBy: { agent_id: "asc" },
@@ -57,7 +59,7 @@ async function DashboardDataLoader() {
 
     // 2. Fetch Local PC Cluster and 3 agents
     const dbLocal = await prisma.clusterAndWorkspace.findFirst({
-      where: { environment: "LOCAL_PC" },
+      where: { environment: "LOCAL_PC", user_id: user.id },
       include: {
         agents: {
           orderBy: { agent_id: "asc" },
