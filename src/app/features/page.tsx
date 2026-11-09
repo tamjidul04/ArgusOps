@@ -19,7 +19,7 @@ const FEATURES: { id: string; eyebrow: string; title: string; body: string; poin
     points: ["Exact repeats of the same call", "Ping-pong between two actions", "Longer cycles of steps", "Paraphrased loops, where the wording changes but the attempt does not", "Typically decided in a few milliseconds"],
     aside: [
       { label: "Patterns", value: "4" },
-      { label: "Decision time", value: "ms" },
+      { label: "Decision time", value: "A few ms" },
     ],
   },
   {
@@ -41,7 +41,7 @@ const FEATURES: { id: string; eyebrow: string; title: string; body: string; poin
     points: ["Approve, edit or dismiss in the dashboard or in VS Code", "Approving resumes the agent with the instruction", "Optional auto-resume, once per 30 minutes per agent", "Optional wording polish by a small model, sending only the repeated steps"],
     aside: [
       { label: "Auto-resume cooldown", value: "30 min" },
-      { label: "Your approval", value: "default" },
+      { label: "Needs your approval", value: "By default" },
     ],
   },
   {
@@ -52,7 +52,7 @@ const FEATURES: { id: string; eyebrow: string; title: string; body: string; poin
     points: ["Dashboard bell and pop-up", "Browser alerts", "Desktop notification from the CLI on Windows, macOS and Linux", "VS Code status bar and alerts", "Slack, Discord or any https webhook"],
     aside: [
       { label: "Channels", value: "6" },
-      { label: "Email", value: "soon" },
+      { label: "Email", value: "Soon" },
     ],
   },
   {
