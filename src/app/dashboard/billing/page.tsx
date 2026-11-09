@@ -1,6 +1,7 @@
 import React, { Suspense } from "react";
 import { Metadata } from "next";
 import { DashboardShell } from "@/components/layout";
+import { PageLoading } from "@/components/ui";
 import {
   BillingV2Client,
   PricingPlanItem,
@@ -11,7 +12,7 @@ import { prisma } from "@/lib/prisma";
 import { requirePageUser } from "@/lib/auth";
 
 export const metadata: Metadata = {
-  title: "Billing, Token Wallet & Plan Quota | ArgusOps v1.1",
+  title: "Billing, Token Wallet & Plan Quota",
   description:
     "Master AI cluster quota, unmetered token balances, and self-serve tier upgrades.",
 };
@@ -160,28 +161,7 @@ export default function BillingPage() {
   return (
     <DashboardShell>
       <Suspense
-        fallback={
-          <div className="space-y-6 animate-pulse">
-            <div className="h-8 bg-slate-200 rounded w-1/4"></div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="space-y-6">
-                <div className="h-32 bg-slate-200 rounded-xl"></div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="h-28 bg-slate-200 rounded-xl"></div>
-                  <div className="h-28 bg-slate-200 rounded-xl"></div>
-                </div>
-                <div className="h-64 bg-slate-200 rounded-xl"></div>
-              </div>
-              <div className="space-y-6">
-                <div className="h-60 bg-slate-200 rounded-xl"></div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="h-44 bg-slate-200 rounded-xl"></div>
-                  <div className="h-44 bg-slate-200 rounded-xl"></div>
-                </div>
-              </div>
-            </div>
-          </div>
-        }
+        fallback={<PageLoading label="Loading billing" />}
       >
         <BillingDataLoader />
       </Suspense>

@@ -1,6 +1,7 @@
 import React, { Suspense } from "react";
 import { Metadata } from "next";
 import { DashboardShell } from "@/components/layout";
+import { PageLoading } from "@/components/ui";
 import {
   AdminClient,
   QueueItem,
@@ -11,7 +12,7 @@ import { prisma } from "@/lib/prisma";
 import { requirePageAdmin } from "@/lib/auth";
 
 export const metadata: Metadata = {
-  title: "Admin Control: Pricing, Approvals & User Access | ArgusOps v1.1",
+  title: "Admin Control: Pricing, Approvals & User Access",
   description:
     "Superuser orchestration console for workspace quota, licensing gates, and security restrictions.",
 };
@@ -154,16 +155,7 @@ export default function AdminPage() {
   return (
     <DashboardShell>
       <Suspense
-        fallback={
-          <div className="space-y-6 animate-pulse">
-            <div className="h-8 bg-slate-200 rounded w-1/3"></div>
-            <div className="h-64 bg-slate-200 rounded-xl"></div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="h-72 bg-slate-200 rounded-xl"></div>
-              <div className="h-72 bg-slate-200 rounded-xl"></div>
-            </div>
-          </div>
-        }
+        fallback={<PageLoading label="Loading admin" />}
       >
         <AdminDataLoader />
       </Suspense>
