@@ -18,6 +18,7 @@ import {
   resumeAgent,
   updatePolicy,
 } from "@/lib/control-plane";
+import { notifyLoop } from "@/lib/notifier";
 
 export type { GuardrailPolicy, StreamEvent };
 
@@ -170,7 +171,7 @@ export async function POST(req: NextRequest) {
                 last_heartbeat_at: new Date(),
               },
             });
-            await recordIncident({
+            const incident = await recordIncident({
               userId,
               agentId: agent.agent_id,
               agentName: agent.name,
@@ -181,6 +182,13 @@ export async function POST(req: NextRequest) {
               score: evaluation.loopScore,
               detail: evaluation.reason,
               interceptionMs: evaluation.interceptionMs,
+            });
+            await notifyLoop(userId, {
+              agentName: agent.name,
+              agentId: agent.agent_id,
+              incidentId: incident.id,
+              action: evaluation.status === "KILLED_LOOP" ? "KILLED" : "PAUSED",
+              detail: evaluation.reason,
             });
           }
         }

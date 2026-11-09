@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { costUsd, type PriceRow } from "@/lib/pricing";
+import { notify, notifyLoop } from "@/lib/notifier";
 import {
   checkAgentSlot,
   ensureLocalCluster,
@@ -128,7 +129,7 @@ export async function processSync(ctx: SyncContext, raw: unknown): Promise<SyncR
       const loopType = e.loop_type === "SEMANTIC_REASONING_LOOP" ? "SEMANTIC_REASONING_LOOP" : "EXACT_TOOL_LOOP";
       const detail = str(e.detail, 2000) ?? "Loop detected.";
       const score = float(e.score, 1);
-      await recordIncident({
+      const incident = await recordIncident({
         userId: ctx.userId,
         agentId: agent.agent_id,
         agentName: agent.name,
@@ -140,6 +141,9 @@ export async function processSync(ctx: SyncContext, raw: unknown): Promise<SyncR
         detail,
         interceptionMs: float(e.interception_ms, 60_000),
       });
+      if (action !== "NONE") {
+        await notifyLoop(ctx.userId, { agentName: agent.name, agentId: agent.agent_id, incidentId: incident.id, action, detail });
+      }
       if (action === "PAUSED") Object.assign(agentUpdate, { status: "PAUSED_NUDGE", loop_score: score, current_task: detail.slice(0, 500) });
       if (action === "KILLED") Object.assign(agentUpdate, { status: "KILLED_LOOP", loop_score: score, current_task: detail.slice(0, 500) });
     }
@@ -174,6 +178,16 @@ export async function processSync(ctx: SyncContext, raw: unknown): Promise<SyncR
       free -= fromFree;
       paid = Math.max(0, paid - (tokensThisSync - fromFree));
       await prisma.subscriptionAndWallet.update({ where: { user_id: ctx.userId }, data: { free_tokens: free, paid_tokens: paid } });
+      // Tell the user once, at the moment the allowance runs out (not on every sync afterwards).
+      if (sub.free_tokens + sub.paid_tokens > 0 && free + paid <= 0) {
+        await notify(ctx.userId, {
+          title: "Token allowance used up",
+          body: "Your supervised agents are paused until you upgrade or top up. They resume on their own once tokens are available.",
+          level: "CRITICAL",
+          agentId: agent.agent_id,
+          linkPath: "/dashboard/billing",
+        });
+      }
     }
     remaining = free + paid;
   }

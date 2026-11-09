@@ -10,6 +10,7 @@ import {
   Shield,
   Laptop,
   CreditCard,
+  Bell,
   Lock,
   ChevronDown,
   Coins,
@@ -22,6 +23,7 @@ import {
 } from "lucide-react";
 import { cn, formatTokens } from "@/lib/utils";
 import { DashboardProvider, useDashboard } from "./DashboardContext";
+import { NotificationBell } from "./NotificationBell";
 import { BrainProvider, useBrain } from "@/context/BrainContext";
 
 interface NavItem {
@@ -52,6 +54,11 @@ const NAV_ITEMS: NavItem[] = [
     name: "Local PC Bridge & SDK",
     href: "/dashboard/local-bridge",
     icon: Laptop,
+  },
+  {
+    name: "Notifications",
+    href: "/dashboard/notifications",
+    icon: Bell,
   },
   {
     name: "Plan & Token Billing",
@@ -253,6 +260,8 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
                 &lt;100ms SLA
               </span>
             </div>
+
+            <NotificationBell />
 
             {/* Token Wallet Badge */}
             <Link

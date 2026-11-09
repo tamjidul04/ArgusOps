@@ -4,6 +4,7 @@ import { performance } from "node:perf_hooks";
 import { prisma } from "@/lib/prisma";
 import { extractApiKey, userFromApiKey } from "@/lib/auth";
 import { getPolicyRow, recordIncident } from "@/lib/control-plane";
+import { notifyLoop } from "@/lib/notifier";
 import {
   evaluateAgentStreamForLoops,
   MAX_INTERCEPTION_BUDGET_MS,
@@ -323,7 +324,8 @@ export async function POST(req: NextRequest) {
               status: "PAUSED_NUDGE",
             },
           });
-          await recordIncident({ ...incidentBase, severity: "WARN", action: "PAUSED" });
+          const pausedIncident = await recordIncident({ ...incidentBase, severity: "WARN", action: "PAUSED" });
+          await notifyLoop(user.id, { agentName: targetAgent?.name ?? "An agent", agentId: targetAgent?.agent_id, incidentId: pausedIncident.id, action: "PAUSED", detail: loopEval.reason });
 
           return NextResponse.json(
             {
@@ -369,7 +371,8 @@ export async function POST(req: NextRequest) {
               status: "KILLED_LOOP",
             },
           });
-          await recordIncident({ ...incidentBase, severity: "CRITICAL", action: "KILLED" });
+          const killedIncident = await recordIncident({ ...incidentBase, severity: "CRITICAL", action: "KILLED" });
+          await notifyLoop(user.id, { agentName: targetAgent?.name ?? "An agent", agentId: targetAgent?.agent_id, incidentId: killedIncident.id, action: "KILLED", detail: loopEval.reason });
 
           return NextResponse.json(
             {
