@@ -78,4 +78,18 @@ describe("loop detection: user policy", () => {
   it("never lets exactRepeatLimit drop below 2", () => {
     expect(evaluateAgentStreamForLoops(["a", "b", "c", "d"], 30, { exactRepeatLimit: 0 }).status).toBe("ACTIVE");
   });
+
+  it("semanticEnabled:false ignores near-identical lines but still catches exact repeats", () => {
+    const reads = [
+      "Read({\"file_path\":\"/home/dev/projects/app/src/components/Alpha.tsx\"})",
+      "Read({\"file_path\":\"/home/dev/projects/app/src/components/Beta.tsx\"})",
+    ];
+    expect(evaluateAgentStreamForLoops(reads, 10).status).not.toBe("ACTIVE"); // by meaning they look alike
+    expect(evaluateAgentStreamForLoops(reads, 10, { semanticEnabled: false }).status).toBe("ACTIVE");
+    expect(evaluateAgentStreamForLoops(same(3), 10, { semanticEnabled: false }).status).toBe("KILLED_LOOP");
+  });
+
+  it("two lines with nothing meaningful in them are not a loop", () => {
+    expect(evaluateAgentStreamForLoops(["ok", "done", "a", "b"], 10).status).toBe("ACTIVE");
+  });
 });

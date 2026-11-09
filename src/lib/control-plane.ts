@@ -134,8 +134,17 @@ export function ownedAgent(userId: string, agentId: string) {
   return prisma.agent.findFirst({ where: { agent_id: agentId, cluster: { user_id: userId } } });
 }
 
+/** An agent that has not checked in for this long no longer holds a plan slot (e.g. its CLI crashed). */
+export const AGENT_STALE_MS = 2 * 60_000;
+
 export function activeAgentCount(userId: string) {
-  return prisma.agent.count({ where: { status: "ACTIVE", cluster: { user_id: userId } } });
+  return prisma.agent.count({
+    where: {
+      status: "ACTIVE",
+      cluster: { user_id: userId },
+      last_heartbeat_at: { gte: new Date(Date.now() - AGENT_STALE_MS) },
+    },
+  });
 }
 
 export async function planLimits(userId: string) {
@@ -284,7 +293,7 @@ export async function resumeAgent(userId: string, agentId: string, hint?: string
     : "Resume and finish the current step without repeating the failed action.";
   const updated = await prisma.agent.update({
     where: { agent_id: agent.agent_id },
-    data: { status: "ACTIVE", loop_score: 0, last_heartbeat_at: new Date() },
+    data: { status: "ACTIVE", loop_score: 0, pending_hint: cleanHint, last_heartbeat_at: new Date() },
   });
   await recordIncident({
     userId,

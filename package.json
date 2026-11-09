@@ -10,7 +10,10 @@
     "seed": "tsx prisma/seed.ts",
     "daemon": "node daemon/argus-daemon.mjs",
     "test": "vitest run",
-    "test:integration": "vitest run --config vitest.integration.config.ts"
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "cli:build": "node packages/cli/build.mjs",
+    "test:e2e": "node packages/cli/build.mjs && node packages/cli/e2e/run-e2e.cjs",
+    "test:claude": "node packages/cli/build.mjs && node packages/cli/e2e/real-claude.cjs"
   },
   "dependencies": {
     "@prisma/client": "6.19.3",
