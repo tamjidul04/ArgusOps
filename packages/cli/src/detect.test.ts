@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { LoopDetector } from "./detect";
+import { LoopDetector, findRepeatingTail, scoreForRepeats } from "./detect";
 
 const call = (id: string, name: string, input: unknown) => ({ role: "assistant", content: [{ type: "tool_use", id, name, input }] });
 const ok = (id: string, text = "ok") => ({ role: "user", content: [{ type: "tool_result", tool_use_id: id, content: text }] });
@@ -49,6 +49,11 @@ describe("LoopDetector: healthy agents must not be paused", () => {
     expect(v.tripped).toBe(false);
   });
 
+  it("allows two failed attempts of the same command (a flaky retry), pauses on the third", () => {
+    expect(new LoopDetector().check(failingRetries(2)).tripped).toBe(false);
+    expect(new LoopDetector().check(failingRetries(3)).tripped).toBe(true);
+  });
+
   it("allows one or two identical retries", () => {
     expect(new LoopDetector().check(failingRetries(1)).tripped).toBe(false);
     const two = convo(call("1", "Bash", { command: "ls" }), ok("1"), call("2", "Bash", { command: "ls" }), ok("2"));
@@ -91,5 +96,26 @@ describe("LoopDetector: policy and resume", () => {
     d.markResumed(failingRetries(6));
     expect(d.check(failingRetries(1)).tripped).toBe(false);
     expect(d.check(failingRetries(4)).tripped).toBe(true);
+  });
+});
+
+describe("findRepeatingTail", () => {
+  it("finds a unit repeated end to end and ignores older history", () => {
+    expect(findRepeatingTail(["A", "A", "A"], 3)).toEqual({ unit: ["A"], repeats: 3 });
+    expect(findRepeatingTail(["X", "Y", "A", "A", "A", "A"], 3)).toEqual({ unit: ["A"], repeats: 4 });
+    expect(findRepeatingTail(["A", "E", "A", "E", "A", "E"], 3)).toEqual({ unit: ["A", "E"], repeats: 3 });
+    expect(findRepeatingTail(["e", "t", "x", "y", "e", "t", "x", "y", "e", "t", "x", "y"], 3)?.unit).toEqual(["e", "t", "x", "y"]);
+  });
+  it("returns null when nothing repeats enough", () => {
+    expect(findRepeatingTail(["A", "A"], 3)).toBeNull();
+    expect(findRepeatingTail(["A", "B", "C", "D", "E", "F"], 3)).toBeNull();
+    expect(findRepeatingTail(["A", "E", "A", "E"], 3)).toBeNull();
+    expect(findRepeatingTail(["A", "A", "B", "A", "A"], 3)).toBeNull();
+    expect(findRepeatingTail([], 3)).toBeNull();
+  });
+  it("scores more repeats higher, capped", () => {
+    expect(scoreForRepeats(3)).toBe(0.94);
+    expect(scoreForRepeats(4)).toBe(0.97);
+    expect(scoreForRepeats(9)).toBe(0.99);
   });
 });
