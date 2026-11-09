@@ -1,18 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireAuth } from "@/lib/auth";
+
+function esc(v: unknown): string {
+  return String(v).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" })[c] as string);
+}
 
 export async function GET(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (auth instanceof NextResponse) return auth;
   try {
     const { searchParams } = new URL(request.url);
     const txId = searchParams.get("txId");
-    const userId = searchParams.get("userId") || "usr_tamjid_master";
+    // Always the signed-in user's own invoices. Admins may open any transaction by id.
+    const userId = auth.user.id;
 
     let transaction = null;
     if (txId) {
-      transaction = await prisma.transactionApprovalQueue.findUnique({
-        where: { tx_id: txId },
+      transaction = await prisma.transactionApprovalQueue.findFirst({
+        where: auth.user.role === "ADMIN" ? { tx_id: txId } : { tx_id: txId, user_id: userId },
         include: { user: true },
       });
+      if (!transaction) {
+        return NextResponse.json({ error: "Invoice not found." }, { status: 404 });
+      }
     }
 
     if (!transaction) {
@@ -190,7 +201,7 @@ export async function GET(request: NextRequest) {
         <p style="margin: 6px 0 0; font-size: 13px; color: #64748b;">Enterprise Multi-Agent Orchestration & Hypervisor</p>
       </div>
       <div style="text-align: right;">
-        <span class="status-badge status-${status}">${status}</span>
+        <span class="status-badge status-${esc(status)}">${esc(status)}</span>
         <div style="font-size: 16px; font-weight: 700; color: #0f172a; margin-top: 8px;">${invoiceNumber}</div>
         <div style="font-size: 12px; color: #64748b;">Issued: ${invoiceDate}</div>
       </div>
@@ -199,9 +210,9 @@ export async function GET(request: NextRequest) {
     <div class="grid">
       <div>
         <div class="field-label">Billed To</div>
-        <div class="field-value" style="font-weight: 600;">${user?.name || "Enterprise Customer"}</div>
-        <div class="field-value">${user?.email || "billing@customer.com"}</div>
-        <div class="field-value" style="color: #64748b; font-size: 12px; margin-top: 4px;">User ID: ${user?.id || userId}</div>
+        <div class="field-value" style="font-weight: 600;">${esc(user?.name || "Customer")}</div>
+        <div class="field-value">${esc(user?.email || "")}</div>
+        <div class="field-value" style="color: #64748b; font-size: 12px; margin-top: 4px;">User ID: ${esc(user?.id || userId)}</div>
       </div>
       <div>
         <div class="field-label">Billed By</div>
@@ -223,7 +234,7 @@ export async function GET(request: NextRequest) {
       <tbody>
         <tr>
           <td>
-            <div style="font-weight: 600; color: #0f172a;">${planName}</div>
+            <div style="font-weight: 600; color: #0f172a;">${esc(planName)}</div>
             <div style="font-size: 12px; color: #64748b; margin-top: 2px;">
               Includes 24/7 AST loop circuit-breaker, hardware RAM governance, and local mutex lock coordinator
             </div>

@@ -65,7 +65,7 @@ export function ClusterDashboardV2Client({
   initialCloudCluster,
   initialLocalCluster,
 }: ClusterDashboardV2ClientProps) {
-  const { environment, setEnvironment, persona, profile } = useDashboard();
+  const { environment, setEnvironment, profile } = useDashboard();
   const {
     hardware,
     cloudCluster: brainCloudCluster,

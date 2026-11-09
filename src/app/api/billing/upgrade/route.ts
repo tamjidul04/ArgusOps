@@ -1,54 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requireAuth } from "@/lib/auth";
+
+/** Token top-up packs. Prices are fixed server-side; the client only picks a pack. */
+const TOPUP_PACKS: Record<string, { tokens: number; amount: number }> = {
+  small: { tokens: 500_000, amount: 15 },
+  medium: { tokens: 2_000_000, amount: 50 },
+  large: { tokens: 10_000_000, amount: 200 },
+};
 
 export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId") || "usr_tamjid_master";
+  const auth = await requireAuth(request);
+  if (auth instanceof NextResponse) return auth;
+  const userId = auth.user.id;
 
-    // 1. Fetch user subscription and wallet
-    let subscription = await prisma.subscriptionAndWallet.findUnique({
+  try {
+    const subscription = await prisma.subscriptionAndWallet.findUnique({
       where: { user_id: userId },
-      include: {
-        plan: true,
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            role: true,
-          },
-        },
-      },
+      include: { plan: true, user: { select: { id: true, name: true, email: true, role: true } } },
     });
 
-    // Fallback if user doesn't exist yet
-    if (!subscription) {
-      // Try finding tamjid as default
-      subscription = await prisma.subscriptionAndWallet.findFirst({
-        include: {
-          plan: true,
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              role: true,
-            },
-          },
-        },
-      });
-    }
-
-    // 2. Fetch all public pricing plans
     const plans = await prisma.pricingPlan.findMany({
       where: { is_public: true },
       orderBy: { price: "asc" },
     });
 
-    // 3. Fetch transaction history / approval queue for this user
     const transactions = await prisma.transactionApprovalQueue.findMany({
-      where: userId ? { user_id: userId } : undefined,
+      where: { user_id: userId },
       orderBy: { created_at: "desc" },
     });
 
@@ -58,11 +36,11 @@ export async function GET(request: NextRequest) {
         ? {
             id: subscription.id,
             user_id: subscription.user_id,
-            user_name: subscription.user?.name || "Argus User",
-            user_email: subscription.user?.email || "user@argusops.dev",
+            user_name: subscription.user.name,
+            user_email: subscription.user.email,
             plan_id: subscription.plan_id,
-            plan_name: subscription.plan?.name || "Free Tier",
-            plan_price: subscription.plan?.price ?? 0,
+            plan_name: subscription.plan.name,
+            plan_price: subscription.plan.price,
             free_tokens: subscription.free_tokens,
             paid_tokens: subscription.paid_tokens,
             max_agents: subscription.max_agents,
@@ -80,6 +58,7 @@ export async function GET(request: NextRequest) {
         requires_admin_approval: p.requires_admin_approval,
         description: p.description,
       })),
+      topup_packs: TOPUP_PACKS,
       transactions: transactions.map((t) => ({
         tx_id: t.tx_id,
         user_id: t.user_id,
@@ -91,127 +70,27 @@ export async function GET(request: NextRequest) {
       })),
     });
   } catch (error) {
-    if ((error as any)?.digest?.startsWith("NEXT_")) {
-      throw error;
-    }
     console.error("Failed to fetch billing data:", error);
     return NextResponse.json(
-      {
-        success: false,
-        error: "Internal server error fetching billing information",
-      },
+      { success: false, error: "Internal server error fetching billing information" },
       { status: 500 }
     );
   }
 }
 
 export async function POST(request: NextRequest) {
+  const auth = await requireAuth(request);
+  if (auth instanceof NextResponse) return auth;
+  if (auth.via !== "session") {
+    return NextResponse.json({ error: "Sign in to manage billing." }, { status: 403 });
+  }
+  const userId = auth.user.id;
+
   try {
-    const body = await request.json();
-    const {
-      userId = "usr_tamjid_master",
-      planId,
-      planName,
-      amount,
-      action = "request_upgrade",
-    } = body;
+    const body = await request.json().catch(() => ({}));
+    const action: string = body.action ?? "request_upgrade";
 
-    // Handle Cancel pending upgrade request
-    if (action === "cancel_upgrade") {
-      // Find the pending transaction
-      const pendingTx = await prisma.transactionApprovalQueue.findFirst({
-        where: {
-          user_id: userId,
-          admin_status: "PENDING",
-        },
-        orderBy: { created_at: "desc" },
-      });
-
-      if (pendingTx) {
-        await prisma.transactionApprovalQueue.update({
-          where: { tx_id: pendingTx.tx_id },
-          data: {
-            admin_status: "REJECTED",
-            reviewed_at: new Date(),
-          },
-        });
-      }
-
-      await prisma.subscriptionAndWallet.update({
-        where: { user_id: userId },
-        data: { purchase_status: "NONE" },
-      });
-
-      return NextResponse.json({
-        success: true,
-        message: "Pending plan upgrade request was cancelled.",
-        purchase_status: "NONE",
-      });
-    }
-
-    // Handle Token Top-Up purchase
-    if (action === "topup_tokens") {
-      const tokenCount = Number(body.tokenCount) || 500000;
-      const topupAmount = Number(amount) || 15.0;
-
-      const tx = await prisma.transactionApprovalQueue.create({
-        data: {
-          tx_id: `tx_topup_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-          user_id: userId,
-          requested_plan: `Token Top-Up (+${(tokenCount / 1000).toLocaleString()}k Tokens)`,
-          amount: topupAmount,
-          admin_status: "APPROVED",
-          reviewed_at: new Date(),
-        },
-      });
-
-      const updatedSub = await prisma.subscriptionAndWallet.update({
-        where: { user_id: userId },
-        data: {
-          paid_tokens: {
-            increment: tokenCount,
-          },
-        },
-      });
-
-      return NextResponse.json({
-        success: true,
-        message: `Successfully credited ${tokenCount.toLocaleString()} paid tokens to your wallet.`,
-        transaction: tx,
-        paid_tokens: updatedSub.paid_tokens,
-      });
-    }
-
-    // Validate upgrade target plan
-    if (!planId && !planName) {
-      return NextResponse.json(
-        { success: false, error: "Target planId or planName is required" },
-        { status: 400 }
-      );
-    }
-
-    // Lookup plan in DB if planId passed
-    let plan = null;
-    if (planId) {
-      plan = await prisma.pricingPlan.findUnique({
-        where: { plan_id: planId },
-      });
-    }
-    if (!plan && planName) {
-      plan = await prisma.pricingPlan.findFirst({
-        where: { name: planName },
-      });
-    }
-
-    const targetPlanName = plan?.name || planName || "Pro Tier";
-    const targetAmount =
-      typeof amount === "number" ? amount : plan?.price ?? 49.0;
-
-    // Check user's current subscription
-    const userSub = await prisma.subscriptionAndWallet.findUnique({
-      where: { user_id: userId },
-    });
-
+    const userSub = await prisma.subscriptionAndWallet.findUnique({ where: { user_id: userId } });
     if (!userSub) {
       return NextResponse.json(
         { success: false, error: "User subscription not found" },
@@ -219,29 +98,102 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create a new pending record in Transactions_Approval_Queue
+    if (action === "cancel_upgrade") {
+      const pendingTx = await prisma.transactionApprovalQueue.findFirst({
+        where: { user_id: userId, admin_status: "PENDING" },
+        orderBy: { created_at: "desc" },
+      });
+      if (pendingTx) {
+        await prisma.transactionApprovalQueue.update({
+          where: { tx_id: pendingTx.tx_id },
+          data: { admin_status: "REJECTED", reviewed_at: new Date() },
+        });
+      }
+      await prisma.subscriptionAndWallet.update({
+        where: { user_id: userId },
+        data: { purchase_status: "NONE" },
+      });
+      return NextResponse.json({
+        success: true,
+        message: "Pending request was cancelled.",
+        purchase_status: "NONE",
+      });
+    }
+
+    // Token top-up: queued for admin approval until the payment gateway is connected.
+    // Tokens are NEVER credited here; only an admin approval (or a verified payment webhook) credits them.
+    if (action === "topup_tokens") {
+      const pack = TOPUP_PACKS[String(body.pack)] ?? null;
+      if (!pack) {
+        return NextResponse.json(
+          { success: false, error: "Choose a valid top-up pack: small, medium or large." },
+          { status: 400 }
+        );
+      }
+      const tx = await prisma.transactionApprovalQueue.create({
+        data: {
+          user_id: userId,
+          requested_plan: `Token Top-Up (+${pack.tokens / 1000}k tokens)`,
+          amount: pack.amount,
+          admin_status: "PENDING",
+        },
+      });
+      return NextResponse.json({
+        success: true,
+        message: "Top-up request submitted. Tokens are credited once payment is confirmed.",
+        transaction: tx,
+      });
+    }
+
+    // Plan upgrade request. The plan and its price come from the database, never from the client.
+    const planId: string | undefined = typeof body.planId === "string" ? body.planId : undefined;
+    const planName: string | undefined = typeof body.planName === "string" ? body.planName : undefined;
+    if (!planId && !planName) {
+      return NextResponse.json(
+        { success: false, error: "Target planId or planName is required" },
+        { status: 400 }
+      );
+    }
+
+    const plan = planId
+      ? await prisma.pricingPlan.findUnique({ where: { plan_id: planId } })
+      : await prisma.pricingPlan.findUnique({ where: { name: planName! } });
+    if (!plan || !plan.is_public) {
+      return NextResponse.json({ success: false, error: "Unknown plan." }, { status: 404 });
+    }
+    if (plan.plan_id === userSub.plan_id) {
+      return NextResponse.json(
+        { success: false, error: "You are already on this plan." },
+        { status: 400 }
+      );
+    }
+
+    const existingPending = await prisma.transactionApprovalQueue.findFirst({
+      where: { user_id: userId, admin_status: "PENDING" },
+    });
+    if (existingPending) {
+      return NextResponse.json(
+        { success: false, error: "You already have a pending request. Cancel it first." },
+        { status: 409 }
+      );
+    }
+
     const newTx = await prisma.transactionApprovalQueue.create({
       data: {
-        tx_id: `tx_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
         user_id: userId,
-        requested_plan: targetPlanName,
-        amount: targetAmount,
+        requested_plan: plan.name,
+        amount: plan.price,
         admin_status: "PENDING",
-        created_at: new Date(),
       },
     });
-
-    // Update SubscriptionAndWallet purchase_status to PENDING
     const updatedSub = await prisma.subscriptionAndWallet.update({
       where: { user_id: userId },
-      data: {
-        purchase_status: "PENDING",
-      },
+      data: { purchase_status: "PENDING" },
     });
 
     return NextResponse.json({
       success: true,
-      message: `Upgrade request for ${targetPlanName} ($${targetAmount.toFixed(2)}) submitted to Admin Approval Queue.`,
+      message: `Upgrade request for ${plan.name} ($${plan.price.toFixed(2)}) submitted for approval.`,
       transaction: {
         tx_id: newTx.tx_id,
         user_id: newTx.user_id,
@@ -253,12 +205,9 @@ export async function POST(request: NextRequest) {
       purchase_status: updatedSub.purchase_status,
     });
   } catch (error) {
-    console.error("Failed to submit upgrade request:", error);
+    console.error("Failed to process billing request:", error);
     return NextResponse.json(
-      {
-        success: false,
-        error: "Failed to process plan upgrade request",
-      },
+      { success: false, error: "Failed to process request" },
       { status: 500 }
     );
   }

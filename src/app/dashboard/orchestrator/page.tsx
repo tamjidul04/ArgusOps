@@ -3,6 +3,7 @@ import { Metadata } from "next";
 import { DashboardShell } from "@/components/layout";
 import { OrchestratorClient } from "./OrchestratorClient";
 import { prisma } from "@/lib/prisma";
+import { requirePageUser } from "@/lib/auth";
 import { SubTaskItem } from "@/app/api/orchestrator/route";
 
 export const metadata: Metadata = {
@@ -12,6 +13,7 @@ export const metadata: Metadata = {
 };
 
 async function OrchestratorLoader() {
+  const user = await requirePageUser();
   let prompt = "Migrate auth service to multi-tenant schema, index workspace vectors, and write e2e tests.";
   let activeAgents = 30;
   let hibernatedAgents = 70;
@@ -20,7 +22,7 @@ async function OrchestratorLoader() {
 
   try {
     const cluster = await prisma.clusterAndWorkspace.findFirst({
-      where: { environment: "CLOUD" },
+      where: { environment: "CLOUD", user_id: user.id },
       include: {
         tasks: {
           orderBy: { created_at: "desc" },

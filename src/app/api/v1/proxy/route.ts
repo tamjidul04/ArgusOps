@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "node:crypto";
 import { performance } from "node:perf_hooks";
 import { prisma } from "@/lib/prisma";
+import { extractApiKey, userFromApiKey } from "@/lib/auth";
 import {
   evaluateAgentStreamForLoops,
   LOOP_SCORE_THRESHOLD,
@@ -17,7 +18,7 @@ import {
  * Endpoint: /api/v1/proxy
  * 
  * Provides an overarching AI Agent Cluster Hypervisor and Cost-Optimization Gateway:
- * 1. Authentication & Wallet Check (x-argus-key / Authorization Bearer & demo key support)
+ * 1. Authentication & Wallet Check (x-argus-key / Authorization Bearer, hash-only lookup)
  * 2. Shared Context & Memory Cache (PRD 5.1: Zero-token cache replay for redundant project context)
  * 3. Real-Time <100ms Infinite Loop Circuit Breaker (PRD 4.2: Terminate loops or pause near-complete agents)
  * 4. Smart Model Downgrading Router (PRD 5.1: Routes low-complexity prompts <45 to DOWNGRADED_FAST saving 75% tokens)
@@ -67,23 +68,12 @@ function isFrontierModel(modelName: string): boolean {
 }
 
 /**
- * Resolves the authenticated user via x-argus-key or Authorization Bearer header.
+ * Resolves the authenticated user from the x-argus-key / Authorization Bearer header.
+ * Lookup is by SHA-256 hash only: keys are never accepted from the query string and never
+ * matched by id, prefix or stored hash.
  */
 async function authenticateRequest(req: NextRequest) {
-  // 1. Extract API key from headers or query parameters
-  let rawKey = req.headers.get("x-argus-key")?.trim();
-
-  if (!rawKey) {
-    const authHeader = req.headers.get("authorization") || req.headers.get("Authorization");
-    if (authHeader && authHeader.startsWith("Bearer ")) {
-      rawKey = authHeader.slice(7).trim();
-    }
-  }
-
-  if (!rawKey) {
-    const { searchParams } = new URL(req.url);
-    rawKey = searchParams.get("apiKey")?.trim() || searchParams.get("key")?.trim();
-  }
+  const rawKey = extractApiKey(req);
 
   if (!rawKey) {
     return {
@@ -99,98 +89,11 @@ async function authenticateRequest(req: NextRequest) {
     };
   }
 
-  // 2. Validate Default Local Demo Key
-  if (rawKey === "argus_live_demo_key") {
-    // Look up default master user (usr_tamjid_master or first active user)
-    let masterUser = await prisma.user.findFirst({
-      where: { id: "usr_tamjid_master", status: "ACTIVE" },
-      include: {
-        subscription: { include: { plan: true } },
-        clusters: { include: { agents: true } },
-      },
-    });
-
-    if (!masterUser) {
-      masterUser = await prisma.user.findFirst({
-        where: { status: "ACTIVE", subscription: { isNot: null } },
-        include: {
-          subscription: { include: { plan: true } },
-          clusters: { include: { agents: true } },
-        },
-      });
-    }
-
-    if (!masterUser) {
-      return {
-        errorResponse: NextResponse.json(
-          { error: "Unauthorized: No active user provisioned for demo key.", statusCode: 401 },
-          { status: 401 }
-        ),
-        user: null,
-        rawKey,
-      };
-    }
-
-    // Ensure demo key exists in Api_Keys table for database referential integrity
-    const demoKeyHash = crypto.createHash("sha256").update("argus_live_demo_key").digest("hex");
-    const existingDemoKey = await prisma.apiKey.findFirst({
-      where: {
-        OR: [
-          { key_hash: demoKeyHash },
-          { id: "key_argus_live_demo" },
-          { key_prefix: "argus_live_demo_key" },
-        ],
-      },
-    });
-
-    if (!existingDemoKey) {
-      await prisma.apiKey.create({
-        data: {
-          id: "key_argus_live_demo",
-          user_id: masterUser.id,
-          label: "Default Local Demo Key (ArgusOps)",
-          key_prefix: "argus_live_demo_key",
-          key_hash: demoKeyHash,
-          last_used_at: new Date(),
-        },
-      }).catch(() => {
-        // Safe catch for potential concurrent insertion
-      });
-    } else {
-      await prisma.apiKey.update({
-        where: { id: existingDemoKey.id },
-        data: { last_used_at: new Date() },
-      }).catch(() => {});
-    }
-
-    return { errorResponse: null, user: masterUser, rawKey };
-  }
-
-  // 3. Validate Standard Key against Api_Keys in Prisma
-  const keyHash = crypto.createHash("sha256").update(rawKey).digest("hex");
-  const apiKeyRecord = await prisma.apiKey.findFirst({
-    where: {
-      OR: [
-        { key_hash: keyHash },
-        { key_hash: rawKey },
-        { id: rawKey },
-        { key_prefix: rawKey },
-      ],
-    },
-    include: {
-      user: {
-        include: {
-          subscription: { include: { plan: true } },
-          clusters: { include: { agents: true } },
-        },
-      },
-    },
-  });
-
-  if (!apiKeyRecord || !apiKeyRecord.user) {
+  const hit = await userFromApiKey(rawKey);
+  if (!hit) {
     return {
       errorResponse: NextResponse.json(
-        { error: "Unauthorized: Invalid API key.", statusCode: 401 },
+        { error: "Unauthorized: Invalid or revoked API key.", statusCode: 401 },
         { status: 401 }
       ),
       user: null,
@@ -198,13 +101,15 @@ async function authenticateRequest(req: NextRequest) {
     };
   }
 
-  // Update last_used_at asynchronously
-  await prisma.apiKey.update({
-    where: { id: apiKeyRecord.id },
-    data: { last_used_at: new Date() },
-  }).catch(() => {});
+  const user = await prisma.user.findUnique({
+    where: { id: hit.user.id },
+    include: {
+      subscription: { include: { plan: true } },
+      clusters: { include: { agents: true } },
+    },
+  });
 
-  return { errorResponse: null, user: apiKeyRecord.user, rawKey };
+  return { errorResponse: null, user, rawKey };
 }
 
 // ============================================================================
@@ -295,8 +200,8 @@ export async function POST(req: NextRequest) {
     let cluster: (typeof user.clusters[number]) | null | undefined = user.clusters?.find((c) => c.cluster_id === clusterId);
 
     if (!cluster) {
-      cluster = (await prisma.clusterAndWorkspace.findUnique({
-        where: { cluster_id: clusterId },
+      cluster = (await prisma.clusterAndWorkspace.findFirst({
+        where: { cluster_id: clusterId, user_id: user.id },
         include: { agents: true },
       })) || (await prisma.clusterAndWorkspace.findFirst({
         where: { user_id: user.id },
@@ -324,7 +229,7 @@ export async function POST(req: NextRequest) {
     // Resolve target agent in the cluster
     const agentId = body.agentId || body.agent_id;
     let targetAgent = agentId
-      ? await prisma.agent.findUnique({ where: { agent_id: agentId } })
+      ? await prisma.agent.findFirst({ where: { agent_id: String(agentId), cluster: { user_id: user.id } } })
       : null;
 
     if (!targetAgent && cluster) {
@@ -744,7 +649,6 @@ export async function GET(req: NextRequest) {
       probeLatencyMs: latencyMs,
       capabilities: {
         authentication: "x-argus-key or Authorization: Bearer <key>",
-        demoKeySupported: true,
         sharedContextCache: "SHA-256 Memory Replay (Zero-Token)",
         loopCircuitBreaker: "Instant Kill Switch (<80% progress) & Paused Nudge (>=80% progress)",
         smartModelRouter: "Low-Complexity (<45) Frontier Downgrading to Fast Tier (75% token savings)",
