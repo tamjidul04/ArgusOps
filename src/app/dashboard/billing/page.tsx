@@ -8,6 +8,7 @@ import {
   UserSubscriptionData,
 } from "./BillingV2Client";
 import { prisma } from "@/lib/prisma";
+import { requirePageUser } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "Billing, Token Wallet & Plan Quota | ArgusOps v1.1",
@@ -16,6 +17,7 @@ export const metadata: Metadata = {
 };
 
 async function BillingDataLoader() {
+  const user = await requirePageUser();
   let subscription: UserSubscriptionData | null = null;
   let plans: PricingPlanItem[] = [];
   let transactions: TransactionItem[] = [];
@@ -23,6 +25,7 @@ async function BillingDataLoader() {
   try {
     // 1. Fetch user subscription and wallet (defaults to main active demo user)
     const dbSub = await prisma.subscriptionAndWallet.findFirst({
+      where: { user_id: user.id },
       include: {
         plan: true,
         user: {
@@ -73,6 +76,7 @@ async function BillingDataLoader() {
 
     // 3. Fetch transaction approval queue
     const dbTx = await prisma.transactionApprovalQueue.findMany({
+      where: { user_id: user.id },
       orderBy: { created_at: "desc" },
       take: 25,
     });

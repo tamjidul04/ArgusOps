@@ -3,6 +3,7 @@ import { Metadata } from "next";
 import { DashboardShell } from "@/components/layout";
 import { GuardrailsClient } from "./GuardrailsClient";
 import { prisma } from "@/lib/prisma";
+import { requirePageUser } from "@/lib/auth";
 import { GuardrailPolicy, StreamEvent } from "@/app/api/guardrails/route";
 
 export const metadata: Metadata = {
@@ -12,6 +13,7 @@ export const metadata: Metadata = {
 };
 
 async function GuardrailsLoader() {
+  const user = await requirePageUser();
   const initialPolicy: GuardrailPolicy = {
     maxConsecutiveRetries: 3,
     semanticSimilarityThreshold: 0.88,
@@ -65,6 +67,7 @@ async function GuardrailsLoader() {
   try {
     flaggedAgents = await prisma.agent.findMany({
       where: {
+        cluster: { user_id: user.id },
         OR: [
           { status: "PAUSED_NUDGE" },
           { status: "KILLED_LOOP" },
@@ -76,7 +79,7 @@ async function GuardrailsLoader() {
     });
 
     activeAgents = await prisma.agent.findMany({
-      where: { status: "ACTIVE" },
+      where: { status: "ACTIVE", cluster: { user_id: user.id } },
       take: 12,
       orderBy: { ram_usage: "desc" },
     });

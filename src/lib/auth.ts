@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { API_KEY_PREFIX, extractApiKey, sha256 } from "@/lib/auth-core";
@@ -65,6 +66,20 @@ async function userFromSessionToken(token: string | undefined | null) {
 export async function getSessionUser(): Promise<User | null> {
   const jar = await cookies();
   return userFromSessionToken(jar.get(SESSION_COOKIE)?.value);
+}
+
+/** For server pages: the signed-in user, or a redirect to /login. Call before any try/catch. */
+export async function requirePageUser(): Promise<User> {
+  const user = await getSessionUser();
+  if (!user) redirect("/login");
+  return user;
+}
+
+/** For admin-only server pages: non-admins are sent back to the dashboard. */
+export async function requirePageAdmin(): Promise<User> {
+  const user = await requirePageUser();
+  if (user.role !== "ADMIN") redirect("/dashboard");
+  return user;
 }
 
 /* -------------------------------------------------------------------------- */
