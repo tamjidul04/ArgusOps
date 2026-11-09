@@ -110,6 +110,11 @@ async function api(pathname, body) {
     check("incident recorded with loop type and sub-100ms detection", incident?.kind === "LOOP" && incident.action === "PAUSED" && incident.loop_type === "EXACT_TOOL_LOOP" && incident.interception_ms < 100, `interception ${incident?.interception_ms}ms`);
     check("only the healthy request reached the provider while paused", seen.length === 1, `provider saw ${seen.length} request(s)`);
     check("the agent's own credentials were forwarded untouched", seen[0]?.key === "sk-ant-FAKE-user-key");
+    const note = await until(() => prisma.notification.findFirst({ where: { user_id: user.id, title: { endsWith: "was paused" } } }), 10000, "the pause notification");
+    check("a notification was created for the pause", note.level === "WARN", note.title);
+    const page = await fetch(BASE + "/dashboard/notifications", { headers: { cookie } });
+    const html = await page.text();
+    check("the Notifications page loads and lists it", page.status === 200 && html.includes(note.title), `HTTP ${page.status}`);
     const usage = await prisma.usageEvent.findMany({ where: { user_id: user.id } });
     check("real token usage recorded with cost", usage.length === 1 && usage[0].input_tokens === 1200 && usage[0].output_tokens === 300 && usage[0].cost_usd > 0, `${usage[0]?.input_tokens} in / ${usage[0]?.output_tokens} out, $${usage[0]?.cost_usd}`);
     const mid = await prisma.subscriptionAndWallet.findUniqueOrThrow({ where: { user_id: user.id } });

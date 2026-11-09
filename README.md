@@ -15,12 +15,13 @@ A supervisor for AI coding agents. ArgusOps watches the agents you run (Claude C
 | Control plane | Per-user policy, incident log, file locks with expiry, pause / resume / stop state, all stored in MySQL |
 | Dashboard | Cluster view, guardrails, local bridge and API keys, billing, admin panel |
 | `argus` CLI | `argus login` (browser approval, no pasted keys), `argus run claude` supervises Claude Code through a proxy on your own machine, reads real token usage, pauses a stuck agent, delivers your hint on resume, and can stop it |
+| Notifications | When an agent is paused or stopped, or the token allowance runs out: a bell and pop-up in the dashboard, an optional browser alert, a desktop pop-up from the CLI (Windows, macOS, Linux), and webhooks (Slack, Discord or any https endpoint) |
 | Proxy `/api/v1/proxy` (legacy, server-side) | Authenticated by API key (hash lookup only). It meters requests, applies the loop breaker and wallet checks, but **does not call a real model yet**: replies are simulated |
 
 ## Not built yet
 
 - CLI support for Codex and Gemini (Claude Code only today), and `argus resume` from a terminal
-- Prompt rewrite and notifications (email, webhook, VS Code)
+- Prompt rewrite; email notifications (needs an email provider)
 - VS Code extension
 - Payment gateway (Stripe)
 - Autopilot (planning, design review, multi-model routing)
@@ -46,6 +47,7 @@ Dev logins created by the seed (local only): `admin@argusops.dev` / `ArgusOps-ad
 | `DATABASE_URL` | `mysql://USER:PASSWORD@HOST:3306/argusops` (add `?sslaccept=strict` for TiDB Cloud) |
 | `APP_URL` | Public origin, used to build OAuth callback URLs (required in production) |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google sign-in. Redirect URI: `{APP_URL}/api/auth/oauth/google/callback` |
+| `ARGUS_ALLOW_PRIVATE_WEBHOOKS` | Set to `1` only to allow webhooks to http or private-network addresses in production (they are always allowed in development) |
 | `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` | GitHub sign-in. Callback URL: `{APP_URL}/api/auth/oauth/github/callback` |
 
 Sign-in buttons for a provider show a "not set up" message until its keys are present.
@@ -64,7 +66,7 @@ node packages/cli/dist/argus.mjs run --offline claude   # supervise locally, rep
 
 What happens: `argus run` starts a small proxy on 127.0.0.1 and launches Claude Code with `ANTHROPIC_BASE_URL` pointing at it. Each model call is forwarded to Anthropic with your own credentials. If the agent repeats the same failing tool call, its next request is **held** (nothing reaches the provider, so no tokens are spent) and the incident appears in the dashboard's Guardrails page. Resume it there (optionally with a hint, which is added to the next request) or stop it, and the CLI ends the process. The Free plan allows 2 supervised agents at once, Pro 10.
 
-Set `ARGUS_API_URL` to point at a deployed server (default `http://localhost:3000`).
+Set `ARGUS_API_URL` to point at a deployed server (default `http://localhost:3000`). The CLI shows a desktop notification when an agent is paused or stopped; set `ARGUS_NO_DESKTOP_NOTIFY=1` to turn that off.
 
 ### Try it for free (no Anthropic account, no token spend)
 
