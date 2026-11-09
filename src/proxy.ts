@@ -47,12 +47,12 @@ export function proxy(req: NextRequest) {
   if (!req.cookies.get(SESSION_COOKIE)?.value) {
     const url = req.nextUrl.clone();
     url.pathname = "/login";
-    url.search = `?next=${encodeURIComponent(pathname)}`;
+    url.search = `?next=${encodeURIComponent(pathname + req.nextUrl.search)}`;
     return NextResponse.redirect(url);
   }
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/admin/:path*", "/api/:path*"],
+  matcher: ["/dashboard/:path*", "/admin/:path*", "/device/:path*", "/device", "/api/:path*"],
 };
