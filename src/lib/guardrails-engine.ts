@@ -133,6 +133,10 @@ function stemWord(word: string): string {
   return w;
 }
 
+function sameText(a: string, b: string): boolean {
+  return typeof a === "string" && typeof b === "string" && a.trim().toLowerCase() === b.trim().toLowerCase();
+}
+
 /**
  * Tokenizes text into normalized semantic terms, stripping stop words and punctuation.
  */
@@ -154,7 +158,8 @@ export function calculateJaccardSimilarity(textA: string, textB: string): number
   const tokensA = new Set(extractSemanticTokens(textA));
   const tokensB = new Set(extractSemanticTokens(textB));
 
-  if (tokensA.size === 0 && tokensB.size === 0) return 1.0;
+  // Two lines with no meaningful tokens ("ok", "a", "done") are only "similar" if they are literally equal.
+  if (tokensA.size === 0 && tokensB.size === 0) return sameText(textA, textB) ? 1.0 : 0.0;
   if (tokensA.size === 0 || tokensB.size === 0) return 0.0;
 
   let intersection = 0;
@@ -176,7 +181,7 @@ export function calculateCosineSimilarity(textA: string, textB: string): number 
   const tokensA = extractSemanticTokens(textA);
   const tokensB = extractSemanticTokens(textB);
 
-  if (tokensA.length === 0 && tokensB.length === 0) return 1.0;
+  if (tokensA.length === 0 && tokensB.length === 0) return sameText(textA, textB) ? 1.0 : 0.0;
   if (tokensA.length === 0 || tokensB.length === 0) return 0.0;
 
   const freqA: Record<string, number> = {};
@@ -212,6 +217,15 @@ export function calculateCosineSimilarity(textA: string, textB: string): number 
 // 1. HIGH-SPEED LOOP DETECTION ENGINE (<100ms)
 // ============================================================================
 
+export interface LoopEvaluationOptions {
+  /** Score at or above which a pattern counts as a loop (default 0.85). */
+  loopScoreThreshold?: number;
+  /** Progress at or above which a loop pauses for a human nudge instead of killing (default 80). */
+  nudgeProgressPct?: number;
+  /** Identical consecutive entries needed before a repeat counts (default 2). */
+  exactRepeatLimit?: number;
+}
+
 /**
  * 1. evaluateAgentStreamForLoops
  * 
@@ -233,12 +247,17 @@ export function calculateCosineSimilarity(textA: string, textB: string): number 
  * 
  * @param recentLogs Array of recent log messages, tool calls, or reasoning output lines
  * @param taskProgressPct Estimated percentage of task completion (0 to 100)
+ * @param options Optional per-user thresholds (see LoopEvaluationOptions); defaults match the built-in constants
  */
 export function evaluateAgentStreamForLoops(
   recentLogs: string[],
-  taskProgressPct: number
+  taskProgressPct: number,
+  options: LoopEvaluationOptions = {}
 ): LoopEvaluationResult {
   const startTime = performance.now();
+  const loopThreshold = options.loopScoreThreshold ?? LOOP_SCORE_THRESHOLD;
+  const nudgeThreshold = options.nudgeProgressPct ?? NUDGE_PROGRESS_THRESHOLD;
+  const repeatLimit = Math.max(2, options.exactRepeatLimit ?? CONSECUTIVE_EXACT_REPEAT_LIMIT);
 
   const progress = Math.max(0, Math.min(100, taskProgressPct));
   const logs = Array.isArray(recentLogs) ? recentLogs.filter((l) => typeof l === "string" && l.trim().length > 0) : [];
@@ -286,9 +305,14 @@ export function evaluateAgentStreamForLoops(
     exactScore = 0.88;
     repeatedPattern = tailLog;
   }
+  // A run shorter than the configured repeat limit is not (yet) a loop.
+  if (consecutiveIdenticalCount < repeatLimit) {
+    exactScore = 0.0;
+    repeatedPattern = "";
+  }
 
   // Check ping-pong cycles: A -> B -> A -> B (repeating tool call + error cycle)
-  if (logs.length >= 4 && exactScore < 0.85) {
+  if (logs.length >= 4 && exactScore < loopThreshold) {
     const a1 = logs[logs.length - 1].trim().toLowerCase();
     const b1 = logs[logs.length - 2].trim().toLowerCase();
     const a2 = logs[logs.length - 3].trim().toLowerCase();
@@ -302,7 +326,7 @@ export function evaluateAgentStreamForLoops(
   }
 
   // Check 3-step repeating cycle: A -> B -> C -> A -> B -> C
-  if (logs.length >= 6 && exactScore < 0.85) {
+  if (logs.length >= 6 && exactScore < loopThreshold) {
     const a1 = logs[logs.length - 1].trim().toLowerCase();
     const b1 = logs[logs.length - 2].trim().toLowerCase();
     const c1 = logs[logs.length - 3].trim().toLowerCase();
@@ -330,6 +354,8 @@ export function evaluateAgentStreamForLoops(
   for (let i = 0; i < recentSlice.length - 1; i++) {
     const textA = recentSlice[i];
     const textB = recentSlice[i + 1];
+    // Literal repeats belong to the exact-match check (and its repeat limit); only paraphrases count here.
+    if (sameText(textA, textB)) continue;
 
     const cosine = calculateCosineSimilarity(textA, textB);
     const jaccard = calculateJaccardSimilarity(textA, textB);
@@ -342,7 +368,7 @@ export function evaluateAgentStreamForLoops(
     }
   }
 
-  const semanticScore = highestSemanticSim >= 0.85 ? highestSemanticSim : 0.0;
+  const semanticScore = highestSemanticSim >= loopThreshold ? highestSemanticSim : 0.0;
 
   // --------------------------------------------------------------------------
   // Synthesize Loop Score & Classification
@@ -350,9 +376,9 @@ export function evaluateAgentStreamForLoops(
   const loopScore = +(Math.max(exactScore, semanticScore)).toFixed(2);
 
   let loopType: LoopEventType = "NONE";
-  if (exactScore >= LOOP_SCORE_THRESHOLD) {
+  if (exactScore >= loopThreshold) {
     loopType = "EXACT_TOOL_LOOP";
-  } else if (semanticScore >= LOOP_SCORE_THRESHOLD) {
+  } else if (semanticScore >= loopThreshold) {
     loopType = "SEMANTIC_REASONING_LOOP";
     if (semanticSamplePair && !repeatedPattern) {
       repeatedPattern = `Paraphrased reasoning: "${semanticSamplePair[1].slice(0, 80)}"`;
@@ -367,8 +393,8 @@ export function evaluateAgentStreamForLoops(
   let nudgeRequired = false;
   let reason = "Agent executing normally within safe guardrail boundaries.";
 
-  if (loopScore >= LOOP_SCORE_THRESHOLD) {
-    if (progress >= NUDGE_PROGRESS_THRESHOLD) {
+  if (loopScore >= loopThreshold) {
+    if (progress >= nudgeThreshold) {
       // Near completion (>=80%): Pause for human confirmation instead of hard kill
       status = "PAUSED_NUDGE";
       nudgeRequired = true;
