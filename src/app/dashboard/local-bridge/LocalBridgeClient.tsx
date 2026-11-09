@@ -220,7 +220,7 @@ export function LocalBridgeClient({
       {/* ================= HEADER matching Stitch Export ================= */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
             Local PC Bridge &amp; API Keys
           </h1>
           <p className="text-xs text-slate-500 mt-1">
@@ -256,7 +256,7 @@ export function LocalBridgeClient({
       )}
 
       {/* ================= TOP BOX: API KEY & DESKTOP BRIDGE COMMAND (Stitch Match) ================= */}
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft p-5 grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Production API Key */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
@@ -304,7 +304,7 @@ export function LocalBridgeClient({
       {/* ================= 3 AGENT PROCESS CARDS (Stitch Match) ================= */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Agent 1: Claude */}
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
+        <div className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft p-5 space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <div>
               <h3 className="font-bold text-sm text-slate-900">Claude (IDE Agent)</h3>
@@ -352,7 +352,7 @@ export function LocalBridgeClient({
         </div>
 
         {/* Agent 2: Antigravity */}
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
+        <div className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft p-5 space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <div>
               <h3 className="font-bold text-sm text-slate-900">Antigravity</h3>
@@ -402,7 +402,7 @@ export function LocalBridgeClient({
         </div>
 
         {/* Agent 3: Hermes */}
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
+        <div className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft p-5 space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <div>
               <h3 className="font-bold text-sm text-slate-900">Hermes</h3>
@@ -453,7 +453,7 @@ export function LocalBridgeClient({
       </div>
 
       {/* ================= ACTIVE FILE LOCKS (MUTEX CONFLICT PREVENTION) TABLE ================= */}
-      <div className="rounded-xl border border-slate-200 bg-white shadow-xs overflow-hidden">
+      <div className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft overflow-hidden">
         <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
           <div>
             <h2 className="font-bold text-sm text-slate-900 uppercase tracking-wider flex items-center gap-2">
@@ -526,7 +526,7 @@ export function LocalBridgeClient({
       {/* ================= PERMISSIONS & API KEYS GRID ================= */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Permission & Zero-Trust Governance Layer */}
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
+        <div className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft p-5 space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <h3 className="font-bold text-sm text-slate-900 uppercase tracking-wider flex items-center gap-2">
               <Shield className="h-4 w-4 text-emerald-600" />
@@ -633,7 +633,7 @@ export function LocalBridgeClient({
         </div>
 
         {/* API Key & SDK Manager */}
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
+        <div className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft p-5 space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <h3 className="font-bold text-sm text-slate-900 uppercase tracking-wider flex items-center gap-2">
               <Key className="h-4 w-4 text-slate-700" />

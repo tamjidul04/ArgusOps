@@ -251,7 +251,7 @@ export function GuardrailsClient({
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">
+            <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
               24/7 Loop Detection &amp; Resource Guardrails
             </h1>
             <span className="font-mono text-xs font-semibold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded border border-emerald-200">
@@ -305,7 +305,7 @@ export function GuardrailsClient({
       {/* ================= SECTION 1: LIVE STREAM INSPECTOR & POLICY SLIDERS ================= */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column (2/3): Live Stream Inspector */}
-        <div className="lg:col-span-2 rounded-xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
+        <div className="lg:col-span-2 rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft p-5 space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <div className="flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -393,7 +393,7 @@ export function GuardrailsClient({
         </div>
 
         {/* Right Column (1/3): Configurable Policy Sliders */}
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs space-y-5">
+        <div className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft p-5 space-y-5">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <h2 className="font-bold text-sm text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
               <Sliders className="h-4 w-4 text-slate-600" />
@@ -504,7 +504,7 @@ export function GuardrailsClient({
               <button
                 type="button"
                 onClick={handleSavePolicy}
-                className="w-full rounded-lg bg-slate-900 py-2.5 text-xs font-semibold text-white hover:bg-slate-800 transition-colors shadow-2xs"
+                className="w-full rounded-full bg-slate-900 py-2.5 text-xs font-semibold text-white hover:bg-slate-800 transition-colors shadow-2xs"
               >
                 Save Guardrail Policy
               </button>
@@ -514,7 +514,7 @@ export function GuardrailsClient({
       </div>
 
       {/* ================= SECTION 2: FLAGGED AGENTS REVIEW QUEUE ================= */}
-      <div className="rounded-xl border border-slate-200 bg-white shadow-xs overflow-hidden">
+      <div className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft overflow-hidden">
         <div className="p-4 sm:p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
           <div>
             <h2 className="font-bold text-sm text-slate-900 uppercase tracking-wider flex items-center gap-2">
@@ -630,7 +630,7 @@ export function GuardrailsClient({
       </div>
 
       {/* ================= SECTION 3: PER-AGENT RAM & CPU GOVERNANCE PANEL ================= */}
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs space-y-5">
+      <div className="rounded-2xl bg-white ring-1 ring-slate-900/5 shadow-soft p-5 space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
           <div>
             <h2 className="font-bold text-sm text-slate-900 uppercase tracking-wider flex items-center gap-2">
@@ -756,7 +756,7 @@ export function GuardrailsClient({
                 value={nudgeHintText}
                 onChange={(e) => setNudgeHintText(e.target.value)}
                 rows={suggestion ? 6 : 3}
-                className="w-full rounded-lg border border-slate-300 bg-slate-50 p-3 font-mono text-xs text-slate-900 focus:bg-white focus:border-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 transition-all resize-none shadow-2xs"
+                className="w-full rounded-full border border-slate-300 bg-slate-50 p-3 font-mono text-xs text-slate-900 focus:bg-white focus:border-slate-900 focus:outline-none focus:ring-1 focus:ring-slate-900 transition-all resize-none shadow-2xs"
                 placeholder="e.g. Stop re-running the tests; read the error and fix the cause first."
               />
               <p className="text-[11px] text-slate-500">

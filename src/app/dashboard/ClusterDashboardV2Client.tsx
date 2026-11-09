@@ -362,7 +362,7 @@ export function ClusterDashboardV2Client({
                 </span>
               </div>
               <div>
-                <div className="text-3xl font-extrabold text-slate-900 tracking-tight font-mono">
+                <div className="text-3xl font-semibold text-slate-900 tracking-tight font-mono">
                   33%
                 </div>
                 <div className="text-xs text-slate-500 mt-1 font-mono">
@@ -388,7 +388,7 @@ export function ClusterDashboardV2Client({
                 </span>
               </div>
               <div>
-                <div className="text-3xl font-extrabold text-slate-900 tracking-tight font-mono">
+                <div className="text-3xl font-semibold text-slate-900 tracking-tight font-mono">
                   1.24M
                 </div>
                 <div className="text-xs text-slate-400 mt-1">
@@ -413,7 +413,7 @@ export function ClusterDashboardV2Client({
                   {profile.planName}
                 </span>
               </div>
-              <div className="text-2xl font-extrabold text-slate-900 tracking-tight font-mono mt-1">
+              <div className="text-2xl font-semibold text-slate-900 tracking-tight font-mono mt-1">
                 {freeTokens.toLocaleString()}
               </div>
               <div className="flex items-center justify-between text-[11px] text-slate-400 mt-3 border-t border-slate-100 pt-2">
@@ -429,7 +429,7 @@ export function ClusterDashboardV2Client({
               <div className="text-xs font-medium text-slate-500 mb-1">
                 Cost Saved
               </div>
-              <div className="text-2xl font-extrabold text-slate-900 tracking-tight font-mono mt-1">
+              <div className="text-2xl font-semibold text-slate-900 tracking-tight font-mono mt-1">
                 ${costSaved.toFixed(2)}
               </div>
               <div className="text-[11px] text-slate-400 mt-3 border-t border-slate-100 pt-2">
@@ -443,7 +443,7 @@ export function ClusterDashboardV2Client({
               <div className="text-xs font-medium text-slate-500 mb-1">
                 Memory
               </div>
-              <div className="text-2xl font-extrabold text-slate-900 tracking-tight font-mono mt-1">
+              <div className="text-2xl font-semibold text-slate-900 tracking-tight font-mono mt-1">
                 1.42 GB
               </div>
               <div className="text-[11px] text-slate-400 mt-3 border-t border-slate-100 pt-2">
@@ -464,7 +464,7 @@ export function ClusterDashboardV2Client({
                   Loop Intercepted: Agent #02
                 </span>
               </div>
-              <span className="px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider bg-rose-950 text-rose-300">
+              <span className="px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-rose-950 text-rose-300">
                 94% SIMILARITY
               </span>
             </div>
