@@ -275,7 +275,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    if ((error as any)?.digest?.startsWith("NEXT_")) {
+    if ((error as { digest?: string })?.digest?.startsWith("NEXT_")) {
       throw error;
     }
     console.error("Invoice generation error:", error);

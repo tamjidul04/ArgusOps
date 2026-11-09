@@ -215,6 +215,8 @@ model Incident {
   id              String          @id @default(cuid())
   user_id         String
   agent_id        String?
+  agent_name      String?         @db.VarChar(120)
+  loop_type       String?         @db.VarChar(40) // "EXACT_TOOL_LOOP" | "SEMANTIC_REASONING_LOOP"
   kind            String          // "LOOP" | "WASTE" | "BAD_PROMPT" | "BUDGET" | "RAM" | "MUTEX"
   severity        String          @default("WARN") // "INFO" | "WARN" | "CRITICAL"
   action          String          @default("NONE") // "NONE" | "PAUSED" | "KILLED" | "THROTTLED" | "REWRITE_PROPOSED"
@@ -245,6 +247,9 @@ model Policy {
   token_burn_per_min_limit Int      @default(40000)
   auto_apply_rewrites      Boolean  @default(false)
   auto_downgrade_models    Boolean  @default(true)
+  monitor_processes        Boolean  @default(true)
+  enforce_mutex            Boolean  @default(true)
+  intercept_redundant_api  Boolean  @default(true)
   updated_at               DateTime @updatedAt
 
   user                     User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
@@ -307,7 +312,8 @@ model FileLock {
   id          String   @id @default(cuid())
   user_id     String
   file_path   String   @db.VarChar(512)
-  holder      String
+  holder      String   @db.VarChar(120)
+  queued_agent String? @db.VarChar(255)
   holder_pid  Int?
   expires_at  DateTime
   created_at  DateTime @default(now())

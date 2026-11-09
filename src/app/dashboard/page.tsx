@@ -97,63 +97,17 @@ async function DashboardDataLoader() {
     console.error("Dashboard data loader error:", error);
   }
 
-  // Fallbacks if database had empty tables
+  // Accounts without a cloud cluster get an honest empty one, never invented agents.
   if (!cloudCluster) {
     cloudCluster = {
-      cluster_id: "cluster_cloud_useast",
-      name: "Enterprise Cloud Swarm us-east",
+      cluster_id: "",
+      name: "No cloud cluster yet",
       environment: "CLOUD",
-      active_agents: 2,
-      hibernated_agents: 4,
-      cache_tokens_saved: 1240000,
-      cached_context_hash: "sha256:8f4b23a91e5d7c81f34a0293ebc451",
-      agents: [
-        {
-          agent_id: "agent_01",
-          cluster_id: "cluster_cloud_useast",
-          name: "Agent #01 (Claude)",
-          agent_type: "CLAUDE",
-          status: "ACTIVE",
-          model_tier: "FRONTIER",
-          ram_usage: 320,
-          cpu_usage: 12.4,
-          tokens_used: 14200,
-          current_task: "Compiling AST recursion trap",
-          locked_file_path: "src/auth/jwt_session.ts",
-          loop_score: 0.02,
-          last_heartbeat_at: new Date().toISOString(),
-        },
-        {
-          agent_id: "agent_02",
-          cluster_id: "cluster_cloud_useast",
-          name: "Agent #02 (Antigravity)",
-          agent_type: "ANTIGRAVITY",
-          status: "PAUSED_NUDGE",
-          model_tier: "FRONTIER",
-          ram_usage: 680,
-          cpu_usage: 2.1,
-          tokens_used: 42100,
-          current_task: "fetch_vector_chunks repeated 14x in 8.2ms",
-          locked_file_path: "prisma/schema.prisma",
-          loop_score: 0.94,
-          last_heartbeat_at: new Date().toISOString(),
-        },
-        {
-          agent_id: "agent_03",
-          cluster_id: "cluster_cloud_useast",
-          name: "Agent #03 (Hermes)",
-          agent_type: "HERMES",
-          status: "HIBERNATED",
-          model_tier: "DOWNGRADED_FAST",
-          ram_usage: 45,
-          cpu_usage: 0.0,
-          tokens_used: 2800,
-          current_task: "Standby in zero-token pool",
-          locked_file_path: null,
-          loop_score: 0.0,
-          last_heartbeat_at: new Date().toISOString(),
-        },
-      ],
+      active_agents: 0,
+      hibernated_agents: 0,
+      cache_tokens_saved: 0,
+      cached_context_hash: null,
+      agents: [],
     };
   }
 

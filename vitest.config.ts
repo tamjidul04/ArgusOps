@@ -8,6 +8,6 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["src/**/*.test.ts", "packages/**/*.test.ts"],
-    exclude: ["**/node_modules/**", "packages/vscode/out/**"],
+    exclude: ["**/node_modules/**", "**/*.integration.test.ts", "packages/vscode/out/**"],
   },
 });

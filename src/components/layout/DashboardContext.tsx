@@ -71,7 +71,7 @@ export function DashboardProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [profile, setProfile] = useState<UserProfile>(EMPTY_PROFILE);
   const [loading, setLoading] = useState(true);
-  const [environment, setEnvironment] = useState<EnvironmentType>("CLOUD");
+  const [environment, setEnvironment] = useState<EnvironmentType>("LOCAL_PC");
 
   const refreshProfile = useCallback(async () => {
     const result = await fetchProfile();

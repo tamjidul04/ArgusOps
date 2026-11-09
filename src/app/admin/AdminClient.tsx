@@ -909,9 +909,9 @@ export function AdminClient({
       {/* Footer Info Strip matching 07-admin-panel.png */}
       <div className="pt-6 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2">
         <div className="flex items-center gap-2">
-          <span>Cluster ID: <span className="font-mono text-slate-700">us-east-cluster-09</span></span>
+          <span>ArgusOps v0.2</span>
           <span>&bull;</span>
-          <span>Daemon: <span className="text-slate-700">v1.4.0 (Zero-Trust Local Code)</span></span>
+          <span>Admin console</span>
         </div>
         <div>
           <span>Owner: <strong className="text-slate-800">{profile.name}</strong></span>

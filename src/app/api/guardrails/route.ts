@@ -2,360 +2,199 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth";
 import { evaluateAgentStreamForLoops } from "@/lib/guardrails-engine";
+import {
+  sanitizePolicyInput,
+  type GuardrailPolicy,
+  type StreamEvent,
+} from "@/lib/control-plane-core";
+import {
+  getLatencyStats,
+  getPolicy,
+  getPolicyRow,
+  killAgent,
+  listStreamEvents,
+  ownedAgent,
+  recordIncident,
+  resumeAgent,
+  updatePolicy,
+} from "@/lib/control-plane";
 
-export interface GuardrailPolicy {
-  maxConsecutiveRetries: number;
-  semanticSimilarityThreshold: number;
-  nudgeCompletionThreshold: number;
-  maxRamPerAgentMb: number;
-  autoThrottleEnabled: boolean;
-}
+export type { GuardrailPolicy, StreamEvent };
 
-export interface StreamEvent {
-  id: string;
-  timestamp: string;
-  agentId: string;
-  agentName: string;
-  eventType: "EXACT_TOOL_LOOP" | "SEMANTIC_REASONING_LOOP" | "MEMORY_GOVERNANCE";
-  toolName?: string;
-  similarityScore?: number;
-  retryCount?: number;
-  latencyMs: number;
-  actionTaken: "KILLED_LOOP" | "PAUSED_NUDGE" | "THROTTLED" | "FLAGGED";
-  summary: string;
-}
+const MAX_LOG_LINES = 200;
+const MAX_LOG_LINE_CHARS = 2000;
 
-// In-memory policy state with realistic defaults
-let currentPolicy: GuardrailPolicy = {
-  maxConsecutiveRetries: 3,
-  semanticSimilarityThreshold: 0.88,
-  nudgeCompletionThreshold: 80,
-  maxRamPerAgentMb: 250,
-  autoThrottleEnabled: true,
-};
-
-// Initial stream events
-const streamEvents: StreamEvent[] = [
-  {
-    id: "evt-01",
-    timestamp: "10:14:02",
-    agentId: "agent_cloud_killed_30",
-    agentName: "Cloud-Worker-30-Crawler",
-    eventType: "EXACT_TOOL_LOOP",
-    toolName: "fetch_vector_chunks(offset=1024)",
-    retryCount: 4,
-    latencyMs: 38,
-    actionTaken: "KILLED_LOOP",
-    summary: "Tool call failed with identical ECONNRESET error 4x. Hard circuit breaker tripped at 38ms.",
-  },
-  {
-    id: "evt-02",
-    timestamp: "10:13:48",
-    agentId: "agent_cloud_nudge_29",
-    agentName: "Cloud-Worker-29-Auditor",
-    eventType: "SEMANTIC_REASONING_LOOP",
-    similarityScore: 0.94,
-    latencyMs: 31,
-    actionTaken: "PAUSED_NUDGE",
-    summary: "Cosine similarity 0.94 detected repeated reasoning cycle on migration alter statement. Task is 92% complete: Paused for human nudge.",
-  },
-  {
-    id: "evt-03",
-    timestamp: "10:12:15",
-    agentId: "agent_cloud_active_12",
-    agentName: "Cloud-Worker-12",
-    eventType: "MEMORY_GOVERNANCE",
-    latencyMs: 29,
-    actionTaken: "THROTTLED",
-    summary: "Resident memory reached 268MB (cap: 250MB). Memory bus governor throttled AST buffer down to 142MB in 29ms.",
-  },
-];
-
+/**
+ * Agent state changes made here are the control plane's *desired state*. The `argus` CLI/daemon
+ * reads them and applies them to the real process; until a daemon is connected they only update
+ * what the dashboard shows. Every lookup is scoped to the signed-in user's own agents.
+ */
 export async function GET(req: NextRequest) {
   const auth = await requireAuth(req);
   if (auth instanceof NextResponse) return auth;
+  const userId = auth.user.id;
+
   try {
-    const { searchParams } = new URL(req.url);
-    const clusterId = searchParams.get("clusterId") || "cluster_cloud_useast";
+    const mine = { cluster: { user_id: userId } };
 
-    // Fetch flagged/high-risk agents
-    const flaggedAgents = await prisma.agent.findMany({
-      where: {
-        cluster_id: clusterId,
-        OR: [
-          { status: "PAUSED_NUDGE" },
-          { status: "KILLED_LOOP" },
-          { loop_score: { gte: 0.5 } },
-          { ram_usage: { gte: 200 } },
-        ],
-      },
-      orderBy: { loop_score: "desc" },
-    });
-
-    // Fetch active agents for RAM & CPU meters
-    const activeAgents = await prisma.agent.findMany({
-      where: {
-        cluster_id: clusterId,
-        status: "ACTIVE",
-      },
-      take: 12,
-      orderBy: { ram_usage: "desc" },
-    });
+    const [policy, streamEvents, flaggedAgents, activeAgents, latency] = await Promise.all([
+      getPolicy(userId),
+      listStreamEvents(userId),
+      prisma.agent.findMany({
+        where: {
+          ...mine,
+          OR: [{ status: "PAUSED_NUDGE" }, { status: "KILLED_LOOP" }, { loop_score: { gte: 0.5 } }],
+        },
+        orderBy: { loop_score: "desc" },
+        take: 100,
+      }),
+      prisma.agent.findMany({
+        where: { ...mine, status: "ACTIVE" },
+        take: 12,
+        orderBy: { ram_usage: "desc" },
+      }),
+      getLatencyStats(userId),
+    ]);
 
     return NextResponse.json({
       success: true,
-      policy: currentPolicy,
+      policy,
       streamEvents,
       flaggedAgents,
       activeAgents,
-      avgLatencyMs: 38,
-      p99LatencyMs: 8.2,
+      avgLatencyMs: latency.avg,
+      p99LatencyMs: latency.p99,
     });
   } catch (error) {
     console.error("Guardrails GET error:", error);
-    return NextResponse.json(
-      { error: "Failed to retrieve guardrails data." },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to retrieve guardrails data." }, { status: 500 });
   }
 }
 
 export async function POST(req: NextRequest) {
   const auth = await requireAuth(req);
   if (auth instanceof NextResponse) return auth;
+  if (auth.via !== "session") {
+    return NextResponse.json({ error: "Sign in to change guardrails." }, { status: 403 });
+  }
+  const userId = auth.user.id;
+
   try {
-    const body = await req.json();
-    const { action, agentId, hintText, policy } = body;
+    const body = await req.json().catch(() => ({}));
+    const { action } = body as { action?: string };
+    const agentIdOf = (): string | null => (typeof body.agentId === "string" && body.agentId ? body.agentId : null);
 
     switch (action) {
       case "UPDATE_POLICY": {
-        if (policy) {
-          currentPolicy = {
-            ...currentPolicy,
-            ...policy,
-          };
-        }
+        const policy = await updatePolicy(userId, sanitizePolicyInput(body.policy));
         return NextResponse.json({
           success: true,
-          message: "Guardrail thresholds and circuit-breaker policy updated.",
-          policy: currentPolicy,
+          message: "Guardrail thresholds saved. They apply to the next request each agent makes.",
+          policy,
         });
       }
 
       case "SEND_NUDGE": {
-        if (!agentId) {
-          return NextResponse.json({ error: "agentId is required." }, { status: 400 });
-        }
-
-        const agent = await prisma.agent.findUnique({ where: { agent_id: agentId } });
-        if (!agent) {
-          return NextResponse.json({ error: "Agent not found." }, { status: 404 });
-        }
-
-        const hint = hintText || "Bypass foreign-key check temporarily and proceed with commit";
-
-        const updated = await prisma.agent.update({
-          where: { agent_id: agentId },
-          data: {
-            status: "ACTIVE",
-            loop_score: 0.04,
-            ram_usage: 145.0,
-            cpu_usage: 12.5,
-            current_task: `Resumed via Human Nudge: "${hint}"`,
-            last_heartbeat_at: new Date(),
-          },
-        });
-
-        // Add event to stream
-        streamEvents.unshift({
-          id: `evt-${Date.now()}`,
-          timestamp: new Date().toLocaleTimeString(),
-          agentId: agent.agent_id,
-          agentName: agent.name,
-          eventType: "SEMANTIC_REASONING_LOOP",
-          similarityScore: agent.loop_score,
-          latencyMs: 34,
-          actionTaken: "FLAGGED",
-          summary: `Human operator supplied hint: "${hint}". Agent loop cleared and resumed.`,
-        });
-
+        const agentId = agentIdOf();
+        if (!agentId) return NextResponse.json({ error: "agentId is required." }, { status: 400 });
+        const r = await resumeAgent(userId, agentId, typeof body.hintText === "string" ? body.hintText : undefined);
+        if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.status });
         return NextResponse.json({
           success: true,
-          message: `Nudge delivered to ${agent.name}. Resumed active execution.`,
-          agent: updated,
+          message: `${r.value.agent.name} will resume with your hint on its next sync.`,
+          agent: r.value.agent,
         });
       }
 
       case "THROTTLE_DOWNGRADE": {
-        if (!agentId) {
-          return NextResponse.json({ error: "agentId is required." }, { status: 400 });
-        }
-
-        const agent = await prisma.agent.findUnique({ where: { agent_id: agentId } });
-        if (!agent) {
-          return NextResponse.json({ error: "Agent not found." }, { status: 404 });
-        }
+        const agentId = agentIdOf();
+        if (!agentId) return NextResponse.json({ error: "agentId is required." }, { status: 400 });
+        const agent = await ownedAgent(userId, agentId);
+        if (!agent) return NextResponse.json({ error: "Agent not found." }, { status: 404 });
 
         const updated = await prisma.agent.update({
-          where: { agent_id: agentId },
-          data: {
-            model_tier: "DOWNGRADED_FAST",
-            ram_usage: +(agent.ram_usage * 0.6).toFixed(1),
-            cpu_usage: +(agent.cpu_usage * 0.5).toFixed(1),
-            current_task: "Throttled to fast model (Haiku/Flash) to curb resource consumption",
-            last_heartbeat_at: new Date(),
-          },
+          where: { agent_id: agent.agent_id },
+          data: { model_tier: "DOWNGRADED_FAST" },
         });
-
-        streamEvents.unshift({
-          id: `evt-${Date.now()}`,
-          timestamp: new Date().toLocaleTimeString(),
+        await recordIncident({
+          userId,
           agentId: agent.agent_id,
           agentName: agent.name,
-          eventType: "MEMORY_GOVERNANCE",
-          latencyMs: 28,
-          actionTaken: "THROTTLED",
-          summary: `${agent.name} downgraded to fast model tier. Memory throttled by 40%.`,
+          kind: "WASTE",
+          severity: "INFO",
+          action: "THROTTLED",
+          detail: `${agent.name} switched to the fast model tier to cut token cost.`,
         });
-
         return NextResponse.json({
           success: true,
-          message: `${agent.name} throttled and downgraded to fast leaf-model.`,
+          message: `${agent.name} will use the fast model tier for new requests.`,
           agent: updated,
         });
       }
 
       case "TRIGGER_KILL_SWITCH": {
-        if (!agentId) {
-          return NextResponse.json({ error: "agentId is required." }, { status: 400 });
-        }
-
-        const agent = await prisma.agent.findUnique({ where: { agent_id: agentId } });
-        if (!agent) {
-          return NextResponse.json({ error: "Agent not found." }, { status: 404 });
-        }
-
-        const killed = await prisma.agent.update({
-          where: { agent_id: agentId },
-          data: {
-            status: "KILLED_LOOP",
-            loop_score: 0.99,
-            ram_usage: 0.0,
-            cpu_usage: 0.0,
-            current_task: "Terminated by operator kill switch. 0 tokens consumed.",
-            last_heartbeat_at: new Date(),
-          },
-        });
-
-        streamEvents.unshift({
-          id: `evt-${Date.now()}`,
-          timestamp: new Date().toLocaleTimeString(),
-          agentId: agent.agent_id,
-          agentName: agent.name,
-          eventType: "EXACT_TOOL_LOOP",
-          latencyMs: 14,
-          actionTaken: "KILLED_LOOP",
-          summary: `Manual kill switch triggered on ${agent.name}. 0 token burn.`,
-        });
-
+        const agentId = agentIdOf();
+        if (!agentId) return NextResponse.json({ error: "agentId is required." }, { status: 400 });
+        const r = await killAgent(userId, agentId, "Stopped by operator kill switch.");
+        if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.status });
         return NextResponse.json({
           success: true,
-          message: `Kill switch executed: ${agent.name} halted immediately (0 tokens).`,
-          agent: killed,
-        });
-      }
-
-      case "TEST_MEMORY_SPIKE": {
-        // Pick an active agent and simulate a spike to 340MB, then auto-throttle back to 135MB
-        let activeAgent = await prisma.agent.findFirst({
-          where: { status: "ACTIVE" },
-        });
-
-        if (!activeAgent) {
-          activeAgent = await prisma.agent.findFirst();
-        }
-
-        if (!activeAgent) {
-          return NextResponse.json({ error: "No agent available." }, { status: 404 });
-        }
-
-        // Simulate auto-governance: RAM spiked to 340MB -> Hypervisor intercepted at 32ms -> clamped to 138MB
-        const governedAgent = await prisma.agent.update({
-          where: { agent_id: activeAgent.agent_id },
-          data: {
-            ram_usage: 138.4,
-            cpu_usage: 9.5,
-            current_task: "Auto-governed: Memory buffer flushed after 340MB spike test.",
-            last_heartbeat_at: new Date(),
-          },
-        });
-
-        streamEvents.unshift({
-          id: `evt-${Date.now()}`,
-          timestamp: new Date().toLocaleTimeString(),
-          agentId: activeAgent.agent_id,
-          agentName: activeAgent.name,
-          eventType: "MEMORY_GOVERNANCE",
-          latencyMs: 32,
-          actionTaken: "THROTTLED",
-          summary: `Memory spike simulated: ${activeAgent.name} surged to 340MB. Hypervisor clamped memory down to 138MB in 32ms.`,
-        });
-
-        return NextResponse.json({
-          success: true,
-          message: `Memory spike simulated! ${activeAgent.name} spiked to 340MB and was auto-throttled back to 138MB in 32ms.`,
-          agent: governedAgent,
+          message: `${r.value.agent.name} was marked stopped. Its CLI will terminate the process on the next sync.`,
+          agent: r.value.agent,
         });
       }
 
       case "EVALUATE_STREAM": {
-        const { logs = [], taskProgressPct = 50, agentId } = body;
-        const evaluation = evaluateAgentStreamForLoops(logs, taskProgressPct);
+        const rawLogs: unknown[] = Array.isArray(body.logs) ? body.logs.slice(-MAX_LOG_LINES) : [];
+        const logs = rawLogs.map((l) => String(l).slice(0, MAX_LOG_LINE_CHARS));
+        const progress = typeof body.taskProgressPct === "number" ? body.taskProgressPct : 50;
+        const policy = await getPolicyRow(userId);
 
+        const evaluation = evaluateAgentStreamForLoops(logs, progress, {
+          loopScoreThreshold: policy.loop_score_threshold,
+          nudgeProgressPct: policy.nudge_progress_pct,
+          exactRepeatLimit: policy.exact_repeat_limit,
+        });
+
+        const agentId = agentIdOf();
         if (agentId && (evaluation.status === "KILLED_LOOP" || evaluation.status === "PAUSED_NUDGE")) {
-          try {
+          const agent = await ownedAgent(userId, agentId);
+          if (agent) {
             await prisma.agent.update({
-              where: { agent_id: agentId },
+              where: { agent_id: agent.agent_id },
               data: {
                 status: evaluation.status,
                 loop_score: evaluation.loopScore,
-                ram_usage: evaluation.status === "KILLED_LOOP" ? 0.0 : undefined,
-                cpu_usage: evaluation.status === "KILLED_LOOP" ? 0.0 : undefined,
-                current_task: evaluation.reason,
+                ...(evaluation.status === "KILLED_LOOP" && { ram_usage: 0, cpu_usage: 0 }),
+                current_task: evaluation.reason.slice(0, 500),
                 last_heartbeat_at: new Date(),
               },
             });
-
-            streamEvents.unshift({
-              id: `evt-${Date.now()}`,
-              timestamp: new Date().toLocaleTimeString(),
-              agentId,
-              agentName: agentId,
-              eventType: evaluation.loopType === "EXACT_TOOL_LOOP" ? "EXACT_TOOL_LOOP" : "SEMANTIC_REASONING_LOOP",
-              latencyMs: evaluation.interceptionMs,
-              actionTaken: evaluation.status,
-              summary: evaluation.reason,
+            await recordIncident({
+              userId,
+              agentId: agent.agent_id,
+              agentName: agent.name,
+              kind: "LOOP",
+              loopType: evaluation.loopType === "SEMANTIC_REASONING_LOOP" ? "SEMANTIC_REASONING_LOOP" : "EXACT_TOOL_LOOP",
+              severity: evaluation.status === "KILLED_LOOP" ? "CRITICAL" : "WARN",
+              action: evaluation.status === "KILLED_LOOP" ? "KILLED" : "PAUSED",
+              score: evaluation.loopScore,
+              detail: evaluation.reason,
+              interceptionMs: evaluation.interceptionMs,
             });
-          } catch (err) {
-            console.error("Failed to update agent from stream evaluation:", err);
           }
         }
-
-        return NextResponse.json({
-          success: true,
-          evaluation,
-        });
+        return NextResponse.json({ success: true, evaluation });
       }
 
       default:
-        return NextResponse.json({ error: `Unknown action: ${action}` }, { status: 400 });
+        return NextResponse.json(
+          { error: `Unknown or removed action: ${String(action)}. Simulation actions are no longer available.` },
+          { status: 400 }
+        );
     }
   } catch (error) {
     console.error("Guardrails action error:", error);
-    return NextResponse.json(
-      { error: "Internal server error occurred while processing guardrails action." },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Internal server error while processing the guardrails action." }, { status: 500 });
   }
 }
-

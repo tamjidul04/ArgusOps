@@ -135,7 +135,7 @@ export function BrainProvider({ children }: { children: React.ReactNode }) {
   const [cloudCluster, setCloudCluster] = useState<BrainCluster | null>(null);
   const [localCluster, setLocalCluster] = useState<BrainCluster | null>(null);
   const [wallet, setWallet] = useState<BrainWallet | null>(null);
-  const [interceptionLatencyMs, setInterceptionLatencyMs] = useState<number>(18);
+  const [interceptionLatencyMs, setInterceptionLatencyMs] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
