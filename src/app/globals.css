@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/*
+ * ArgusOps design system v2
+ * Palette: slate neutrals; green / amber / red are reserved for status.
+ * Motion: one spring curve, transform + opacity only, off under prefers-reduced-motion.
+ */
 :root {
   --background: #f8fafc;
   --foreground: #0f172a;
@@ -9,15 +14,103 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
-  --font-mono: var(--font-geist-mono), monospace;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
+  --shadow-soft: 0 1px 2px rgb(15 23 42 / 0.04), 0 12px 32px -12px rgb(15 23 42 / 0.14);
+  --shadow-lift: 0 2px 4px rgb(15 23 42 / 0.04), 0 28px 64px -24px rgb(15 23 42 / 0.28);
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 6rem;
 }
 
 html,
 body {
-  background-color: #f8fafc;
-  color: #0f172a;
+  background-color: var(--background);
+  color: var(--foreground);
   font-family: var(--font-sans);
   min-height: 100vh;
   overflow-x: hidden;
   max-width: 100vw;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Lighter icon strokes everywhere (lucide defaults to 2). */
+svg.lucide {
+  stroke-width: 1.6;
+}
+
+/* One consistent, visible keyboard focus ring. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid #0f172a;
+  outline-offset: 3px;
+  border-radius: 0.5rem;
+}
+.on-dark :where(a, button, summary):focus-visible {
+  outline-color: #f8fafc;
+}
+
+::selection {
+  background: #0f172a;
+  color: #fff;
+}
+
+/* Scroll reveal: scroll-driven where supported, plain visible content everywhere else. */
+@keyframes reveal-up {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@supports (animation-timeline: view()) {
+  .reveal {
+    animation: reveal-up linear both;
+    animation-timeline: view();
+    animation-range: entry 5% entry 45%;
+  }
+}
+
+/* Gentle idle motion for hero accents. */
+@keyframes float-slow {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+.float-slow {
+  animation: float-slow 7s var(--ease-spring) infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+.caret {
+  animation: blink 1.1s steps(1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .reveal,
+  .float-slow,
+  .caret {
+    animation: none !important;
+  }
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+  }
 }
