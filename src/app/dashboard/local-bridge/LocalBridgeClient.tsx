@@ -131,45 +131,6 @@ export function LocalBridgeClient({
     setTimeout(() => setCopiedKey(false), 2000);
   };
 
-  // Simulate File Collision
-  const handleSimulateCollision = async () => {
-    setFeedback({
-      type: "info",
-      text: "Simulating concurrent write clash from Claude on src/app/dashboard/page.tsx...",
-    });
-
-    try {
-      const res = await executeBrainAction("TEST_FILE_MUTEX", {
-        targetFilePath: "src/app/dashboard/page.tsx",
-      });
-
-      if (!res.success) {
-        setFeedback({ type: "error", text: res.error || "Simulation failed." });
-        return;
-      }
-
-      setFeedback({
-        type: "warning",
-        text: res.message || "Write collision intercepted! Mutex protected write path.",
-      });
-
-      setLocks((prev) => [
-        {
-          id: `lock-collision-${Date.now()}`,
-          filePath: "src/app/dashboard/page.tsx",
-          holderAgent: "Antigravity (Local IDE)",
-          queuedAgent: "Claude Code CLI (BLOCKED: Rerouted to .conflict-agent_local_claude.tsx)",
-          acquiredAt: "Just now",
-          status: "CONFLICT_QUEUED",
-        },
-        ...prev.filter((l) => l.filePath !== "src/app/dashboard/page.tsx"),
-      ]);
-    } catch (err) {
-      console.error(err);
-      setFeedback({ type: "error", text: "Failed to simulate file collision." });
-    }
-  };
-
   // Release Lock
   const handleReleaseLock = async (lockId: string) => {
     try {
@@ -263,30 +224,11 @@ export function LocalBridgeClient({
             Local PC Bridge &amp; API Keys
           </h1>
           <p className="text-xs text-slate-500 mt-1">
-            Daemon Memory:{" "}
-            <strong className="font-mono text-emerald-700">
-              {hardware?.daemonMemoryMb ? `${hardware.daemonMemoryMb} MB` : "42.4 MB"}
-            </strong>{" "}
-            (&lt;150MB limit) • Host RAM:{" "}
-            <strong className="font-mono text-slate-800">
-              {hardware
-                ? `${hardware.usedRamGb} / ${hardware.totalRamGb} GB (${hardware.ramUsagePercent}%)`
-                : "16.00 GB"}
-            </strong>{" "}
-            • Zero-Trust Local Privacy: <strong className="text-emerald-700">Enabled</strong>
+            Pair a machine with an API key, see which agents hold which files, and choose what the local daemon may do.
+            Zero-trust privacy: <strong className="text-emerald-700">{permissions.zeroTrustCodePrivacy ? "Enabled" : "Disabled"}</strong>
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={handleSimulateCollision}
-            className="flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 px-3 py-2 text-xs font-semibold text-amber-900 shadow-2xs transition-colors active:scale-95"
-          >
-            <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
-            <span>Simulate File Collision (Claude → page.tsx)</span>
-          </button>
-        </div>
       </div>
 
       {/* Action Notification Banner */}
@@ -344,7 +286,6 @@ export function LocalBridgeClient({
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
               Desktop Bridge Command
             </span>
-            <span className="font-mono text-[10px] text-slate-500">v1.4.0</span>
           </div>
           <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2.5 font-mono text-xs">
             <span className="text-slate-800 select-all font-semibold truncate">{defaultCliCmd}</span>
