@@ -1,13 +1,15 @@
 import React, { Suspense } from "react";
 import { Metadata } from "next";
-import { PublicNavbar, PublicFooter } from "@/components/layout";
+import { PublicShell } from "@/components/layout";
+import { Container, PageHeader } from "@/components/ui";
+import { CtaBand } from "@/components/marketing/CtaBand";
 import { PricingClient, PlanData } from "./PricingClient";
 import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = {
-  title: "Pricing & Plans | ArgusOps v1.1",
+  title: "Pricing",
   description:
-    "Predictable, cost-saving pricing for AI agent cluster management. Compare Free Tier, Pro Swarm, and Enterprise hypervisor solutions.",
+    "Free for two agents, Pro for ten. Pay for supervision; your model provider bills you for tokens.",
 };
 
 async function PricingPlansSection() {
@@ -33,36 +35,33 @@ async function PricingPlansSection() {
     plans = [
       {
         plan_id: "plan_free",
-        name: "Free Tier",
-        price: 0.0,
-        agent_limit: 3,
-        included_tokens: 50000,
+        name: "Free",
+        price: 0,
+        agent_limit: 2,
+        included_tokens: 250_000,
         is_public: true,
         requires_admin_approval: false,
-        description:
-          "Essential starter plan for individual developers and local agent coordination. Includes 3 concurrent agents and 50,000 free tokens.",
+        description: "Supervise up to 2 concurrent coding agents with loop detection, auto-pause and prompt-rewrite suggestions.",
       },
       {
         plan_id: "plan_pro",
-        name: "Pro Tier",
-        price: 49.0,
-        agent_limit: 25,
-        included_tokens: 1500000,
+        name: "Pro",
+        price: 29,
+        agent_limit: 10,
+        included_tokens: 1_250_000,
         is_public: true,
-        requires_admin_approval: true,
-        description:
-          "Designed for power developers and small teams running distributed agent swarms with advanced loop circuit-breakers and shared memory cache.",
+        requires_admin_approval: false,
+        description: "5x the Free limits: 10 concurrent agents and more metered tokens, with priority support.",
       },
       {
         plan_id: "plan_enterprise",
         name: "Enterprise",
-        price: 299.0,
-        agent_limit: 100,
-        included_tokens: 15000000,
+        price: 299,
+        agent_limit: 50,
+        included_tokens: 15_000_000,
         is_public: true,
         requires_admin_approval: true,
-        description:
-          "Full-scale agentic hypervisor and cost governance cluster for enterprise cloud swarms with dedicated SLA, 24/7 loop prevention, and unlimited workspaces.",
+        description: "Custom limits and a dedicated support channel. Final terms are agreed per contract.",
       },
     ];
   }
@@ -72,38 +71,18 @@ async function PricingPlansSection() {
 
 export default function PricingPage() {
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
-      <PublicNavbar />
-
-      <main className="flex-1 py-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full space-y-12">
-        {/* Header */}
-        <div className="text-center max-w-3xl mx-auto space-y-4">
-          <div className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-800 shadow-xs">
-            <span>Transparent FinOps Pricing</span>
-          </div>
-          <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-slate-900">
-            Simple plans for rogue-free agent swarms
-          </h1>
-          <p className="text-sm sm:text-base text-slate-600 leading-relaxed">
-            Start completely free on your local PC or scale to an enterprise cloud cluster.
-            All tiers include our &lt;100ms loop circuit breaker and Zero-Trust isolation.
-          </p>
-        </div>
-
-        {/* Dynamic Interactive Pricing Grid with Suspense */}
-        <Suspense
-          fallback={
-            <div className="text-center py-16 text-slate-400 font-mono text-xs flex items-center justify-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-slate-400 animate-ping" />
-              <span>Loading live pricing plans...</span>
-            </div>
-          }
-        >
+    <PublicShell>
+      <PageHeader
+        eyebrow="Pricing"
+        title="Pay for supervision, not for tokens."
+        lead="Your model provider bills you for tokens. ArgusOps charges for how many agents it watches at once. Start free."
+      />
+      <Container className="py-20 md:py-28">
+        <Suspense fallback={<p className="py-16 text-center text-sm text-slate-500">Loading plans…</p>}>
           <PricingPlansSection />
         </Suspense>
-      </main>
-
-      <PublicFooter />
-    </div>
+      </Container>
+      <CtaBand />
+    </PublicShell>
   );
 }
