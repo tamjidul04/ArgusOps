@@ -143,16 +143,38 @@ svg.lucide {
   animation: rise 0.9s var(--ease-out-quart) both;
 }
 
-/* Menus and popovers open from where they are anchored. */
+/* Menus and popovers rise gently into place. */
 @keyframes pop-in {
   from {
     opacity: 0;
-    transform: scale(0.97) translateY(-4px);
+    transform: translateY(8px) scale(0.98);
   }
 }
 .pop-in {
-  animation: pop-in 0.16s var(--ease-out-quart) both;
+  animation: pop-in 0.28s var(--ease-out-quart) both;
 }
+
+/* Content that appears on demand (a docs section, a panel) rises in, its parts one after another. */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+.rise-in {
+  animation: rise-in 0.55s var(--ease-out-quart) both;
+}
+.rise-in-children > * {
+  animation: rise-in 0.55s var(--ease-out-quart) both;
+}
+.rise-in-children > :nth-child(1) { animation-delay: 40ms; }
+.rise-in-children > :nth-child(2) { animation-delay: 90ms; }
+.rise-in-children > :nth-child(3) { animation-delay: 140ms; }
+.rise-in-children > :nth-child(4) { animation-delay: 190ms; }
+.rise-in-children > :nth-child(5) { animation-delay: 240ms; }
+.rise-in-children > :nth-child(6) { animation-delay: 290ms; }
+.rise-in-children > :nth-child(7) { animation-delay: 330ms; }
+.rise-in-children > :nth-child(n + 8) { animation-delay: 370ms; }
 
 /* Live status dot: a single soft ring, slow, never a flashing ping. */
 @keyframes breathe {
@@ -213,6 +235,8 @@ svg.lucide {
   .grow-y,
   .rise,
   .pop-in,
+  .rise-in,
+  .rise-in-children > *,
   .live-dot,
   .caret,
   .eye-blink {

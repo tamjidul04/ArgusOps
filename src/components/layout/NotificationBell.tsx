@@ -124,7 +124,7 @@ export function NotificationBell() {
         </button>
 
         {open && (
-          <div role="menu" className="absolute right-0 z-50 mt-1.5 w-80 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg">
+          <div role="menu" className="pop-in absolute right-0 z-50 mt-1.5 w-80 origin-top-right overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lift">
             <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2.5">
               <span className="text-xs font-semibold text-slate-900">Notifications</span>
               {unread > 0 && (
@@ -159,7 +159,7 @@ export function NotificationBell() {
       </div>
 
       {toast && (
-        <div role="status" className="fixed bottom-6 right-6 z-[60] w-80 rounded-md border border-slate-200 bg-white p-4 shadow-xl animate-in fade-in slide-in-from-bottom-2">
+        <div role="status" className="pop-in fixed bottom-6 right-6 z-[60] w-80 rounded-md border border-slate-200 bg-white p-4 shadow-xl animate-in fade-in slide-in-from-bottom-2">
           <div className="flex items-start gap-3">
             {(() => {
               const { icon: Icon, tone } = LEVEL_STYLE[toast.level] ?? LEVEL_STYLE.INFO;
