@@ -341,17 +341,45 @@ export function ClusterDashboardV2Client({
         }
       />
 
-      {/* Headline numbers: one hairline strip instead of five cards */}
-      <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-slate-200 bg-slate-200 sm:grid-cols-3 xl:grid-cols-5 [&>*]:bg-white">
+      {/* Headline numbers: one large figure (the wallet), four supporting ones */}
+      <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-slate-200 bg-slate-200 lg:grid-cols-4 lg:grid-rows-2 [&>*]:bg-white">
+        <div className="col-span-2 flex min-w-0 flex-col justify-between p-5 lg:row-span-2 lg:p-6">
+          <div>
+            <div className="flex items-start justify-between gap-2">
+              <dt className="text-xs text-slate-500">Free token balance</dt>
+              <Badge>{profile.planName}</Badge>
+            </div>
+            <dd className="tabular mt-3 truncate text-5xl font-semibold tracking-[-0.035em] text-slate-900 lg:text-6xl">{freeTokens.toLocaleString("en-US")}</dd>
+            <dd className="mt-1.5 text-[13px] text-slate-500">
+              tokens left · paid balance <span className="tabular font-mono text-slate-900">{profile.paidTokens.toLocaleString("en-US")}</span>
+            </dd>
+          </div>
+          <div className="mt-6">
+            <div className="flex items-center justify-between text-xs text-slate-500">
+              <span>Agent slots</span>
+              <span className="tabular font-mono text-slate-900">
+                {profile.activeAgents}/{profile.maxAgents}
+              </span>
+            </div>
+            <div className="mt-2 flex gap-1" role="meter" aria-label="Agent slots in use" aria-valuemin={0} aria-valuemax={profile.maxAgents} aria-valuenow={profile.activeAgents}>
+              {Array.from({ length: Math.max(1, Math.min(profile.maxAgents, 20)) }, (_, i) => (
+                <span
+                  key={i}
+                  className={cn("h-1.5 flex-1 rounded-full", i < profile.activeAgents ? "bg-slate-900" : "bg-slate-100")}
+                  style={{ transition: `background-color 300ms ${i * 40}ms` }}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+        <Cell label="Tokens saved" value="1.24M" sub="Cache traps and dedup" badge={<Badge tone="green">+9.4x</Badge>} />
+        <Cell label="Cost saved" value={`$${costSaved.toFixed(2)}`} sub="Cached context, list price" />
         <Cell label="Active vs. hibernated" value="33%" sub="2 active · 4 hibernated">
           <div className="mt-2.5 h-1 w-full overflow-hidden rounded-full bg-slate-100" role="meter" aria-label="Active share of pool" aria-valuemin={0} aria-valuemax={100} aria-valuenow={33}>
             <div className="h-full rounded-full bg-slate-900" style={{ width: "33%" }} />
           </div>
         </Cell>
-        <Cell label="Tokens saved" value="1.24M" sub="Cache traps and dedup" badge={<Badge tone="green">+9.4x</Badge>} />
-        <Cell label="Free token balance" value={freeTokens.toLocaleString("en-US")} sub={`Paid ${profile.paidTokens.toLocaleString("en-US")} · ${profile.activeAgents}/${profile.maxAgents} agents`} badge={<Badge>{profile.planName}</Badge>} />
-        <Cell label="Cost saved" value={`$${costSaved.toFixed(2)}`} sub="Cached context, list price" />
-        <Cell label="Memory" value="1.42 GB" sub="of 8.00 GB limit" className="col-span-2 sm:col-span-1" />
+        <Cell label="Memory" value="1.42 GB" sub="of 8.00 GB limit" />
       </dl>
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
