@@ -61,7 +61,7 @@ export function PublicNavbar() {
           scrolled || open ? "border-slate-200 bg-white" : "border-transparent"
         )}
       >
-        <div className="mx-auto grid h-14 w-full max-w-6xl grid-cols-[1fr_auto] items-center px-4 sm:px-6 md:grid-cols-[1fr_auto_1fr] lg:px-8">
+        <div className="mx-auto grid h-14 w-full max-w-6xl xl:max-w-7xl 2xl:max-w-[96rem] grid-cols-[1fr_auto] items-center px-4 sm:px-6 md:grid-cols-[1fr_auto_1fr] lg:px-8 2xl:px-12">
           <Link href="/" aria-label="ArgusOps home" className="w-fit rounded-md">
             <Logo />
           </Link>

@@ -2,7 +2,7 @@ import React from "react";
 import { cn } from "@/lib/utils";
 
 export function Container({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <div className={cn("mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8", className)}>{children}</div>;
+  return <div className={cn("mx-auto w-full max-w-6xl xl:max-w-7xl 2xl:max-w-[96rem] px-4 sm:px-6 lg:px-8 2xl:px-12", className)}>{children}</div>;
 }
 
 export function Section({
@@ -65,7 +65,7 @@ export function SectionHeading({
       <h2
         id={id}
         className={cn(
-          "text-balance text-3xl font-semibold leading-[1.1] tracking-[-0.025em] sm:text-4xl",
+          "text-balance text-3xl font-semibold leading-[1.1] tracking-[-0.025em] sm:text-4xl 2xl:text-5xl",
           tone === "dark" ? "text-white" : "text-slate-900"
         )}
       >
@@ -95,7 +95,7 @@ export function PageHeader({
       <Container>
         <div className="max-w-3xl space-y-4">
           <Eyebrow>{eyebrow}</Eyebrow>
-          <h1 className="text-balance text-4xl font-semibold leading-[1.05] tracking-[-0.03em] text-slate-900 sm:text-5xl">{title}</h1>
+          <h1 className="text-balance text-4xl font-semibold leading-[1.05] tracking-[-0.03em] text-slate-900 sm:text-5xl 2xl:text-6xl">{title}</h1>
           {lead && <p className="max-w-2xl text-pretty text-lg leading-relaxed text-slate-500">{lead}</p>}
           {children}
         </div>
