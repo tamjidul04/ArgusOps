@@ -244,6 +244,32 @@ html.reveal-ready [data-reveal]:not(.is-revealed) > * {
   animation: breathe 2.4s ease-in-out infinite;
 }
 
+/* Privacy band traffic: packets travel along their path (pathLength 1000), pulses breathe. */
+@keyframes flow-packet {
+  to {
+    stroke-dashoffset: -1000;
+  }
+}
+.flow-packet {
+  animation: flow-packet 8s linear infinite;
+}
+@keyframes flow-pulse {
+  0%,
+  100% {
+    transform: scale(0.6);
+    opacity: 0.2;
+  }
+  50% {
+    transform: scale(1.4);
+    opacity: 1;
+  }
+}
+.flow-pulse {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: flow-pulse 2.6s ease-in-out infinite;
+}
+
 @keyframes blink {
   50% {
     opacity: 0;
@@ -294,6 +320,8 @@ html.reveal-ready [data-reveal]:not(.is-revealed) > * {
   .rise-in-deep > * > *,
   [data-reveal].is-revealed > *,
   .live-dot,
+  .flow-packet,
+  .flow-pulse,
   .caret,
   .eye-blink {
     animation: none !important;

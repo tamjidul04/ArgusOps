@@ -11,12 +11,15 @@ export function Section({
   id,
   tone = "default",
   labelledBy,
+  background,
 }: {
   children: React.ReactNode;
   className?: string;
   id?: string;
   tone?: "default" | "white" | "dark";
   labelledBy?: string;
+  /** Decorative layer drawn behind the content (full bleed). */
+  background?: React.ReactNode;
 }) {
   return (
     <section
@@ -26,10 +29,12 @@ export function Section({
         "border-t border-slate-200 py-20 md:py-28",
         tone === "white" && "bg-white",
         tone === "dark" && "on-dark border-slate-800 bg-slate-950 text-slate-100",
+        background && "relative isolate overflow-hidden",
         className
       )}
     >
-      <Container>
+      {background}
+      <Container className={background ? "relative" : undefined}>
         <div data-reveal>{children}</div>
       </Container>
     </section>
