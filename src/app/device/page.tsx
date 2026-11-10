@@ -3,7 +3,7 @@ import { Metadata } from "next";
 import { DeviceClient } from "./DeviceClient";
 
 export const metadata: Metadata = {
-  title: "Connect a device | ArgusOps",
+  title: "Connect a device",
   description: "Approve the code shown in your terminal to connect the argus CLI to your account.",
 };
 

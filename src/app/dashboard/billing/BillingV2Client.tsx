@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useDashboard } from "@/components/layout/DashboardContext";
 import { cn, formatTokens } from "@/lib/utils";
+import { Badge, DashHeader, EmptyState, Panel, buttonClasses } from "@/components/ui";
 
 export interface PricingPlanItem {
   plan_id: string;
@@ -238,445 +239,273 @@ export function BillingV2Client({
       {/* Toast Alert */}
       {toastMessage && (
         <div
+          role="status"
           className={cn(
-            "fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg border text-sm font-medium transition-all animate-in fade-in slide-in-from-bottom-2",
-            toastMessage.type === "success" &&
-              "bg-emerald-50 border-emerald-200 text-emerald-800",
-            toastMessage.type === "error" &&
-              "bg-rose-50 border-rose-200 text-rose-800",
-            toastMessage.type === "info" &&
-              "bg-slate-900 border-slate-800 text-white"
+            "pop-in fixed bottom-6 right-4 z-50 flex max-w-[calc(100vw-2rem)] items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium shadow-lift ring-1 sm:right-6",
+            toastMessage.type === "success" && "bg-emerald-50 text-emerald-900 ring-emerald-600/20",
+            toastMessage.type === "error" && "bg-red-50 text-red-900 ring-red-600/20",
+            toastMessage.type === "info" && "on-dark bg-slate-900 text-white ring-slate-900"
           )}
         >
-          {toastMessage.type === "success" && <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />}
-          {toastMessage.type === "error" && <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />}
-          {toastMessage.type === "info" && <Coins className="w-5 h-5 text-amber-400 shrink-0" />}
+          {toastMessage.type === "success" && <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" aria-hidden="true" />}
+          {toastMessage.type === "error" && <AlertCircle className="h-5 w-5 shrink-0 text-red-600" aria-hidden="true" />}
+          {toastMessage.type === "info" && <Coins className="h-5 w-5 shrink-0 text-amber-400" aria-hidden="true" />}
           <span>{toastMessage.text}</span>
-          <button
-            onClick={() => setToastMessage(null)}
-            className="ml-2 hover:opacity-75 text-inherit"
-          >
-            <X className="w-4 h-4" />
+          <button onClick={() => setToastMessage(null)} aria-label="Dismiss message" className="ml-1 rounded-md p-1 text-inherit hover:opacity-70">
+            <X className="h-4 w-4" />
           </button>
         </div>
       )}
 
-      {/* Header Row matching 06-billing-v2.png */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 pb-5">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-            Billing, Token Wallet &amp; Plan Quota
-          </h1>
-        </div>
-
-        <div>
-          <a
-            href={"/api/billing/invoice"}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 hover:text-slate-900 shadow-xs transition-colors"
-          >
-            <FileText className="w-4 h-4 text-slate-500" />
+      <DashHeader
+        title="Billing, Token Wallet & Plan Quota"
+        actions={
+          <a href={"/api/billing/invoice"} target="_blank" rel="noopener noreferrer" className={buttonClasses("secondary", false)}>
+            <FileText className="h-4 w-4 text-slate-500" aria-hidden="true" />
             Download Invoices (PDF)
           </a>
-        </div>
-      </div>
+        }
+      />
 
-      {/* Main 2-Column Grid Geometry matching 06-billing-v2.png */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* ==================== LEFT COLUMN ==================== */}
         <div className="space-y-6">
-          {/* 1. Free Token Allowance Card */}
-          <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-medium text-slate-500">
-                Free Token Allowance
-              </span>
-              <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 text-slate-600 border border-slate-200">
-                Auto-Reset
-              </span>
+          <Panel title="Free Token Allowance" action={<Badge>Auto-Reset</Badge>}>
+            <div className="text-2xl font-semibold tabular-nums tracking-[-0.02em] text-slate-900 sm:text-2xl">
+              {freeTokensCurrent.toLocaleString("en-US")} / {freeTokensMax.toLocaleString("en-US")}
             </div>
-
-            <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight font-mono">
-              {freeTokensCurrent.toLocaleString()} / {freeTokensMax.toLocaleString()}
+            <div
+              className="mt-5 h-2.5 w-full overflow-hidden rounded-full bg-slate-200"
+              role="meter"
+              aria-label="Free tokens remaining"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={freePercentage}
+            >
+              <div className="h-full rounded-full bg-slate-900 transition-[width] duration-200 ease-spring" style={{ width: `${freePercentage}%` }} />
             </div>
-
-            {/* Thick black progress bar */}
-            <div className="w-full bg-slate-100 rounded-full h-2 mt-4 overflow-hidden">
-              <div
-                className="bg-slate-900 h-2 rounded-full transition-all duration-500"
-                style={{ width: `${freePercentage}%` }}
-              />
-            </div>
-
-            <div className="flex items-center justify-between text-xs text-slate-500 mt-2">
+            <div className="mt-2.5 flex items-center justify-between text-sm text-slate-600">
               <span>{freePercentage}% remaining</span>
               <span>resets in 18 days</span>
             </div>
-          </div>
+          </Panel>
 
-          {/* 2. Middle Row: Paid Token Balance + Upgrade Approval Status */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Paid Token Balance */}
-            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex flex-col justify-between">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Panel bodyClassName="flex flex-col justify-between gap-5">
               <div>
-                <span className="text-xs font-medium text-slate-500 block mb-1">
-                  Paid Token Balance
-                </span>
-                <div className="text-2xl font-bold text-slate-900 font-mono">
-                  {paidTokensCurrent.toLocaleString()}
-                </div>
-                <p className="text-xs text-slate-400 mt-1">
-                  Unmetered pay-as-you-go
-                </p>
+                <span className="mb-1 block text-xs font-medium text-slate-600">Paid Token Balance</span>
+                <div className="text-2xl font-semibold tabular-nums tracking-[-0.02em] text-slate-900">{paidTokensCurrent.toLocaleString("en-US")}</div>
+                <p className="mt-1 text-sm text-slate-600">Unmetered pay-as-you-go</p>
               </div>
+              <button onClick={() => setTopupModalOpen(true)} className={buttonClasses("secondary", false, "w-full")}>
+                + Top Up
+              </button>
+            </Panel>
 
-              <div className="mt-4 pt-2">
-                <button
-                  onClick={() => setTopupModalOpen(true)}
-                  className="w-full py-2 px-3 text-xs font-semibold text-slate-800 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg transition-colors text-center"
-                >
-                  + Top Up
-                </button>
-              </div>
-            </div>
-
-            {/* Upgrade Approval Status */}
-            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex flex-col justify-between">
+            <Panel bodyClassName="flex flex-col justify-between gap-5">
               <div>
-                <span className="text-xs font-medium text-slate-500 block mb-1">
-                  Upgrade Approval Status
-                </span>
-                <div className="flex items-center gap-2 mt-0.5">
+                <span className="mb-1 block text-xs font-medium text-slate-600">Upgrade Approval Status</span>
+                <div className="mt-1 flex items-center gap-2">
                   <span
                     className={cn(
-                      "h-2.5 w-2.5 rounded-full shrink-0",
-                      isPendingApproval
-                        ? "bg-amber-500 animate-pulse"
-                        : purchaseStatus === "APPROVED"
-                        ? "bg-emerald-500"
-                        : "bg-slate-700"
+                      "h-2.5 w-2.5 shrink-0 rounded-full",
+                      isPendingApproval ? "animate-pulse bg-amber-500" : purchaseStatus === "APPROVED" ? "bg-emerald-500" : "bg-slate-700"
                     )}
                   />
-                  <span className="text-sm font-bold text-slate-900">
+                  <span className="text-base font-semibold text-slate-900">
                     {isPendingApproval ? "Pending Approval" : purchaseStatus === "APPROVED" ? "Approved" : "Standard Quota"}
                   </span>
                 </div>
-                <p className="text-xs text-slate-400 mt-1">
-                  {isPendingApproval
-                    ? "Pro Swarm ($49/mo) queued"
-                    : `${currentPlanName} active`}
-                </p>
+                <p className="mt-1 text-sm text-slate-600">{isPendingApproval ? "Pro Swarm ($49/mo) queued" : `${currentPlanName} active`}</p>
               </div>
-
-              <div className="mt-4 pt-2">
-                <div className="w-full py-2 px-3 text-xs font-medium text-slate-500 bg-slate-50 border border-slate-200 rounded-lg text-center select-none">
-                  {isPendingApproval ? "Admin Review Active" : "No Review Required"}
-                </div>
+              <div className="select-none rounded-md bg-slate-50 px-4 py-2.5 text-center text-xs font-medium text-slate-600 border border-slate-200">
+                {isPendingApproval ? "Admin Review Active" : "No Review Required"}
               </div>
-            </div>
+            </Panel>
           </div>
 
-          {/* 3. Free Tier — $0 Card */}
-          <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between">
-                <h3 className="text-xl font-bold text-slate-900">
-                  Free Tier — $0
-                </h3>
-                {isFreePlan && (
-                  <span className="px-2.5 py-0.5 rounded-md text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
-                    Current Plan
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-slate-500 mt-1">
-                Core local agent experimentation
-              </p>
-              <div className="text-xs font-semibold text-slate-800 mt-2">
-                Continue
-              </div>
-
-              <ul className="space-y-2.5 text-xs text-slate-600 mt-4">
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-slate-700 shrink-0" />
-                  <span>Up to 3 concurrent agents</span>
+          <Panel
+            title="Free Tier — $0"
+            description="Core local agent experimentation"
+            action={isFreePlan ? <Badge>Current Plan</Badge> : undefined}
+            bodyClassName="flex flex-col gap-6"
+          >
+            <div className="text-sm font-semibold text-slate-900">Continue</div>
+            <ul className="space-y-3 text-sm text-slate-700">
+              {["Up to 3 concurrent agents", "100,000 free initial tokens", "24/7 loop circuit-breaker", "Local PC daemon included"].map((f) => (
+                <li key={f} className="flex items-center gap-3">
+                  <Check className="h-4 w-4 shrink-0 text-emerald-600" aria-hidden="true" />
+                  <span>{f}</span>
                 </li>
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-slate-700 shrink-0" />
-                  <span>100,000 free initial tokens</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-slate-700 shrink-0" />
-                  <span>24/7 loop circuit-breaker</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-slate-700 shrink-0" />
-                  <span>Local PC daemon included</span>
-                </li>
-              </ul>
-            </div>
-
-            <div className="mt-6 pt-2">
-              <button
-                disabled
-                className="w-full py-2.5 px-4 text-center rounded-lg text-xs font-semibold bg-slate-100 text-slate-400 border border-slate-200 cursor-default"
-              >
-                Current Plan
-              </button>
-            </div>
-          </div>
+              ))}
+            </ul>
+            <button disabled className={buttonClasses("secondary", false, "w-full cursor-default opacity-70")}>
+              Current Plan
+            </button>
+          </Panel>
         </div>
 
         {/* ==================== RIGHT COLUMN ==================== */}
         <div className="space-y-6">
-          {/* 1. Pro Swarm — $49/mo (Prominent 2px Black Border) */}
-          <div className="bg-white border-2 border-slate-900 rounded-xl p-6 shadow-sm flex flex-col justify-between">
-            <div>
-              <div className="flex items-baseline justify-between">
-                <div className="flex items-center gap-2">
-                  <h3 className="text-xl font-bold text-slate-900">
-                    Pro Swarm — $49/mo
-                  </h3>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-extrabold uppercase bg-slate-900 text-white tracking-wider">
-                    POPULAR
-                  </span>
-                </div>
-                <span className="text-xs text-slate-500">Billed monthly</span>
+          <div className="on-dark rounded-lg bg-slate-950 p-6 text-white shadow-lift ring-1 ring-slate-900 sm:p-7">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-3">
+                <h3 className="text-xl font-semibold tracking-tight">Pro Swarm — $49/mo</h3>
+                <span className="rounded-md bg-white/10 px-2.5 py-1 text-[11px] font-medium text-slate-200 ring-1 ring-white/10">POPULAR</span>
               </div>
-              <p className="text-xs text-slate-500 mt-1">
-                Autonomous multi-agent swarms
-              </p>
+              <span className="text-sm text-slate-400">Billed monthly</span>
+            </div>
+            <p className="mt-1 text-sm text-slate-300">Autonomous multi-agent swarms</p>
 
-              {/* 2-Column feature checklist matching 06-billing-v2.png */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2.5 my-5 text-xs text-slate-700 font-medium">
-                <div className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-slate-900 shrink-0 font-bold" />
-                  <span>Up to 25 concurrent agents</span>
+            <div className="my-6 grid grid-cols-1 gap-x-4 gap-y-3 text-sm text-slate-200 sm:grid-cols-2">
+              {["Up to 25 concurrent agents", "2,000,000 monthly tokens", "File-locking mutex for PC agents", "Semantic vector loop detection"].map((f) => (
+                <div key={f} className="flex items-center gap-3">
+                  <Check className="h-4 w-4 shrink-0 text-emerald-400" aria-hidden="true" />
+                  <span>{f}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-slate-900 shrink-0 font-bold" />
-                  <span>2,000,000 monthly tokens</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-slate-900 shrink-0 font-bold" />
-                  <span>File-locking mutex for PC agents</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-slate-900 shrink-0 font-bold" />
-                  <span>Semantic vector loop detection</span>
-                </div>
-              </div>
+              ))}
             </div>
 
-            <div className="mt-2 pt-2">
-              {isPro ? (
-                <button
-                  disabled
-                  className="w-full py-3 px-4 text-center rounded-lg text-xs font-semibold bg-slate-100 text-slate-500 border border-slate-200 cursor-default"
-                >
+            {isPro ? (
+              <button disabled className="w-full cursor-default rounded-md bg-white/10 px-4 py-3 text-center text-sm font-semibold text-slate-300 ring-1 ring-white/10">
+                Current Plan
+              </button>
+            ) : isPendingApproval ? (
+              <button disabled className="w-full cursor-not-allowed rounded-md bg-amber-400/10 px-4 py-3 text-center text-sm font-semibold text-amber-300 ring-1 ring-amber-400/20">
+                Upgrade Request Queued (Pending Approval)
+              </button>
+            ) : (
+              <button
+                onClick={() => handleRequestUpgrade("Pro Tier", 49.0, "plan_pro")}
+                disabled={submitting}
+                className={buttonClasses("inverse", false, "w-full py-3 disabled:opacity-60")}
+              >
+                {submitting ? "Submitting..." : "Upgrade via Stripe / PayPal"}
+              </button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Panel title="Enterprise — Custom" description="High-density distributed infra" bodyClassName="flex flex-col justify-between gap-5">
+              <ul className="space-y-2.5 text-sm text-slate-700">
+                {["100+ agents (dynamic scaling)", "Custom token budget enforcement", "Dedicated 99.9% uptime SLA"].map((f) => (
+                  <li key={f} className="flex items-center gap-3">
+                    <Check className="h-4 w-4 shrink-0 text-emerald-600" aria-hidden="true" />
+                    <span>{f}</span>
+                  </li>
+                ))}
+              </ul>
+              {isEnterprise ? (
+                <button disabled className={buttonClasses("secondary", false, "w-full cursor-default opacity-70")}>
                   Current Plan
                 </button>
               ) : isPendingApproval ? (
-                <button
-                  disabled
-                  className="w-full py-3 px-4 text-center rounded-lg text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 cursor-not-allowed"
-                >
-                  Upgrade Request Queued (Pending Approval)
+                <button disabled className="w-full cursor-not-allowed rounded-md bg-amber-50 px-4 py-2.5 text-center text-sm font-semibold text-amber-800 ring-1 ring-amber-600/25">
+                  Pending Review
                 </button>
               ) : (
                 <button
-                  onClick={() => handleRequestUpgrade("Pro Tier", 49.0, "plan_pro")}
+                  onClick={() => handleRequestUpgrade("Enterprise", 299.0, "plan_enterprise")}
                   disabled={submitting}
-                  className="w-full py-3 px-4 text-center rounded-lg text-xs font-bold bg-slate-900 text-white hover:bg-slate-800 disabled:opacity-50 transition-colors shadow-sm cursor-pointer"
+                  className={buttonClasses("secondary", false, "w-full disabled:opacity-60")}
                 >
-                  {submitting ? "Submitting..." : "Upgrade via Stripe / PayPal"}
+                  {submitting ? "Submitting..." : "Request Admin Approval"}
                 </button>
               )}
-            </div>
-          </div>
+            </Panel>
 
-          {/* 2. Bottom Row: Enterprise — Custom + Ledger Stats */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Enterprise — Custom */}
-            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex flex-col justify-between">
-              <div>
-                <h3 className="text-base font-bold text-slate-900">
-                  Enterprise — Custom
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  High-density distributed infra
-                </p>
-
-                <ul className="space-y-2 text-xs text-slate-600 mt-4">
-                  <li className="flex items-center gap-2">
-                    <Check className="w-3.5 h-3.5 text-slate-700 shrink-0" />
-                    <span>100+ agents (dynamic scaling)</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="w-3.5 h-3.5 text-slate-700 shrink-0" />
-                    <span>Custom token budget enforcement</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="w-3.5 h-3.5 text-slate-700 shrink-0" />
-                    <span>Dedicated 99.9% uptime SLA</span>
-                  </li>
-                </ul>
-              </div>
-
-              <div className="mt-5 pt-2">
-                {isEnterprise ? (
-                  <button
-                    disabled
-                    className="w-full py-2.5 px-3 text-center rounded-lg text-xs font-semibold bg-slate-100 text-slate-500 border border-slate-200 cursor-default"
-                  >
-                    Current Plan
-                  </button>
-                ) : isPendingApproval ? (
-                  <button
-                    disabled
-                    className="w-full py-2.5 px-3 text-center rounded-lg text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200 cursor-not-allowed"
-                  >
-                    Pending Review
-                  </button>
-                ) : (
-                  <button
-                    onClick={() =>
-                      handleRequestUpgrade("Enterprise", 299.0, "plan_enterprise")
-                    }
-                    disabled={submitting}
-                    className="w-full py-2.5 px-3 text-center rounded-lg text-xs font-semibold bg-white border border-slate-900 text-slate-900 hover:bg-slate-50 disabled:opacity-50 transition-colors shadow-2xs"
-                  >
-                    {submitting ? "Submitting..." : "Request Admin Approval"}
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Ledger Stats */}
-            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-bold text-slate-900">
-                    Ledger Stats
-                  </span>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-100 text-slate-600 border border-slate-200">
-                    ACTIVE
-                  </span>
+            <Panel title="Ledger Stats" action={<Badge>ACTIVE</Badge>} bodyClassName="flex flex-col justify-between gap-5">
+              <dl className="space-y-3 text-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <dt className="text-slate-600">Saved via Hibernation</dt>
+                  <dd className="font-mono text-xs font-semibold text-slate-900">&mdash;</dd>
                 </div>
-
-                <div className="space-y-2 text-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-500">Saved via Hibernation</span>
-                    <span className="font-mono font-bold text-slate-900">&mdash;</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-500">Last Invoice</span>
-                    <span className="font-mono font-bold text-slate-900">
-                      {lastInvoiceAmount}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-500">Payment Gateways</span>
-                    <span className="font-semibold text-slate-900">
-                      Stripe / PayPal
-                    </span>
-                  </div>
+                <div className="flex items-center justify-between gap-2">
+                  <dt className="text-slate-600">Last Invoice</dt>
+                  <dd className="font-mono text-xs font-semibold text-slate-900">{lastInvoiceAmount}</dd>
                 </div>
-              </div>
-
-              <div className="mt-4 pt-2">
-                <div className="w-full py-1.5 px-2 bg-slate-50 border border-slate-200 text-[11px] text-slate-500 rounded-md font-mono text-center select-none">
-                  PCI-DSS Level 1 Compliant
+                <div className="flex items-center justify-between gap-2">
+                  <dt className="text-slate-600">Payment Gateways</dt>
+                  <dd className="font-semibold text-slate-900">Stripe / PayPal</dd>
                 </div>
+              </dl>
+              <div className="select-none rounded-md bg-slate-50 px-3 py-2 text-center font-mono text-[11px] text-slate-600 border border-slate-200">
+                PCI-DSS Level 1 Compliant
               </div>
-            </div>
+            </Panel>
           </div>
         </div>
       </div>
 
       {/* Invoice & Transaction Approval Queue History Table */}
-      <div className="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden mt-8">
-        <div className="p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <h2 className="text-base font-bold text-slate-900">
-              Billing Ledger &amp; Transaction Approval History
-            </h2>
-            <p className="text-xs text-slate-500">
-              Audited transaction queue for plan upgrades, token allocations, and enterprise receipts.
-            </p>
-          </div>
-
+      <Panel
+        title="Billing Ledger & Transaction Approval History"
+        description="Audited transaction queue for plan upgrades, token allocations, and enterprise receipts."
+        action={
           <button
             onClick={() => setShowHistory(!showHistory)}
-            className="text-xs font-medium text-slate-600 hover:text-slate-900"
+            aria-expanded={showHistory}
+            className="rounded-md px-3.5 py-1.5 text-xs font-semibold text-slate-700 border border-slate-200 hover:bg-slate-50"
           >
             {showHistory ? "Hide Records" : "Show Records"}
           </button>
-        </div>
-
+        }
+        bodyClassName="p-0 sm:p-0"
+      >
         {showHistory && (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
+            <table className="w-full min-w-[40rem] border-collapse text-left text-sm">
               <thead>
-                <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-500 uppercase tracking-wider font-semibold">
-                  <th className="py-3 px-6">Transaction ID</th>
-                  <th className="py-3 px-6">Requested Tier / Item</th>
-                  <th className="py-3 px-6">Amount</th>
-                  <th className="py-3 px-6">Status</th>
-                  <th className="py-3 px-6">Date Requested</th>
-                  <th className="py-3 px-6 text-right">Receipt</th>
+                <tr className="border-b border-slate-200 bg-slate-50 text-[11px] font-medium text-slate-500">
+                  <th scope="col" className="px-6 py-3">Transaction ID</th>
+                  <th scope="col" className="px-6 py-3">Requested Tier / Item</th>
+                  <th scope="col" className="px-6 py-3">Amount</th>
+                  <th scope="col" className="px-6 py-3">Status</th>
+                  <th scope="col" className="px-6 py-3">Date Requested</th>
+                  <th scope="col" className="px-6 py-3 text-right">Receipt</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
+              <tbody className="divide-y divide-slate-100 text-slate-700">
                 {transactions.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-6 text-center text-slate-400">
-                      No billing records found in workspace ledger.
+                    <td colSpan={6}>
+                      <EmptyState icon={FileText} title="No billing records found in workspace ledger.">
+                        Upgrades and token top-ups will be listed here, with a receipt for each.
+                      </EmptyState>
                     </td>
                   </tr>
                 ) : (
                   transactions.map((tx) => (
-                    <tr key={tx.tx_id} className="hover:bg-slate-50/60 transition-colors">
-                      <td className="py-3.5 px-6 font-mono text-slate-900 font-semibold">
-                        {tx.tx_id.startsWith("tx_") ? tx.tx_id : `INV-${tx.tx_id}`}
-                      </td>
-                      <td className="py-3.5 px-6 text-slate-900">
-                        <div className="font-semibold">{tx.requested_plan}</div>
-                      </td>
-                      <td className="py-3.5 px-6 font-mono font-semibold text-slate-900">
-                        ${tx.amount.toFixed(2)}
-                      </td>
-                      <td className="py-3.5 px-6">
+                    <tr key={tx.tx_id} className="transition-colors hover:bg-slate-900/[0.02]">
+                      <td className="px-6 py-2.5 font-mono text-xs font-medium text-slate-900">{tx.tx_id.startsWith("tx_") ? tx.tx_id : `INV-${tx.tx_id}`}</td>
+                      <td className="px-6 py-2.5 font-medium text-slate-900">{tx.requested_plan}</td>
+                      <td className="px-6 py-2.5 font-mono text-xs font-medium text-slate-900">${tx.amount.toFixed(2)}</td>
+                      <td className="px-6 py-2.5">
                         {tx.admin_status === "APPROVED" ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                            <Check className="w-3 h-3" /> Approved
-                          </span>
+                          <Badge tone="green">
+                            <Check className="h-3 w-3" aria-hidden="true" /> Approved
+                          </Badge>
                         ) : tx.admin_status === "PENDING" ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-                            <Clock className="w-3 h-3" /> Pending Admin
-                          </span>
+                          <Badge tone="amber">
+                            <Clock className="h-3 w-3" aria-hidden="true" /> Pending Admin
+                          </Badge>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
-                            <X className="w-3 h-3" /> Declined
-                          </span>
+                          <Badge tone="red">
+                            <X className="h-3 w-3" aria-hidden="true" /> Declined
+                          </Badge>
                         )}
                       </td>
-                      <td className="py-3.5 px-6 text-slate-500">
-                        {new Date(tx.created_at).toLocaleDateString("en-US", {
-                          year: "numeric",
-                          month: "short",
-                          day: "numeric",
-                        })}
+                      <td className="px-6 py-2.5 text-slate-600">
+                        {new Date(tx.created_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
                       </td>
-                      <td className="py-3.5 px-6 text-right">
+                      <td className="px-6 py-2.5 text-right">
                         <a
                           href={`/api/billing/invoice?txId=${tx.tx_id}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-slate-700 hover:text-slate-900 font-semibold text-[11px] px-2.5 py-1 rounded border border-slate-200 hover:bg-white bg-slate-50 shadow-2xs"
+                          className="inline-flex items-center gap-1.5 rounded-md bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 border border-slate-200 hover:bg-slate-50"
                         >
-                          <Download className="w-3 h-3 text-slate-500" />
+                          <Download className="h-3 w-3 text-slate-500" aria-hidden="true" />
                           PDF
                         </a>
                       </td>
@@ -687,30 +516,33 @@ export function BillingV2Client({
             </table>
           </div>
         )}
-      </div>
+      </Panel>
 
       {/* Token Top-Up Modal */}
       {topupModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95">
-            <div className="flex items-start justify-between">
+        <div
+          className="fade-in fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4"
+          onKeyDown={(e) => e.key === "Escape" && setTopupModalOpen(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="topup-title"
+            className="rise-in max-h-[90dvh] w-full max-w-md space-y-5 overflow-y-auto rounded-lg bg-white p-6 shadow-lift border border-slate-200"
+          >
+            <div className="flex items-start justify-between gap-3">
               <div>
-                <h3 className="text-lg font-bold text-slate-900">
+                <h3 id="topup-title" className="text-lg font-semibold tracking-tight text-slate-900">
                   Instant Token Top-Up
                 </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Tokens never expire and remain valid across all local and cloud cluster swarms.
-                </p>
+                <p className="mt-0.5 text-sm text-slate-600">Tokens never expire and remain valid across all local and cloud cluster swarms.</p>
               </div>
-              <button
-                onClick={() => setTopupModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 p-1"
-              >
-                <X className="w-5 h-5" />
+              <button onClick={() => setTopupModalOpen(false)} aria-label="Close" className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-800">
+                <X className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="space-y-2.5">
+            <div role="radiogroup" aria-label="Token pack" className="space-y-2.5">
               {[
                 { tokens: 500000, price: 15, label: "500,000 Tokens (+$15)" },
                 { tokens: 2000000, price: 50, label: "2,000,000 Tokens (+$50) — Popular" },
@@ -719,53 +551,43 @@ export function BillingV2Client({
                 <button
                   key={pack.tokens}
                   type="button"
+                  role="radio"
+                  aria-checked={selectedTopupAmount.tokens === pack.tokens}
                   onClick={() => setSelectedTopupAmount(pack)}
                   className={cn(
-                    "w-full flex items-center justify-between p-3.5 rounded-lg border text-left text-xs font-medium transition-all",
+                    "flex w-full items-center justify-between gap-3 rounded-md p-4 text-left text-sm font-medium transition-colors",
                     selectedTopupAmount.tokens === pack.tokens
-                      ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900 font-semibold text-slate-900"
-                      : "border-slate-200 hover:border-slate-300 text-slate-700 bg-white"
+                      ? "bg-slate-50 font-semibold text-slate-900 ring-2 ring-slate-900"
+                      : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50"
                   )}
                 >
-                  <div className="flex items-center gap-2.5">
-                    <Coins className="w-4 h-4 text-amber-500" />
+                  <div className="flex items-center gap-3">
+                    <Coins className="h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />
                     <span>{pack.label}</span>
                   </div>
-                  <span className="font-mono font-bold text-slate-900">${pack.price}</span>
+                  <span className="font-mono text-xs font-semibold text-slate-900">${pack.price}</span>
                 </button>
               ))}
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => setTopupModalOpen(false)}
-                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800"
-              >
+            <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-200 pt-4">
+              <button type="button" onClick={() => setTopupModalOpen(false)} className={buttonClasses("secondary", false)}>
                 Cancel
               </button>
-              <button
-                type="button"
-                disabled={submitting}
-                onClick={handleTopupTokens}
-                className="px-5 py-2 text-xs font-semibold text-white bg-slate-900 rounded-lg hover:bg-slate-800 disabled:opacity-50 transition-colors shadow-sm"
-              >
-                {submitting ? "Purchasing..." : `Purchase ${selectedTopupAmount.tokens.toLocaleString()} Tokens`}
+              <button type="button" disabled={submitting} onClick={handleTopupTokens} className={buttonClasses("primary", false, "disabled:opacity-60")}>
+                {submitting ? "Purchasing..." : `Purchase ${selectedTopupAmount.tokens.toLocaleString("en-US")} Tokens`}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Bottom Footer Info Strip matching 06-billing-v2.png */}
-      <div className="pt-6 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2">
-        <div className="flex items-center gap-2">
-          <span>ArgusOps v0.2</span>
-          <span>&bull;</span>
-          <span>Zero-trust local code privacy</span>
-        </div>
+      {/* Owner strip */}
+      <div className="flex flex-col items-start justify-between gap-2 border-t border-slate-200 pt-6 text-xs text-slate-600 sm:flex-row sm:items-center">
         <div>
-          <span>Owner: <strong className="text-slate-800">{profile.name}</strong></span>
+          <span>
+            Owner: <strong className="text-slate-900">{profile.name}</strong>
+          </span>
         </div>
       </div>
     </div>

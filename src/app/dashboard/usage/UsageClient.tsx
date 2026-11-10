@@ -6,6 +6,7 @@ import { Activity, Coins, DatabaseZap, PauseCircle, Table2, BarChart3, Terminal 
 import { cn, formatTokens } from "@/lib/utils";
 import type { UsageSummary } from "@/lib/usage";
 import type { UsageRange } from "@/lib/usage-core";
+import { DashHeader, EmptyState, Panel, Segmented, buttonClasses } from "@/components/ui";
 
 /** Categorical slots 1 and 2 of the validated palette (blue, orange): passes CVD, normal-vision and 3:1 contrast on white. */
 const INPUT_COLOR = "#2a78d6";
@@ -14,7 +15,7 @@ const OUTPUT_COLOR = "#eb6834";
 const RANGE_LABEL: Record<UsageRange, string> = { "24h": "24 hours", "7d": "7 days", "30d": "30 days" };
 
 const usd = (n: number) => (n > 0 && n < 0.01 ? "<$0.01" : `$${n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
-const full = (n: number) => n.toLocaleString();
+const full = (n: number) => n.toLocaleString("en-US");
 
 function bucketLabel(key: string, range: UsageRange, long = false): string {
   const d = new Date(key.length === 10 ? `${key}T00:00:00Z` : `${key.replace(" ", "T")}Z`);
@@ -50,49 +51,44 @@ export function UsageClient({ initial }: { initial: UsageSummary }) {
   return (
     <div className="space-y-6 pb-12">
       {/* header + the one filter row */}
-      <div className="flex flex-col gap-3 border-b border-slate-200 pb-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">Usage &amp; Savings</h1>
-          <p className="mt-1 text-sm text-slate-500">Measured from your agents&apos; real model calls. Costs are at list prices; your provider bills you directly.</p>
-        </div>
-        <div role="tablist" aria-label="Time range" className="flex w-fit items-center rounded-lg border border-slate-200 bg-slate-100 p-1">
-          {(["24h", "7d", "30d"] as UsageRange[]).map((r) => (
-            <button
-              key={r}
-              role="tab"
-              aria-selected={data.range === r}
-              onClick={() => pick(r)}
-              className={cn("rounded-md px-3 py-1.5 text-xs font-medium transition-all", data.range === r ? "bg-white font-semibold text-slate-900 shadow-xs" : "text-slate-600 hover:text-slate-900")}
-            >
-              {RANGE_LABEL[r]}
-            </button>
-          ))}
-        </div>
-      </div>
+      <DashHeader
+        title="Usage & Savings"
+        description="Measured from your agents' real model calls. Costs are at list prices; your provider bills you directly."
+        actions={
+          <Segmented label="Time range" value={data.range} onChange={pick} options={(["24h", "7d", "30d"] as UsageRange[]).map((r) => ({ value: r, label: RANGE_LABEL[r] }))} />
+        }
+      />
 
-      {error && <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">{error}</div>}
+      {error && (
+        <div role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-800">
+          {error}
+        </div>
+      )}
 
       <div className={cn("space-y-6 transition-opacity", loading && "opacity-60")}>
         {/* headline numbers */}
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+        <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-slate-200 bg-slate-200 lg:grid-cols-5 [&>*]:bg-white">
           <Tile icon={Activity} label="Tokens" value={formatTokens(t.inputTokens + t.outputTokens)} sub={`${formatTokens(t.inputTokens)} in · ${formatTokens(t.outputTokens)} out`} />
           <Tile icon={Coins} label="Model spend" value={usd(t.costUsd)} sub="Estimate at list prices" />
           <Tile icon={BarChart3} label="Model calls" value={full(t.calls)} sub={t.calls ? `${formatTokens(Math.round((t.inputTokens + t.outputTokens) / t.calls))} tokens per call` : "No calls yet"} />
           <Tile icon={PauseCircle} label="Loops caught" value={full(t.loopsCaught)} sub={t.loopsCaught ? "Paused before more tokens were spent" : "No stuck agents"} />
-          <Tile icon={DatabaseZap} label="Saved by caching" value={usd(t.cacheSavingUsd)} sub={`${formatTokens(t.cachedTokens)} tokens served from cache`} />
+          <Tile className="col-span-2 lg:col-span-1" icon={DatabaseZap} label="Saved by caching" value={usd(t.cacheSavingUsd)} sub={`${formatTokens(t.cachedTokens)} tokens served from cache`} />
         </div>
 
         {empty ? (
-          <div className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center">
-            <Terminal className="mx-auto h-8 w-8 text-slate-300" />
-            <p className="mt-3 text-sm font-semibold text-slate-800">No model calls in the last {RANGE_LABEL[data.range]}</p>
-            <p className="mx-auto mt-1 max-w-md text-xs leading-relaxed text-slate-500">
-              Run an agent with <span className="font-mono">argus run claude</span> and its real token usage shows up here within a few seconds.
-            </p>
-            <Link href="/dashboard/local-bridge" className="mt-4 inline-block text-xs font-semibold text-slate-900 underline underline-offset-4">
-              Set up the CLI
-            </Link>
-          </div>
+          <Panel>
+            <EmptyState
+              icon={Terminal}
+              title={`No model calls in the last ${RANGE_LABEL[data.range]}`}
+              action={
+                <Link href="/dashboard/local-bridge" className={buttonClasses("secondary", false)}>
+                  Set up the CLI
+                </Link>
+              }
+            >
+              Run an agent with <code className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs text-slate-800">argus run claude</code> and its real token usage shows up here within a few seconds.
+            </EmptyState>
+          </Panel>
         ) : (
           <TokenChart data={data} />
         )}
@@ -109,46 +105,46 @@ export function UsageClient({ initial }: { initial: UsageSummary }) {
             emptyText="No model calls in this range."
           />
 
-          <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-            <h2 className="text-sm font-bold text-slate-900">Plan allowance</h2>
-            <p className="mt-0.5 text-xs text-slate-500">{data.allowance.planName} plan, supervised tokens this period</p>
-            <div className="mt-4 flex items-baseline justify-between">
-              <span className="font-mono text-2xl font-extrabold tracking-tight text-slate-900">{formatTokens(data.allowance.remaining)}</span>
-              <span className="text-xs text-slate-500">left of {formatTokens(data.allowance.included)}</span>
+          <Panel title="Plan allowance" description={`${data.allowance.planName} plan, supervised tokens this period`}>
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="text-3xl font-semibold tabular-nums tracking-[-0.02em] text-slate-900">{formatTokens(data.allowance.remaining)}</span>
+              <span className="text-sm text-slate-500">left of {formatTokens(data.allowance.included)}</span>
             </div>
             <div
-              className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100"
+              className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100"
               role="meter"
               aria-label="Allowance remaining"
               aria-valuemin={0}
               aria-valuemax={data.allowance.included}
               aria-valuenow={data.allowance.remaining}
             >
-              <div className="h-full rounded-full bg-slate-900" style={{ width: `${remainingPct}%` }} />
+              <div className="h-full rounded-full bg-slate-900 transition-[width] duration-700 ease-out" style={{ width: `${remainingPct}%` }} />
             </div>
-            <p className="mt-2 text-[11px] text-slate-500">
+            <p className="mt-3 text-xs text-slate-500">
               {data.allowance.remaining <= 0
                 ? "Used up: agents are paused until you upgrade or top up."
                 : `${formatTokens(usedOfIncluded)} used. Cached tokens don't count against it.`}
             </p>
-            <Link href="/dashboard/billing" className="mt-3 inline-block text-xs font-semibold text-slate-900 underline underline-offset-4">
+            <Link href="/dashboard/billing" className="mt-4 inline-block text-sm font-medium text-slate-900 underline decoration-slate-300 underline-offset-4 transition-colors hover:decoration-slate-900">
               Plans &amp; billing
             </Link>
-          </section>
+          </Panel>
         </div>
       </div>
     </div>
   );
 }
 
-function Tile({ icon: Icon, label, value, sub }: { icon: React.ElementType; label: string; value: string; sub: string }) {
+function Tile({ icon: Icon, label, value, sub, className }: { icon: React.ElementType; label: string; value: string; sub: string; className?: string }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-xs">
-      <div className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
-        <Icon className="h-3.5 w-3.5 text-slate-400" /> {label}
+    <div className={cn("min-w-0 p-4 sm:p-5", className)}>
+      <div className="flex items-center gap-1.5 text-xs text-slate-500">
+        <Icon className="h-3.5 w-3.5 text-slate-400" aria-hidden="true" /> {label}
       </div>
-      <div className="mt-1.5 font-mono text-2xl font-extrabold tracking-tight text-slate-900">{value}</div>
-      <div className="mt-1 truncate text-[11px] text-slate-500" title={sub}>{sub}</div>
+      <div className="mt-2 truncate text-2xl font-semibold tabular-nums tracking-[-0.02em] text-slate-900">{value}</div>
+      <div className="mt-1 truncate text-xs text-slate-400" title={sub}>
+        {sub}
+      </div>
     </div>
   );
 }
@@ -156,36 +152,35 @@ function Tile({ icon: Icon, label, value, sub }: { icon: React.ElementType; labe
 function Breakdown({ title, rows, emptyText }: { title: string; rows: Array<{ key: string; name: string; tokens: number; cost: number; calls: number; mono?: boolean }>; emptyText: string }) {
   const max = Math.max(1, ...rows.map((r) => r.tokens));
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-      <h2 className="text-sm font-bold text-slate-900">{title}</h2>
+    <Panel title={title}>
       {rows.length === 0 ? (
-        <p className="mt-6 text-center text-xs text-slate-400">{emptyText}</p>
+        <EmptyState title={emptyText} className="py-8" />
       ) : (
-        <table className="mt-3 w-full text-xs">
+        <table className="w-full text-sm">
           <thead>
-            <tr className="text-left text-[11px] text-slate-400">
-              <th className="pb-2 font-medium">Name</th>
-              <th className="pb-2 text-right font-medium">Tokens</th>
-              <th className="pb-2 text-right font-medium">Spend</th>
+            <tr className="text-left text-xs text-slate-500">
+              <th scope="col" className="pb-2 font-medium">Name</th>
+              <th scope="col" className="pb-2 text-right font-medium">Tokens</th>
+              <th scope="col" className="pb-2 text-right font-medium">Spend</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {rows.slice(0, 8).map((r) => (
               <tr key={r.key}>
                 <td className="max-w-0 py-2 pr-2">
-                  <div className={cn("truncate font-medium text-slate-800", r.mono && "font-mono text-[11px]")} title={r.name}>{r.name}</div>
-                  <div className="mt-1 h-1 rounded-full bg-slate-100">
+                  <div className={cn("truncate text-slate-800", r.mono && "font-mono text-[11px]")} title={r.name}>{r.name}</div>
+                  <div className="mt-1.5 h-1 rounded-full bg-slate-100">
                     <div className="h-1 rounded-full bg-slate-400" style={{ width: `${(r.tokens / max) * 100}%` }} />
                   </div>
                 </td>
-                <td className="py-2 text-right font-mono text-slate-700">{formatTokens(r.tokens)}</td>
-                <td className="py-2 pl-2 text-right font-mono text-slate-700">{usd(r.cost)}</td>
+                <td className="py-2 text-right font-mono text-xs text-slate-700">{formatTokens(r.tokens)}</td>
+                <td className="py-2 pl-2 text-right font-mono text-xs text-slate-700">{usd(r.cost)}</td>
               </tr>
             ))}
           </tbody>
         </table>
       )}
-    </section>
+    </Panel>
   );
 }
 
@@ -229,20 +224,18 @@ function TokenChart({ data }: { data: UsageSummary }) {
   const hb = hover !== null ? b[hover] : null;
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
+    <Panel>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-sm font-bold text-slate-900">Tokens per {data.range === "24h" ? "hour" : "day"}</h2>
-          <p className="text-[11px] text-slate-500">Times in UTC</p>
+          <h2 className="text-sm font-semibold text-slate-900">Tokens per {data.range === "24h" ? "hour" : "day"}</h2>
+          <p className="text-xs text-slate-400">Times in UTC</p>
         </div>
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-3 text-[11px] text-slate-600" aria-label="Legend">
+          <div className="flex items-center gap-3 text-xs text-slate-500" aria-label="Legend">
             <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: INPUT_COLOR }} /> Input</span>
             <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: OUTPUT_COLOR }} /> Output</span>
           </div>
-          <button type="button" onClick={() => setAsTable((v) => !v)} className="inline-flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-[11px] font-medium text-slate-600 hover:bg-slate-50">
-            {asTable ? <BarChart3 className="h-3.5 w-3.5" /> : <Table2 className="h-3.5 w-3.5" />} {asTable ? "Chart" : "Table"}
-          </button>
+          <Segmented label="View" value={asTable ? "table" : "chart"} onChange={(v) => setAsTable(v === "table")} options={[{ value: "chart", label: "Chart", icon: BarChart3 }, { value: "table", label: "Table", icon: Table2 }]} />
         </div>
       </div>
 
@@ -278,7 +271,7 @@ function TokenChart({ data }: { data: UsageSummary }) {
             {ticks.map((v) => (
               <g key={v}>
                 <line x1={PAD.left} x2={W - PAD.right} y1={geo.y(v)} y2={geo.y(v)} stroke="#e2e8f0" strokeWidth={1} strokeDasharray={v === 0 ? undefined : "3 4"} />
-                <text x={PAD.left - 8} y={geo.y(v)} textAnchor="end" dominantBaseline="middle" className="fill-slate-400" fontSize={10}>
+                <text x={PAD.left - 8} y={geo.y(v)} textAnchor="end" dominantBaseline="middle" className="fill-slate-400 font-mono" fontSize={10}>
                   {formatTokens(v)}
                 </text>
               </g>
@@ -293,13 +286,16 @@ function TokenChart({ data }: { data: UsageSummary }) {
               const outVisible = r.outputTokens > 0 && outH > 0.5;
               const inTop = base - inH;
               return (
-                <g key={r.bucket} opacity={hover === null || hover === i ? 1 : 0.45}>
+                <g key={r.bucket} className="transition-opacity duration-150" opacity={hover === null || hover === i ? 1 : 0.4}>
+                  {hover === i && <rect x={PAD.left + geo.slot * i} y={PAD.top} width={geo.slot} height={geo.plotH} fill="#f1f5f9" rx={3} />}
+                  <g className="grow-y" style={{ animationDelay: `${Math.min(i * 18, 500)}ms` }}>
                   {r.inputTokens > 0 && inH > 0.5 && (
                     outVisible ? <rect x={x} y={inTop} width={geo.barW} height={inH} fill={INPUT_COLOR} /> : <path d={topRoundedBar(x, inTop, geo.barW, inH, 4)} fill={INPUT_COLOR} />
                   )}
                   {outVisible && <path d={topRoundedBar(x, inTop - outH, geo.barW, Math.max(0.5, outH - GAP), 4)} fill={OUTPUT_COLOR} />}
+                  </g>
                   {i % geo.labelEvery === (b.length - 1) % geo.labelEvery && (
-                    <text x={cx} y={H - 8} textAnchor="middle" className="fill-slate-400" fontSize={10}>
+                    <text x={cx} y={H - 8} textAnchor="middle" className="fill-slate-400 font-mono" fontSize={10}>
                       {bucketLabel(r.bucket, data.range)}
                     </text>
                   )}
@@ -312,11 +308,11 @@ function TokenChart({ data }: { data: UsageSummary }) {
 
           {hb && hover !== null && (
             <div
-              className="pointer-events-none absolute top-0 z-10 w-44 -translate-x-1/2 rounded-lg border border-slate-200 bg-white p-2.5 text-[11px] shadow-lg"
+              className="pop-in pointer-events-none absolute top-0 z-10 w-44 -translate-x-1/2 rounded-md border border-slate-200 bg-white p-2.5 text-xs shadow-lift"
               style={{ left: `${((PAD.left + geo.slot * hover + geo.slot / 2) / W) * 100}%` }}
             >
-              <div className="font-semibold text-slate-900">{bucketLabel(hb.bucket, data.range, true)}</div>
-              <div className="mt-1.5 space-y-1 text-slate-600">
+              <div className="font-medium text-slate-900">{bucketLabel(hb.bucket, data.range, true)}</div>
+              <div className="mt-1.5 space-y-1 text-slate-500">
                 <Row color={INPUT_COLOR} label="Input" value={full(hb.inputTokens)} />
                 <Row color={OUTPUT_COLOR} label="Output" value={full(hb.outputTokens)} />
                 <div className="flex justify-between border-t border-slate-100 pt-1"><span>Calls</span><span className="font-mono text-slate-900">{full(hb.calls)}</span></div>
@@ -326,7 +322,7 @@ function TokenChart({ data }: { data: UsageSummary }) {
           )}
         </div>
       )}
-    </section>
+    </Panel>
   );
 }
 

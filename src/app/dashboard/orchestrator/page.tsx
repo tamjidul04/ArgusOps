@@ -1,13 +1,14 @@
 import React, { Suspense } from "react";
 import { Metadata } from "next";
 import { DashboardShell } from "@/components/layout";
+import { PageLoading } from "@/components/ui";
 import { OrchestratorClient } from "./OrchestratorClient";
 import { prisma } from "@/lib/prisma";
 import { requirePageUser } from "@/lib/auth";
 import { SubTaskItem } from "@/app/api/orchestrator/route";
 
 export const metadata: Metadata = {
-  title: "Master Orchestrator & Task Decomposition | ArgusOps v1.1",
+  title: "Master Orchestrator & Task Decomposition",
   description:
     "Master Agentic AI task triage, dynamic 100-to-30 concurrency right-sizing, leaf model router, and AST memory caching.",
 };
@@ -96,12 +97,7 @@ export default function OrchestratorPage() {
   return (
     <DashboardShell>
       <Suspense
-        fallback={
-          <div className="flex h-64 items-center justify-center font-mono text-xs text-slate-400 gap-2">
-            <span className="h-2 w-2 rounded-full bg-slate-400 animate-ping" />
-            <span>Loading Master Orchestrator &amp; Task Triage DAG...</span>
-          </div>
-        }
+        fallback={<PageLoading label="Loading orchestrator" />}
       >
         <OrchestratorLoader />
       </Suspense>

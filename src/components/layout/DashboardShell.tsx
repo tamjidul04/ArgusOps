@@ -4,7 +4,6 @@ import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Triangle,
   Activity,
   Sliders,
   Shield,
@@ -13,70 +12,51 @@ import {
   Bell,
   BarChart3,
   Lock,
-  ChevronDown,
+  ChevronsUpDown,
   Coins,
   Cloud,
-  Zap,
-  Radio,
-  Server,
   LogOut,
-  ExternalLink,
+  ArrowUpRight,
+  Menu,
+  X,
 } from "lucide-react";
 import { cn, formatTokens } from "@/lib/utils";
 import { DashboardProvider, useDashboard } from "./DashboardContext";
 import { NotificationBell } from "./NotificationBell";
 import { BrainProvider, useBrain } from "@/context/BrainContext";
+import { Logo } from "@/components/ui/Logo";
+import { Segmented } from "@/components/ui/Dash";
 
 interface NavItem {
   name: string;
   href: string;
   icon: React.ElementType;
-  badge?: string;
   adminOnly?: boolean;
 }
 
-const NAV_ITEMS: NavItem[] = [
+const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
   {
-    name: "Cluster Visualizer",
-    href: "/dashboard",
-    icon: Activity,
+    label: "Supervise",
+    items: [
+      { name: "Overview", href: "/dashboard", icon: Activity },
+      { name: "Orchestrator", href: "/dashboard/orchestrator", icon: Sliders },
+      { name: "Guardrails", href: "/dashboard/guardrails", icon: Shield },
+      { name: "Local bridge", href: "/dashboard/local-bridge", icon: Laptop },
+    ],
   },
   {
-    name: "Master Orchestrator",
-    href: "/dashboard/orchestrator",
-    icon: Sliders,
+    label: "Insights",
+    items: [
+      { name: "Usage & savings", href: "/dashboard/usage", icon: BarChart3 },
+      { name: "Notifications", href: "/dashboard/notifications", icon: Bell },
+    ],
   },
   {
-    name: "Loop & RAM Guardrails",
-    href: "/dashboard/guardrails",
-    icon: Shield,
-  },
-  {
-    name: "Local PC Bridge & SDK",
-    href: "/dashboard/local-bridge",
-    icon: Laptop,
-  },
-  {
-    name: "Usage & Savings",
-    href: "/dashboard/usage",
-    icon: BarChart3,
-  },
-  {
-    name: "Notifications",
-    href: "/dashboard/notifications",
-    icon: Bell,
-  },
-  {
-    name: "Plan & Token Billing",
-    href: "/dashboard/billing",
-    icon: CreditCard,
-  },
-  {
-    name: "Admin Control Panel",
-    href: "/admin",
-    icon: Lock,
-    badge: "Admin",
-    adminOnly: true,
+    label: "Account",
+    items: [
+      { name: "Plan & billing", href: "/dashboard/billing", icon: CreditCard },
+      { name: "Admin", href: "/admin", icon: Lock, adminOnly: true },
+    ],
   },
 ];
 
@@ -85,267 +65,220 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
   const { profile, loading, environment, setEnvironment, signOut } = useDashboard();
   const { wallet, interceptionLatencyMs } = useBrain();
   const [accountOpen, setAccountOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [navOpen, setNavOpen] = useState(false);
+  const [lastPath, setLastPath] = useState(pathname);
+  const accountRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdown when clicking outside
+  if (lastPath !== pathname) {
+    setLastPath(pathname);
+    setNavOpen(false);
+    setAccountOpen(false);
+  }
+
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setAccountOpen(false);
-      }
+    function onDown(event: MouseEvent) {
+      if (accountRef.current && !accountRef.current.contains(event.target as Node)) setAccountOpen(false);
     }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setAccountOpen(false);
+        setNavOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDown);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      window.removeEventListener("keydown", onKey);
+    };
   }, []);
 
+  const initial = loading ? "·" : (profile.name || profile.email || "?").charAt(0).toUpperCase();
+  const usedPct = profile.maxAgents > 0 ? Math.min(100, (profile.activeAgents / profile.maxAgents) * 100) : 0;
+
+  const sidebar = (
+    <div className="flex h-full flex-col">
+      <div className="flex h-16 shrink-0 items-center justify-between px-5">
+        <Link href="/" aria-label="ArgusOps home" className="rounded-md">
+          <Logo />
+        </Link>
+        <button
+          type="button"
+          onClick={() => setNavOpen(false)}
+          aria-label="Close navigation"
+          className="flex h-8 w-8 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 lg:hidden"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+
+      <nav aria-label="Dashboard" className="flex-1 space-y-6 overflow-y-auto px-3 py-4">
+        {NAV_GROUPS.map((group) => {
+          const items = group.items.filter((item) => !item.adminOnly || profile.role === "ADMIN");
+          if (!items.length) return null;
+          return (
+            <div key={group.label}>
+              <p className="px-3 pb-1.5 text-xs font-semibold text-slate-500">{group.label}</p>
+              <ul className="space-y-0.5">
+                {items.map((item) => {
+                  const isActive = item.href === "/dashboard" ? pathname === "/dashboard" : pathname?.startsWith(item.href);
+                  const Icon = item.icon;
+                  return (
+                    <li key={item.href}>
+                      <Link
+                        href={item.href}
+                        aria-current={isActive ? "page" : undefined}
+                        className={cn(
+                          "flex h-10 items-center gap-3 rounded-md px-3 text-[15px] transition-colors duration-100",
+                          isActive ? "bg-slate-100 font-semibold text-slate-900" : "font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                        )}
+                      >
+                        <Icon className={cn("h-[18px] w-[18px] shrink-0", isActive ? "text-slate-900" : "text-slate-500")} aria-hidden="true" />
+                        <span className="truncate">{item.name}</span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          );
+        })}
+      </nav>
+
+      <div className="shrink-0 border-t border-slate-200 p-4">
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-sm font-semibold text-slate-900">{profile.planName} plan</span>
+          <Link href="/dashboard/billing" className="text-slate-500 transition-colors hover:text-slate-900">
+            Upgrade
+          </Link>
+        </div>
+        <div className="mt-2 h-1 overflow-hidden rounded-full bg-slate-100" aria-hidden="true">
+          <div className="h-full rounded-full bg-slate-900 transition-[width] duration-500 ease-out" style={{ width: `${usedPct}%` }} />
+        </div>
+        <p className="tabular mt-1.5 text-xs text-slate-500">
+          {profile.activeAgents} of {profile.maxAgents} agents running
+        </p>
+      </div>
+    </div>
+  );
+
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-slate-50 font-sans text-slate-900 antialiased">
-      {/* ================= FIXED LEFT SIDEBAR ================= */}
-      <aside className="w-64 shrink-0 border-r border-slate-200 bg-white flex flex-col justify-between h-full select-none z-20">
-        <div>
-          {/* Brand Header */}
-          <div className="h-16 flex items-center px-6 border-b border-slate-200 gap-2.5">
-            <Link href="/" className="flex items-center gap-2.5 group">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-900 text-white transition-transform group-hover:scale-105 shadow-sm">
-                <Triangle className="h-4 w-4 fill-white text-white" />
-              </div>
-              <div className="flex flex-col">
-                <span className="font-bold tracking-tight text-slate-900 text-base leading-none">
-                  ArgusOps
-                </span>
-                <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest mt-0.5">
-                  Hypervisor
-                </span>
-              </div>
-            </Link>
+    <div className="dash-app flex h-dvh w-full overflow-hidden bg-slate-50 font-sans text-slate-900 antialiased">
+      <a
+        href="#dashboard-main"
+        className="fixed left-4 top-3 z-[60] -translate-y-20 rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white transition-transform focus:translate-y-0"
+      >
+        Skip to content
+      </a>
+
+      <aside className="z-20 hidden h-full w-64 shrink-0 border-r border-slate-200 bg-white lg:block">{sidebar}</aside>
+
+      {/* Mobile drawer */}
+      <div className={cn("fixed inset-0 z-50 lg:hidden", navOpen ? "" : "pointer-events-none")} aria-hidden={!navOpen} inert={!navOpen}>
+        <div onClick={() => setNavOpen(false)} className={cn("absolute inset-0 bg-slate-950/30 transition-opacity duration-200", navOpen ? "opacity-100" : "opacity-0")} />
+        <aside
+          role="dialog"
+          aria-modal="true"
+          aria-label="Navigation"
+          className={cn(
+            "absolute inset-y-0 left-0 w-64 max-w-[85vw] border-r border-slate-200 bg-white transition-transform duration-200 ease-out",
+            navOpen ? "translate-x-0" : "-translate-x-full"
+          )}
+        >
+          {sidebar}
+        </aside>
+      </div>
+
+      <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
+        <header className="z-30 flex h-16 shrink-0 items-center justify-between gap-3 border-b border-slate-200 bg-white px-3 sm:px-6">
+          <div className="flex min-w-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setNavOpen(true)}
+              aria-label="Open navigation"
+              aria-expanded={navOpen}
+              className="flex h-8 w-8 items-center justify-center rounded-md text-slate-700 hover:bg-slate-100 lg:hidden"
+            >
+              <Menu className="h-4 w-4" />
+            </button>
+            <Segmented
+              label="Environment"
+              value={environment}
+              onChange={setEnvironment}
+              options={[
+                { value: "CLOUD", label: "Cloud", icon: Cloud, iconClassName: "text-sky-600" },
+                { value: "LOCAL_PC", label: "Local PC", icon: Laptop, iconClassName: "text-indigo-600" },
+              ]}
+            />
           </div>
 
-          {/* Navigation Links */}
-          <nav className="p-3 space-y-1">
-            <div className="px-3 pt-2 pb-1.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-              Cluster Supervision
+          <div className="flex items-center gap-1.5">
+            <div className="hidden h-8 items-center gap-2 rounded-md px-2.5 text-xs text-slate-500 xl:flex" title="Time the loop guard takes to check each call">
+              <span className="live-dot h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
+              Loop guard
+              <span className="font-mono text-slate-900">{interceptionLatencyMs > 0 ? `${Math.round(interceptionLatencyMs)}ms` : "idle"}</span>
             </div>
-            {NAV_ITEMS.filter((item) => !item.adminOnly || profile.role === "ADMIN").map((item) => {
-              // Active route check: exact match for root dashboard, or startsWith for subroutes
-              const isActive =
-                item.href === "/dashboard"
-                  ? pathname === "/dashboard"
-                  : pathname?.startsWith(item.href);
 
-              const Icon = item.icon;
-
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all group",
-                    isActive
-                      ? "bg-slate-100 text-slate-900 font-semibold shadow-xs"
-                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-                  )}
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <Icon
-                      className={cn(
-                        "h-4 w-4 shrink-0 transition-colors",
-                        isActive
-                          ? "text-slate-900"
-                          : "text-slate-400 group-hover:text-slate-700"
-                      )}
-                    />
-                    <span className="truncate">{item.name}</span>
-                  </div>
-
-                  {item.badge && (
-                    <span
-                      className={cn(
-                        "text-[10px] uppercase font-mono tracking-wider px-1.5 py-0.5 rounded border font-semibold",
-                        item.badge === "Admin"
-                          ? "bg-slate-900 text-white border-slate-900"
-                          : "bg-slate-100 text-slate-600 border-slate-200"
-                      )}
-                    >
-                      {item.badge}
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
-          </nav>
-        </div>
-
-        {/* Sidebar Footer with Active Persona Card */}
-        <div className="p-3 border-t border-slate-200 space-y-2 bg-slate-50/50">
-          <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-xs">
-            <div className="flex items-center justify-between text-xs mb-1">
-              <span className="font-semibold text-slate-900 truncate">
-                {profile.planName}
-              </span>
-              <span className="text-[10px] font-mono text-slate-400">v1.1.0</span>
-            </div>
-            <div className="flex items-center gap-1.5 text-xs text-slate-600">
-              <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
-              <span className="truncate">
-                {profile.activeAgents} / {profile.maxAgents} agents active
-              </span>
-            </div>
-            <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-              <span className="truncate max-w-[130px]">{profile.name}</span>
-              <span className="font-mono text-slate-400 text-[10px]">
-                {profile.role}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between px-2 pt-1 text-[11px] text-slate-400">
             <Link
-              href="/"
-              className="hover:text-slate-700 inline-flex items-center gap-1 transition-colors"
+              href="/dashboard/billing"
+              className="hidden h-8 items-center gap-2 rounded-md border border-slate-200 px-2.5 text-xs transition-colors hover:border-slate-300 hover:bg-slate-50 sm:flex"
+              title="Token wallet"
             >
-              <ExternalLink className="h-3 w-3" /> Public Site
+              <Coins className="h-3.5 w-3.5 shrink-0 text-amber-600" aria-hidden="true" />
+              <span className="tabular font-medium text-slate-900">{formatTokens(wallet ? wallet.free_tokens : profile.freeTokens)}</span>
+              <span className="text-slate-400">free</span>
+              <span className="h-3 w-px bg-slate-200" aria-hidden="true" />
+              <span className="tabular font-medium text-slate-900">{formatTokens(wallet ? wallet.paid_tokens : profile.paidTokens)}</span>
+              <span className="text-slate-400">paid</span>
             </Link>
-            <button
-              type="button"
-              onClick={signOut}
-              className="hover:text-rose-600 inline-flex items-center gap-1 transition-colors"
-            >
-              <LogOut className="h-3 w-3" /> Sign Out
-            </button>
-          </div>
-        </div>
-      </aside>
-
-      {/* ================= MAIN COLUMN ================= */}
-      <div className="flex flex-1 flex-col min-w-0 h-full overflow-hidden">
-        {/* ================= STICKY TOP HEADER ================= */}
-        <header className="h-16 shrink-0 sticky top-0 z-30 bg-white border-b border-slate-200 px-6 flex items-center justify-between gap-4">
-          {/* Environment Switcher Pill */}
-          <div className="flex items-center bg-slate-100 p-1 rounded-lg border border-slate-200/80">
-            <button
-              type="button"
-              onClick={() => setEnvironment("CLOUD")}
-              className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all",
-                environment === "CLOUD"
-                  ? "bg-white text-slate-900 font-semibold shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
-              )}
-            >
-              <Cloud className="h-3.5 w-3.5 text-sky-600" />
-              <span>Cloud</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setEnvironment("LOCAL_PC")}
-              className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all",
-                environment === "LOCAL_PC"
-                  ? "bg-white text-slate-900 font-semibold shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
-              )}
-            >
-              <Laptop className="h-3.5 w-3.5 text-indigo-600" />
-              <span>Local PC</span>
-            </button>
-          </div>
-
-          {/* Right Header Section: SLA Pill + Host RAM + Token Wallet + Quick Role Switcher */}
-          <div className="flex items-center gap-2.5">
-            {/* Live SLA & Loop Guard Pill */}
-            <div className="hidden lg:flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600 shadow-xs">
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
-              </span>
-              <span className="font-mono text-slate-900 font-semibold">
-                Loop Guard: {interceptionLatencyMs > 0 ? `${Math.round(interceptionLatencyMs)}ms` : "idle"}
-              </span>
-              <span className="text-slate-300">|</span>
-              <span className="font-mono text-emerald-700 font-medium text-[11px]">
-                &lt;100ms SLA
-              </span>
-            </div>
 
             <NotificationBell />
 
-            {/* Token Wallet Badge */}
-            <Link
-              href="/dashboard/billing"
-              className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 px-3 py-1.5 text-xs transition-colors shadow-xs group"
-              title="View Token Wallet and Quotas"
-            >
-              <Coins className="h-3.5 w-3.5 text-amber-600 shrink-0 group-hover:scale-110 transition-transform" />
-              <div className="flex items-center gap-1.5">
-                <span className="font-semibold text-slate-900">
-                  {formatTokens(wallet ? wallet.free_tokens : profile.freeTokens)}
-                </span>
-                <span className="text-slate-400">Free</span>
-                <span className="text-slate-300">·</span>
-                <span className="font-semibold text-slate-900">
-                  {formatTokens(wallet ? wallet.paid_tokens : profile.paidTokens)}
-                </span>
-                <span className="text-slate-400">Paid</span>
-              </div>
-            </Link>
-
-            {/* Account menu */}
-            <div className="relative" ref={dropdownRef}>
+            <div className="relative" ref={accountRef}>
               <button
                 type="button"
-                onClick={() => setAccountOpen(!accountOpen)}
+                onClick={() => setAccountOpen((v) => !v)}
                 aria-haspopup="menu"
                 aria-expanded={accountOpen}
-                className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 px-2.5 py-1.5 text-xs font-medium text-slate-800 transition-colors shadow-xs"
+                className="flex h-8 items-center gap-2 rounded-md pl-1 pr-1.5 text-xs transition-colors hover:bg-slate-100"
               >
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-slate-900 text-[11px] font-bold text-white">
-                  {loading ? "…" : (profile.name || profile.email || "?").charAt(0).toUpperCase()}
-                </span>
-                <span className="hidden sm:inline font-semibold text-slate-900 max-w-[120px] truncate">
-                  {loading ? "Loading…" : profile.name}
-                </span>
-                <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
+                <span className="flex h-6 w-6 items-center justify-center rounded bg-slate-900 text-[11px] font-semibold text-white">{initial}</span>
+                <span className="hidden max-w-[120px] truncate font-medium text-slate-900 sm:inline">{loading ? "Loading…" : profile.name}</span>
+                <ChevronsUpDown className="h-3.5 w-3.5 text-slate-400" aria-hidden="true" />
               </button>
 
               {accountOpen && (
-                <div
-                  role="menu"
-                  className="absolute right-0 mt-1.5 w-64 rounded-lg border border-slate-200 bg-white p-1.5 shadow-lg z-50 animate-in fade-in slide-in-from-top-1 duration-150"
-                >
-                  <div className="px-3 py-2.5 border-b border-slate-100">
+                <div role="menu" className="pop-in absolute right-0 z-50 mt-1.5 w-64 origin-top-right rounded-lg border border-slate-200 bg-white p-1 shadow-lift">
+                  <div className="px-2.5 py-2">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-sm font-semibold text-slate-900 truncate">{profile.name}</span>
-                      <span
-                        className={cn(
-                          "text-[10px] px-1.5 rounded font-mono font-medium border",
-                          profile.role === "ADMIN"
-                            ? "bg-slate-900 text-white border-slate-900"
-                            : "bg-slate-100 text-slate-600 border-slate-200"
-                        )}
-                      >
-                        {profile.role}
-                      </span>
+                      <span className="truncate text-sm font-medium text-slate-900">{profile.name}</span>
+                      {profile.role === "ADMIN" && <span className="rounded bg-slate-900 px-1.5 py-px font-mono text-[10px] text-white">admin</span>}
                     </div>
-                    <p className="mt-0.5 text-[11px] text-slate-500 truncate">{profile.email}</p>
-                    <p className="mt-0.5 text-[11px] font-mono text-slate-400">
-                      {profile.planName} · {profile.activeAgents}/{profile.maxAgents} agents
-                    </p>
+                    <p className="truncate text-xs text-slate-500">{profile.email}</p>
                   </div>
+                  <div className="my-1 h-px bg-slate-100" />
                   <Link
                     href="/dashboard/billing"
                     role="menuitem"
                     onClick={() => setAccountOpen(false)}
-                    className="mt-1 flex items-center gap-2 rounded-md px-3 py-2 text-xs text-slate-700 hover:bg-slate-50"
+                    className="flex h-8 items-center gap-2 rounded-md px-2.5 text-[13px] text-slate-700 hover:bg-slate-100"
                   >
-                    <CreditCard className="h-3.5 w-3.5 text-slate-400" /> Plan &amp; billing
+                    <CreditCard className="h-3.5 w-3.5 text-slate-400" aria-hidden="true" /> Plan &amp; billing
+                    <span className="tabular ml-auto font-mono text-[11px] text-slate-400">
+                      {profile.activeAgents}/{profile.maxAgents}
+                    </span>
                   </Link>
+                  <Link href="/" role="menuitem" className="flex h-8 items-center gap-2 rounded-md px-2.5 text-[13px] text-slate-700 hover:bg-slate-100">
+                    <ArrowUpRight className="h-3.5 w-3.5 text-slate-400" aria-hidden="true" /> Public site
+                  </Link>
+                  <div className="my-1 h-px bg-slate-100" />
                   <button
                     type="button"
                     role="menuitem"
                     onClick={signOut}
-                    className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-xs text-rose-700 hover:bg-rose-50"
+                    className="flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-[13px] text-rose-700 hover:bg-rose-50"
                   >
-                    <LogOut className="h-3.5 w-3.5" /> Sign out
+                    <LogOut className="h-3.5 w-3.5" aria-hidden="true" /> Sign out
                   </button>
                 </div>
               )}
@@ -353,22 +286,27 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        {/* ================= MAIN SCROLLABLE CONTENT ================= */}
-        <main className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden p-6 space-y-6">
-          {children}
-
-          <footer className="pt-6 pb-2 border-t border-slate-200 text-xs text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div className="flex items-center gap-2 font-mono text-[11px]">
-              <span>ArgusOps v0.2</span>
-              <span>•</span>
-              <span>Zero-trust local code privacy</span>
+        <main id="dashboard-main" className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
+          <div className="dash w-full space-y-6 p-4 sm:p-6 lg:px-8 2xl:px-10">
+            {/* keyed by route so each page rises in when you open it */}
+            <div key={pathname} className="rise-in-deep">
+              {children}
             </div>
-            <div className="flex items-center gap-4">
-              <a href="/docs" className="hover:text-slate-900">Docs</a>
-              <a href="/status" className="hover:text-slate-900">Status</a>
-              <a href="/privacy" className="hover:text-slate-900">Privacy</a>
-            </div>
-          </footer>
+            <footer className="flex flex-col gap-2 border-t border-slate-200 pb-2 pt-5 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between">
+              <span>Your prompts and code stay on your machine.</span>
+              <div className="flex items-center gap-4">
+                <Link href="/docs" className="hover:text-slate-900">
+                  Docs
+                </Link>
+                <Link href="/status" className="hover:text-slate-900">
+                  Status
+                </Link>
+                <Link href="/privacy" className="hover:text-slate-900">
+                  Privacy
+                </Link>
+              </div>
+            </footer>
+          </div>
         </main>
       </div>
     </div>
@@ -384,4 +322,3 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     </DashboardProvider>
   );
 }
-

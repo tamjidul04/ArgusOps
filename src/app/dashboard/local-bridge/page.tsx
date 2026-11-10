@@ -1,6 +1,7 @@
 import React, { Suspense } from "react";
 import { Metadata } from "next";
 import { DashboardShell } from "@/components/layout";
+import { PageLoading } from "@/components/ui";
 import { LocalBridgeClient } from "./LocalBridgeClient";
 import { VsCodeExtensionCard } from "@/components/VsCodeExtensionCard";
 import { prisma } from "@/lib/prisma";
@@ -8,7 +9,7 @@ import { requirePageUser } from "@/lib/auth";
 import { getPermissions, listLocks } from "@/lib/control-plane";
 
 export const metadata: Metadata = {
-  title: "Local PC Bridge & API Keys | ArgusOps",
+  title: "Local PC Bridge & API Keys",
   description:
     "Pair your machine, manage API keys, and control file locks and permissions for locally supervised agents.",
 };
@@ -53,13 +54,13 @@ async function LocalBridgeLoader() {
 
   return (
     <div className="space-y-6">
-      <VsCodeExtensionCard />
       <LocalBridgeClient
         initialAgents={localAgents}
         initialLocks={locks}
         initialKeys={apiKeys}
         initialPermissions={permissions}
       />
+      <VsCodeExtensionCard variant="panel" />
     </div>
   );
 }
@@ -67,14 +68,7 @@ async function LocalBridgeLoader() {
 export default function LocalBridgePage() {
   return (
     <DashboardShell>
-      <Suspense
-        fallback={
-          <div className="flex h-64 items-center justify-center font-mono text-xs text-slate-400 gap-2">
-            <span className="h-2 w-2 rounded-full bg-slate-400 animate-ping" />
-            <span>Loading local bridge...</span>
-          </div>
-        }
-      >
+      <Suspense fallback={<PageLoading label="Loading local bridge" />}>
         <LocalBridgeLoader />
       </Suspense>
     </DashboardShell>
