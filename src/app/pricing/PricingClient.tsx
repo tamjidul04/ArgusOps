@@ -2,6 +2,7 @@ import React from "react";
 import { Check, ChevronDown, Minus } from "lucide-react";
 import { Bezel, ButtonLink, SectionHeading } from "@/components/ui";
 import { cn, formatTokens } from "@/lib/utils";
+import { PLAN_FEATURES as FEATURES } from "@/lib/plan-features";
 
 export interface PlanData {
   plan_id: string;
@@ -17,23 +18,6 @@ export interface PlanData {
 interface PricingClientProps {
   plans: PlanData[];
 }
-
-const FEATURES: Record<string, string[]> = {
-  plan_free: [
-    "Loop detection and automatic pause",
-    "Suggested instructions you approve",
-    "Dashboard, desktop and webhook alerts",
-    "VS Code extension",
-    "Usage and savings page",
-  ],
-  plan_pro: [
-    "Everything in Free",
-    "5x the concurrent agents",
-    "More agents running side by side",
-    "Priority support",
-  ],
-  plan_enterprise: ["Everything in Pro", "Limits and terms agreed for your team", "Dedicated support channel"],
-};
 
 const FAQS = [
   {
