@@ -26,7 +26,7 @@ export default function TermsPage() {
           </p>
         </div>
           <div className="space-y-12 text-sm text-slate-600 leading-relaxed">
-          <section className="space-y-3">
+          <section data-reveal className="space-y-3">
             <h2 className="text-xl font-semibold tracking-tight text-slate-900">1. License &amp; Local Daemon Usage</h2>
             <p className="text-sm">
               ArgusOps grants you a non-exclusive, revocable license to run our desktop daemon software on your workstations.
@@ -35,7 +35,7 @@ export default function TermsPage() {
             </p>
           </section>
 
-          <section className="space-y-3">
+          <section data-reveal className="space-y-3">
             <h2 className="text-xl font-semibold tracking-tight text-slate-900">2. Token Governance &amp; Wallet Balances</h2>
             <p className="text-sm">
               New accounts receive 50,000 initial free tokens. Paid plans provide monthly recurring token allowances as set forth on our Pricing page.
@@ -44,7 +44,7 @@ export default function TermsPage() {
             </p>
           </section>
 
-          <section className="space-y-3">
+          <section data-reveal className="space-y-3">
             <h2 className="text-xl font-semibold tracking-tight text-slate-900">3. Loop Circuit-Breaker Liability</h2>
             <p className="text-sm">
               While ArgusOps targets a &lt;100ms response time for infinite loop detection (with an average latency of 38ms),
@@ -53,7 +53,7 @@ export default function TermsPage() {
             </p>
           </section>
 
-          <section className="space-y-3">
+          <section data-reveal className="space-y-3">
             <h2 className="text-xl font-semibold tracking-tight text-slate-900">4. Admin Approval &amp; Cluster Right-Sizing</h2>
             <p className="text-sm">
               Enterprise and Pro Swarm upgrades may be subject to review via our Transaction Approval Queue to verify compute resource availability
@@ -61,7 +61,7 @@ export default function TermsPage() {
             </p>
           </section>
 
-          <section className="space-y-3">
+          <section data-reveal className="space-y-3">
             <h2 className="text-xl font-semibold tracking-tight text-slate-900">5. 14-Day Money-Back Policy</h2>
             <p className="text-sm">
               If at any point within 14 days of your initial plan purchase or token injection you determine that ArgusOps does not meet your team&apos;s cost-saving
@@ -69,7 +69,7 @@ export default function TermsPage() {
             </p>
           </section>
 
-          <section className="space-y-3">
+          <section data-reveal className="space-y-3">
             <h2 className="text-xl font-semibold tracking-tight text-slate-900">6. Governing Law</h2>
             <p className="text-sm">
               These terms are governed by the laws of enterprise cloud software service agreements. Inquiries regarding custom master services agreements (MSA)

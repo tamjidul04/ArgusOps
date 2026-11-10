@@ -25,7 +25,7 @@ export default function StatusPage() {
         lead="ArgusOps is in early access. We do not publish uptime numbers or an incident history, because we would rather show none than make them up."
       />
 
-      <Container className="max-w-3xl space-y-6 py-16 md:py-24">
+      <Container data-reveal className="max-w-3xl space-y-6 py-16 md:py-24">
         <Bezel className="" innerClassName="sm:p-8">
           <div className="flex items-start gap-4">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white">
