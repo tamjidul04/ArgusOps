@@ -22,6 +22,7 @@ export const mock = {
   config: {} as Record<string, unknown>,
   statusBars: [] as Array<Record<string, unknown>>,
   treeViews: [] as Array<Record<string, unknown>>,
+  webviewProviders: new Map<string, { resolveWebviewView(view: unknown): void }>(),
   commands: new Map<string, (...args: unknown[]) => unknown>(),
   progressTitles: [] as string[],
   cancelProgress: false,
@@ -40,6 +41,7 @@ export function resetMock() {
   mock.config = {};
   mock.statusBars = [];
   mock.treeViews = [];
+  mock.webviewProviders = new Map();
   mock.commands = new Map();
   mock.progressTitles = [];
   mock.cancelProgress = false;
@@ -116,6 +118,10 @@ export const window = {
     const v: Record<string, unknown> = { description: undefined, dispose() {} };
     mock.treeViews.push(v);
     return v;
+  },
+  registerWebviewViewProvider: (id: string, provider: { resolveWebviewView(view: unknown): void }, _opts?: unknown) => {
+    mock.webviewProviders.set(id, provider);
+    return { dispose: () => mock.webviewProviders.delete(id) };
   },
   showInformationMessage: show("info"),
   showWarningMessage: show("warn"),

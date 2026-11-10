@@ -40,7 +40,7 @@ const SURFACES = [
   { name: "argus CLI", body: "Wraps Claude Code with a local proxy. Sign in once in your browser, no pasted keys.", href: "/docs#cli", cta: "CLI reference" },
   {
     name: "VS Code extension",
-    body: "An Agents view, a status bar that turns amber when an agent needs you, and approve, resume or stop without leaving the editor.",
+    body: "A small dashboard in the sidebar, an agent list, a status bar that turns amber when an agent needs you, and approve, resume or stop without leaving the editor.",
     href: "/download",
     cta: "Get the extension",
   },

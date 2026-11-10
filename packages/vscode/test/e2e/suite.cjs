@@ -20,6 +20,7 @@ exports.run = async function run() {
       check(`command argusops.${id} is registered`, commands.includes(`argusops.${id}`));
     }
     check("the Agents view is contributed (its focus command exists)", commands.includes("argusops.agents.focus"));
+    check("the Overview dashboard view is contributed (its focus command exists)", commands.includes("argusops.overview.focus"));
 
     const cfg = vscode.workspace.getConfiguration("argusops");
     check("setting serverUrl defaults to the local server", cfg.get("serverUrl") === "http://localhost:3000", cfg.get("serverUrl"));
@@ -37,6 +38,10 @@ exports.run = async function run() {
 
     const contributed = ext && ext.packageJSON && ext.packageJSON.contributes;
     check("the activity bar container and view are declared", !!(contributed && contributed.viewsContainers && contributed.views));
+    const views = (contributed && contributed.views && contributed.views.argusops) || [];
+    const overview = views.find((v) => v.id === "argusops.overview");
+    check("the Overview is a webview shown only when signed in", !!overview && overview.type === "webview" && overview.when === "argusops.signedIn", JSON.stringify(overview));
+    check("the Overview sits above the Agents list", views.findIndex((v) => v.id === "argusops.overview") === 0 && views.findIndex((v) => v.id === "argusops.agents") === 1);
   } catch (e) {
     check("the suite itself ran", false, e && e.stack ? e.stack : e);
   }

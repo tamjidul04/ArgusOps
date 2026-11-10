@@ -4,6 +4,7 @@ See your AI coding agents, get told when one is stuck, and resume it with a bett
 
 ## What you get
 
+- **An Overview panel** at the top of the ArgusOps sidebar: what needs you (with **Approve & resume** and **Stop** buttons), agents running against your plan limit, tokens left, the last 7 days of usage, loops caught and your latest alerts.
 - **An Agents view** in the activity bar: every supervised agent with its status (running, paused, stopped), tokens used and what it is doing. A paused agent shows **why** it was paused and ArgusOps' **suggested instruction**.
 - **Alerts** when an agent is paused or stopped, with one-click **Approve suggestion**, **Edit…** or **Stop**.
 - **A status bar item** that turns amber when something needs you.
