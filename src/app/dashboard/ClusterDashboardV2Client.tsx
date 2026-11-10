@@ -29,6 +29,7 @@ import { cn, formatTokens, formatCurrency } from "@/lib/utils";
 import { useDashboard } from "@/components/layout";
 import { useBrain } from "@/context/BrainContext";
 import { Badge, DashHeader, EmptyState, Panel, Segmented, buttonClasses } from "@/components/ui";
+import { WeekUsage } from "./WeekUsage";
 
 /** One figure in the headline strip. */
 function Cell({ label, value, sub, badge, className, children }: { label: string; value: React.ReactNode; sub?: React.ReactNode; badge?: React.ReactNode; className?: string; children?: React.ReactNode }) {
@@ -343,7 +344,8 @@ export function ClusterDashboardV2Client({
 
       {/* Headline numbers: one large figure (the wallet), four supporting ones */}
       <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-slate-200 bg-slate-200 lg:grid-cols-4 lg:grid-rows-2 [&>*]:bg-white">
-        <div className="col-span-2 flex min-w-0 flex-col justify-between p-5 lg:row-span-2 lg:p-6">
+        <div className="col-span-2 flex min-w-0 flex-col justify-between gap-6 p-5 lg:row-span-2 lg:p-6 2xl:grid 2xl:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] 2xl:gap-8">
+          <div className="flex min-w-0 flex-col justify-between">
           <div>
             <div className="flex items-start justify-between gap-2">
               <dt className="text-xs text-slate-500">Free token balance</dt>
@@ -370,6 +372,10 @@ export function ClusterDashboardV2Client({
                 />
               ))}
             </div>
+          </div>
+          </div>
+          <div className="min-w-0 border-t border-slate-100 pt-5 2xl:border-l 2xl:border-t-0 2xl:pl-8 2xl:pt-0">
+            <WeekUsage />
           </div>
         </div>
         <Cell label="Tokens saved" value="1.24M" sub="Cache traps and dedup" badge={<Badge tone="green">+9.4x</Badge>} />
