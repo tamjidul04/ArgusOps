@@ -120,7 +120,7 @@ export function Wordmark({ className, tone = "light" }: { className?: string; to
       viewBox={`-1.5 2.5 ${WORD.width + 3} 21`}
       role="img"
       aria-label="ArgusOps"
-      className={cn("h-[21px] w-auto translate-y-[2px]", tone === "dark" ? "text-white" : "text-slate-900", className)}
+      className={cn("h-[26px] w-auto translate-y-[2px]", tone === "dark" ? "text-white" : "text-slate-900", className)}
       fill="none"
       stroke="currentColor"
       strokeWidth={W}
@@ -138,8 +138,8 @@ export function Wordmark({ className, tone = "light" }: { className?: string; to
 
 export function Logo({ className, tone = "light", mark = true }: { className?: string; tone?: "light" | "dark"; mark?: boolean }) {
   return (
-    <span className={cn("inline-flex items-center gap-2.5", className)}>
-      {mark && <LogoMark tone={tone} className="h-7 w-7" />}
+    <span className={cn("inline-flex items-center gap-3", className)}>
+      {mark && <LogoMark tone={tone} className="h-9 w-9" />}
       <Wordmark tone={tone} />
     </span>
   );

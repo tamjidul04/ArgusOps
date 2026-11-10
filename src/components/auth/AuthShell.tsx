@@ -33,7 +33,7 @@ export function AuthShell({
           <Logo />
         </Link>
 
-        <main id="main" className="mx-auto flex w-full max-w-[22rem] flex-1 flex-col justify-center py-12">
+        <main id="main" className="rise-in-children mx-auto flex w-full max-w-[22rem] flex-1 flex-col justify-center py-12">
           <h1 className="text-balance text-2xl font-semibold tracking-[-0.02em]">{title}</h1>
           <p className="mt-1.5 text-sm leading-relaxed text-slate-500">{subtitle}</p>
           <div className="mt-7">{children}</div>

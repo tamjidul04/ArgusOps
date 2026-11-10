@@ -57,7 +57,7 @@ export function DocsShell({ sections }: { sections: DocSection[] }) {
     <div ref={top} className="grid grid-cols-[minmax(0,1fr)] gap-8 lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-14 xl:grid-cols-[17rem_minmax(0,1fr)]">
       {/* Desktop: sticky sidebar */}
       <aside className="hidden lg:block">
-        <nav aria-label="Documentation" className="sticky top-20 max-h-[calc(100dvh-6rem)] space-y-6 overflow-y-auto pb-6 pr-2">
+        <nav aria-label="Documentation" className="sticky top-24 max-h-[calc(100dvh-7rem)] space-y-6 overflow-y-auto pb-6 pr-2">
           {groups.map((g) => (
             <div key={g}>
               <p className="px-3 pb-1.5 text-xs font-medium text-slate-400">{g}</p>
@@ -93,7 +93,7 @@ export function DocsShell({ sections }: { sections: DocSection[] }) {
       </aside>
 
       {/* Phone/tablet: sticky chip row under the navbar */}
-      <div className="sticky top-14 z-30 -mx-4 min-w-0 border-b border-slate-200 bg-slate-50/95 px-4 py-2.5 sm:-mx-6 sm:px-6 lg:hidden">
+      <div className="sticky top-16 z-30 -mx-4 min-w-0 border-b border-slate-200 bg-slate-50/95 px-4 py-2.5 sm:-mx-6 sm:px-6 lg:hidden">
         <div ref={chips} role="tablist" aria-label="Documentation sections" className="flex gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {sections.map((s) => {
             const on = s.id === active;

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Figtree } from "next/font/google";
 import { Cursor } from "@/components/ui/Cursor";
+import { RevealObserver } from "@/components/ui/Reveal";
 import "./globals.css";
 
 const figtree = Figtree({
@@ -27,6 +28,7 @@ export default function RootLayout({
       <body className="flex min-h-full flex-col bg-slate-50 font-sans text-slate-900">
         {children}
         <Cursor />
+        <RevealObserver />
       </body>
     </html>
   );

@@ -162,10 +162,10 @@ svg.lucide {
   }
 }
 .rise-in {
-  animation: rise-in 0.55s var(--ease-out-quart) both;
+  animation: rise-in 0.55s var(--ease-out-quart) backwards;
 }
 .rise-in-children > * {
-  animation: rise-in 0.55s var(--ease-out-quart) both;
+  animation: rise-in 0.55s var(--ease-out-quart) backwards;
 }
 .rise-in-children > :nth-child(1) { animation-delay: 40ms; }
 .rise-in-children > :nth-child(2) { animation-delay: 90ms; }
@@ -175,6 +175,33 @@ svg.lucide {
 .rise-in-children > :nth-child(6) { animation-delay: 290ms; }
 .rise-in-children > :nth-child(7) { animation-delay: 330ms; }
 .rise-in-children > :nth-child(n + 8) { animation-delay: 370ms; }
+
+/* One level deeper, for page roots that wrap everything in a single element (dashboard pages). */
+.rise-in-deep > * > * {
+  animation: rise-in 0.55s var(--ease-out-quart) backwards;
+}
+.rise-in-deep > * > :nth-child(1) { animation-delay: 0ms; }
+.rise-in-deep > * > :nth-child(2) { animation-delay: 60ms; }
+.rise-in-deep > * > :nth-child(3) { animation-delay: 120ms; }
+.rise-in-deep > * > :nth-child(4) { animation-delay: 180ms; }
+.rise-in-deep > * > :nth-child(5) { animation-delay: 240ms; }
+.rise-in-deep > * > :nth-child(n + 6) { animation-delay: 300ms; }
+/* Fixed toasts inside a page root are animated on their own. */
+.rise-in-deep > * > .fixed {
+  animation-delay: 0ms;
+}
+
+/* Scroll reveal (see RevealObserver): hidden only once JS is ready, risen once in view. */
+html.reveal-ready [data-reveal]:not(.is-revealed) > * {
+  opacity: 0;
+}
+[data-reveal].is-revealed > * {
+  animation: rise-in 0.6s var(--ease-out-quart) backwards;
+}
+[data-reveal].is-revealed > :nth-child(2) { animation-delay: 80ms; }
+[data-reveal].is-revealed > :nth-child(3) { animation-delay: 160ms; }
+[data-reveal].is-revealed > :nth-child(4) { animation-delay: 240ms; }
+[data-reveal].is-revealed > :nth-child(n + 5) { animation-delay: 300ms; }
 
 /* Live status dot: a single soft ring, slow, never a flashing ping. */
 @keyframes breathe {
@@ -237,6 +264,8 @@ svg.lucide {
   .pop-in,
   .rise-in,
   .rise-in-children > *,
+  .rise-in-deep > * > *,
+  [data-reveal].is-revealed > *,
   .live-dot,
   .caret,
   .eye-blink {

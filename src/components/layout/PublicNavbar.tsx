@@ -57,15 +57,15 @@ export function PublicNavbar() {
 
       <header
         className={cn(
-          "fixed inset-x-0 top-0 z-40 border-b bg-slate-50/95 transition-[border-color,background-color] duration-200",
-          scrolled || open ? "border-slate-200 bg-white" : "border-transparent"
+          "fixed inset-x-0 top-0 z-40 border-b bg-white/95 transition-[border-color,box-shadow] duration-200",
+          scrolled || open ? "border-slate-200 shadow-[0_1px_3px_rgb(15_23_42/0.05)]" : "border-slate-200/60"
         )}
       >
-        <div className="mx-auto grid h-14 w-full max-w-6xl xl:max-w-7xl 2xl:max-w-[96rem] grid-cols-[1fr_auto] items-center px-4 sm:px-6 md:grid-cols-[1fr_auto_1fr] lg:px-8 2xl:px-12">
+        <div className="mx-auto grid h-16 w-full max-w-6xl xl:max-w-7xl 2xl:max-w-[96rem] grid-cols-[1fr_auto] items-center px-4 sm:px-6 md:grid-cols-[1fr_auto_1fr] lg:px-8 2xl:px-12">
           <Link href="/" aria-label="ArgusOps home" className="w-fit rounded-md">
             <Logo />
           </Link>
-          <nav aria-label="Main" className="hidden items-center justify-center md:flex">
+          <nav aria-label="Main" className="hidden items-center justify-center gap-1 md:flex">
               {NAV_LINKS.map((l) => {
                 const active = pathname === l.href || pathname.startsWith(l.href + "/");
                 return (
@@ -74,22 +74,21 @@ export function PublicNavbar() {
                     href={l.href}
                     aria-current={active ? "page" : undefined}
                     className={cn(
-                      "relative px-3 py-2 text-sm transition-colors duration-150",
-                      active ? "text-slate-900" : "text-slate-500 hover:text-slate-900"
+                      "relative inline-flex h-9 items-center rounded-md px-3.5 text-[15px] font-medium transition-colors duration-150",
+                      active ? "bg-slate-100 text-slate-900" : "text-slate-600 hover:bg-slate-100/70 hover:text-slate-900"
                     )}
                   >
                     {l.label}
-                    {active && <span aria-hidden="true" className="absolute inset-x-3 -bottom-[11px] h-px bg-slate-900" />}
                   </Link>
                 );
               })}
           </nav>
 
           <div className="flex items-center justify-end gap-1.5">
-            <Link href="/login" className={cn(buttonClasses("ghost", false), "hidden h-8 px-3 sm:inline-flex")}>
+            <Link href="/login" className={cn(buttonClasses("ghost", false), "hidden h-9 px-3.5 text-[15px] sm:inline-flex")}>
               Log in
             </Link>
-            <Link href="/signup" className={cn(buttonClasses("primary", false), "hidden h-8 px-3 sm:inline-flex")}>
+            <Link href="/signup" className={cn(buttonClasses("primary", false), "hidden h-9 px-4 text-[15px] sm:inline-flex")}>
               Start free
             </Link>
             <button
@@ -98,7 +97,7 @@ export function PublicNavbar() {
               aria-expanded={open}
               aria-controls="mobile-menu"
               aria-label={open ? "Close menu" : "Open menu"}
-              className="flex h-9 w-9 items-center justify-center rounded-md text-slate-900 hover:bg-slate-100 md:hidden"
+              className="flex h-10 w-10 items-center justify-center rounded-md text-slate-900 hover:bg-slate-100 md:hidden"
             >
               <span className="relative block h-2.5 w-4" aria-hidden="true">
                 <span
@@ -127,7 +126,7 @@ export function PublicNavbar() {
         aria-hidden={!open}
         inert={!open}
         className={cn(
-          "fixed inset-x-0 bottom-0 top-14 z-[45] flex flex-col bg-white px-4 pb-6 transition-[opacity,transform] duration-200 ease-out md:hidden",
+          "fixed inset-x-0 bottom-0 top-16 z-[45] flex flex-col bg-white px-4 pb-6 transition-[opacity,transform] duration-200 ease-out md:hidden",
           open ? "translate-y-0 opacity-100" : "pointer-events-none -translate-y-2 opacity-0"
         )}
       >

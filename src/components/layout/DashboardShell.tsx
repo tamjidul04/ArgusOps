@@ -288,7 +288,10 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
 
         <main id="dashboard-main" className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
           <div className="dash w-full space-y-6 p-4 sm:p-6 lg:px-8 2xl:px-10">
-            {children}
+            {/* keyed by route so each page rises in when you open it */}
+            <div key={pathname} className="rise-in-deep">
+              {children}
+            </div>
             <footer className="flex flex-col gap-2 border-t border-slate-200 pb-2 pt-5 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between">
               <span>Your prompts and code stay on your machine.</span>
               <div className="flex items-center gap-4">

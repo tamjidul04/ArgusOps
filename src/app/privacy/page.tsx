@@ -27,7 +27,7 @@ export default function PrivacyPage() {
           </p>
         </div>
           <div className="space-y-12 text-sm text-slate-600 leading-relaxed">
-          <section className="space-y-3">
+          <section data-reveal className="space-y-3">
             <h2 className="text-xl font-semibold tracking-tight text-slate-900">1. Data We Do NOT Collect</h2>
             <ul className="space-y-2 text-sm">
               <li className="flex items-start gap-2">
@@ -45,7 +45,7 @@ export default function PrivacyPage() {
             </ul>
           </section>
 
-          <section className="space-y-3">
+          <section data-reveal className="space-y-3">
             <h2 className="text-xl font-semibold tracking-tight text-slate-900">2. Telemetry Collected Exclusively for Governance</h2>
             <p className="text-sm">
               To provide real-time token savings calculations and loop circuit-breaker alerts on your dashboard, only the following anonymized numerical metrics are transmitted:
@@ -58,7 +58,7 @@ export default function PrivacyPage() {
             </ul>
           </section>
 
-          <section className="space-y-3">
+          <section data-reveal className="space-y-3">
             <h2 className="text-xl font-semibold tracking-tight text-slate-900">3. Local File Mutex Isolation</h2>
             <p className="text-sm">
               The file-locking mutex runs entirely in user-space memory on your local PC via IPC Unix sockets or Named Pipes.
@@ -66,14 +66,14 @@ export default function PrivacyPage() {
             </p>
           </section>
 
-          <section className="space-y-3">
+          <section data-reveal className="space-y-3">
             <h2 className="text-xl font-semibold tracking-tight text-slate-900">4. SOC2 Type II &amp; Compliance Standards</h2>
             <p className="text-sm">
               ArgusOps cloud infrastructure is hosted in SOC2 Type II certified data centers with TLS 1.3 encryption for all transit telemetry and AES-256 for database storage at rest.
             </p>
           </section>
 
-          <section className="space-y-3">
+          <section data-reveal className="space-y-3">
             <h2 className="text-xl font-semibold tracking-tight text-slate-900">5. Contact &amp; Privacy Officer</h2>
             <p className="text-sm">
               For security inquiries, audit certifications, or data deletion requests, contact our engineering office at <strong className="text-slate-900">security@argusops.dev</strong>.

@@ -1,8 +1,8 @@
 import React from "react";
 import { cn } from "@/lib/utils";
 
-export function Container({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <div className={cn("mx-auto w-full max-w-6xl xl:max-w-7xl 2xl:max-w-[96rem] px-4 sm:px-6 lg:px-8 2xl:px-12", className)}>{children}</div>;
+export function Container({ children, className, ...rest }: { children: React.ReactNode; className?: string } & React.HTMLAttributes<HTMLDivElement> & { "data-reveal"?: boolean }) {
+  return <div {...rest} className={cn("mx-auto w-full max-w-6xl xl:max-w-7xl 2xl:max-w-[96rem] px-4 sm:px-6 lg:px-8 2xl:px-12", className)}>{children}</div>;
 }
 
 export function Section({
@@ -29,7 +29,9 @@ export function Section({
         className
       )}
     >
-      <Container>{children}</Container>
+      <Container>
+        <div data-reveal>{children}</div>
+      </Container>
     </section>
   );
 }
@@ -93,7 +95,7 @@ export function PageHeader({
   return (
     <header className="dot-grid border-b border-slate-200 pb-14 pt-32 md:pb-20 md:pt-40">
       <Container>
-        <div className="max-w-3xl space-y-4">
+        <div className="rise-in-children max-w-3xl space-y-4">
           <Eyebrow>{eyebrow}</Eyebrow>
           <h1 className="text-balance text-4xl font-semibold leading-[1.05] tracking-[-0.03em] text-slate-900 sm:text-5xl 2xl:text-6xl">{title}</h1>
           {lead && <p className="max-w-2xl text-pretty text-lg leading-relaxed text-slate-500">{lead}</p>}

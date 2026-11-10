@@ -19,7 +19,7 @@ export default function DownloadPage() {
         lead="The CLI supervises the agent. The extension shows you what it is doing without leaving your editor."
       />
 
-      <Container className="space-y-6 py-20 md:py-28">
+      <Container data-reveal className="space-y-6 py-20 md:py-28">
         <Bezel className="" innerClassName="sm:p-8">
           <div className="grid gap-8 lg:grid-cols-2">
             <div>
