@@ -4,6 +4,7 @@ import { PublicShell } from "@/components/layout";
 import { ButtonLink, CodeBlock, Container, Eyebrow, Section, SectionHeading } from "@/components/ui";
 import { HeroMock } from "@/components/marketing/HeroMock";
 import { LoopCompare } from "@/components/marketing/LoopCompare";
+import { PrivacyFlow } from "@/components/marketing/PrivacyFlow";
 
 const STEPS = [
   { t: "Watch", body: "Run your agent through argus. A small proxy on your machine sees each model call and its real token usage." },
@@ -196,7 +197,7 @@ export default function LandingPage() {
       </Section>
 
       {/* Privacy band */}
-      <Section tone="dark" labelledBy="privacy-title">
+      <Section tone="dark" labelledBy="privacy-title" background={<PrivacyFlow />}>
         <div className="grid items-start gap-12 lg:grid-cols-2">
           <div>
             <SectionHeading
