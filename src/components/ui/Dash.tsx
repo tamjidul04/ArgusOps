@@ -46,7 +46,7 @@ export function Panel({
   bodyClassName?: string;
 }) {
   return (
-    <section className={cn("min-w-0 overflow-hidden rounded-2xl bg-white shadow-soft ring-1 ring-slate-900/5", className)}>
+    <section className={cn("flex min-w-0 flex-col overflow-hidden rounded-2xl bg-white shadow-soft ring-1 ring-slate-900/5", className)}>
       {(title || action) && (
         <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-900/5 px-5 py-4 sm:px-6">
           <div className="min-w-0">
@@ -59,7 +59,7 @@ export function Panel({
           {action}
         </div>
       )}
-      <div className={cn("p-5 sm:p-6", bodyClassName)}>{children}</div>
+      <div className={cn("min-w-0 flex-1 p-5 sm:p-6", bodyClassName)}>{children}</div>
     </section>
   );
 }
@@ -77,7 +77,7 @@ const TONES: Record<Tone, string> = {
 /** Small status pill. Green, amber and red keep their meaning (ok, attention, problem). */
 export function Badge({ tone = "neutral", children, className }: { tone?: Tone; children: React.ReactNode; className?: string }) {
   return (
-    <span className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-medium ring-1", TONES[tone], className)}>
+    <span className={cn("inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-[11px] font-medium ring-1", TONES[tone], className)}>
       {children}
     </span>
   );
