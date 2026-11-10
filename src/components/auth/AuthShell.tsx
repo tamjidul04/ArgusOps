@@ -48,7 +48,7 @@ export function AuthShell({
         </div>
       </div>
 
-      <aside className="on-dark relative hidden overflow-hidden border-l border-slate-800 bg-slate-950 text-white lg:flex lg:flex-col lg:justify-between lg:p-12">
+      <aside className="on-dark relative hidden overflow-hidden border-l border-slate-800 bg-slate-950 text-white lg:flex lg:flex-col lg:items-center lg:justify-center lg:p-12">
         <div
           className="absolute inset-0 opacity-40"
           style={{ backgroundImage: "radial-gradient(rgb(148 163 184 / 0.22) 1px, transparent 1px)", backgroundSize: "16px 16px" }}
@@ -56,11 +56,11 @@ export function AuthShell({
         />
 
         {/* The watcher: its eye follows your pointer. */}
-        <div className="relative flex justify-end" aria-hidden="true">
+        <div className="absolute right-10 top-10" aria-hidden="true">
           <LogoMark tone="dark" className="h-16 w-16 rounded-xl" />
         </div>
 
-        <div className="relative max-w-md">
+        <div className="relative w-full max-w-md">
           <h2 className="text-balance text-3xl font-semibold leading-[1.1] tracking-[-0.025em]">Let your coding agents run. Keep the loops in check.</h2>
 
           <div
