@@ -99,48 +99,14 @@ async function AdminDataLoader() {
       plan_id: u.subscription?.plan_id || "plan_free",
       free_tokens: u.subscription?.free_tokens || 0,
       paid_tokens: u.subscription?.paid_tokens || 0,
-      max_agents: u.subscription?.max_agents || 3,
+      max_agents: u.subscription?.max_agents ?? 0,
       purchase_status: u.subscription?.purchase_status || "NONE",
     }));
   } catch (error) {
     console.error("Admin data loader error:", error);
   }
 
-  // Fallback defaults if database was empty
-  if (plans.length === 0) {
-    plans = [
-      {
-        plan_id: "plan_free",
-        name: "Free Tier",
-        price: 0.0,
-        agent_limit: 3,
-        included_tokens: 50000,
-        is_public: true,
-        requires_admin_approval: false,
-        description: "Core local agent experimentation",
-      },
-      {
-        plan_id: "plan_pro",
-        name: "Pro Swarm",
-        price: 49.0,
-        agent_limit: 25,
-        included_tokens: 2000000,
-        is_public: true,
-        requires_admin_approval: false,
-        description: "Autonomous multi-agent swarms",
-      },
-      {
-        plan_id: "plan_enterprise",
-        name: "Enterprise",
-        price: 299.0,
-        agent_limit: 100,
-        included_tokens: 15000000,
-        is_public: true,
-        requires_admin_approval: true,
-        description: "High-density distributed infra",
-      },
-    ];
-  }
+  // No invented fallback plans: an empty plans table is shown as empty.
 
   return (
     <AdminClient

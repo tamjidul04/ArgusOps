@@ -56,7 +56,7 @@ export default function TermsPage() {
           <section data-reveal className="space-y-3">
             <h2 className="text-xl font-semibold tracking-tight text-slate-900">4. Admin Approval &amp; Cluster Right-Sizing</h2>
             <p className="text-sm">
-              Enterprise and Pro Swarm upgrades may be subject to review via our Transaction Approval Queue to verify compute resource availability
+              Pro and Enterprise upgrades may be subject to review via our Transaction Approval Queue to verify compute resource availability
               and prevent noisy-neighbor cluster contention. ArgusOps reserves the right to reject or refund requests that violate platform stability guidelines.
             </p>
           </section>

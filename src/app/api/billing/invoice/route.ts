@@ -34,30 +34,26 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    // Never invent an invoice: with no transaction there is nothing to bill, so there is nothing to show.
+    if (!transaction) {
+      return NextResponse.json({ error: "No invoices yet." }, { status: 404 });
+    }
+
     const user =
-      transaction?.user ||
+      transaction.user ||
       (await prisma.user.findUnique({
         where: { id: userId },
       }));
 
-    const invoiceNumber = transaction
-      ? `INV-${transaction.tx_id.slice(-8).toUpperCase()}`
-      : `INV-${Date.now().toString().slice(-8)}`;
-
-    const planName = transaction?.requested_plan || "ArgusOps Pro Swarm";
-    const amount = transaction?.amount ?? 49.0;
-    const status = transaction?.admin_status || "APPROVED";
-    const invoiceDate = transaction?.created_at
-      ? new Date(transaction.created_at).toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        })
-      : new Date().toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        });
+    const invoiceNumber = `INV-${transaction.tx_id.slice(-8).toUpperCase()}`;
+    const planName = transaction.requested_plan;
+    const amount = transaction.amount;
+    const status = transaction.admin_status;
+    const invoiceDate = new Date(transaction.created_at).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
 
     const html = `<!DOCTYPE html>
 <html lang="en">

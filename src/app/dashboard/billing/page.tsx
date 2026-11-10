@@ -12,9 +12,9 @@ import { prisma } from "@/lib/prisma";
 import { requirePageUser } from "@/lib/auth";
 
 export const metadata: Metadata = {
-  title: "Billing, Token Wallet & Plan Quota",
+  title: "Plan & billing",
   description:
-    "Master AI cluster quota, unmetered token balances, and self-serve tier upgrades.",
+    "Your plan, token balance and upgrade requests.",
 };
 
 async function BillingDataLoader() {
@@ -24,7 +24,7 @@ async function BillingDataLoader() {
   let transactions: TransactionItem[] = [];
 
   try {
-    // 1. Fetch user subscription and wallet (defaults to main active demo user)
+    // 1. The signed-in user's subscription and wallet
     const dbSub = await prisma.subscriptionAndWallet.findFirst({
       where: { user_id: user.id },
       include: {
@@ -45,10 +45,10 @@ async function BillingDataLoader() {
       subscription = {
         id: dbSub.id,
         user_id: dbSub.user_id,
-        user_name: dbSub.user?.name || "Tamjidul Islam",
-        user_email: dbSub.user?.email || "tamjid@argusops.dev",
+        user_name: dbSub.user?.name || user.name || "",
+        user_email: dbSub.user?.email || user.email,
         plan_id: dbSub.plan_id,
-        plan_name: dbSub.plan?.name || "Free Tier",
+        plan_name: dbSub.plan?.name || "Free",
         plan_price: dbSub.plan?.price ?? 0.0,
         free_tokens: dbSub.free_tokens,
         paid_tokens: dbSub.paid_tokens,
@@ -95,58 +95,7 @@ async function BillingDataLoader() {
     console.error("Error loading billing data from database:", error);
   }
 
-  // Fallbacks if database had empty tables
-  if (plans.length === 0) {
-    plans = [
-      {
-        plan_id: "plan_free",
-        name: "Free Tier",
-        price: 0.0,
-        agent_limit: 3,
-        included_tokens: 50000,
-        is_public: true,
-        requires_admin_approval: false,
-        description: "Core local agent experimentation",
-      },
-      {
-        plan_id: "plan_pro",
-        name: "Pro Swarm",
-        price: 49.0,
-        agent_limit: 25,
-        included_tokens: 2000000,
-        is_public: true,
-        requires_admin_approval: true,
-        description: "Autonomous multi-agent swarms",
-      },
-      {
-        plan_id: "plan_enterprise",
-        name: "Enterprise",
-        price: 299.0,
-        agent_limit: 100,
-        included_tokens: 15000000,
-        is_public: true,
-        requires_admin_approval: true,
-        description: "High-density distributed infra",
-      },
-    ];
-  }
-
-  if (!subscription) {
-    subscription = {
-      id: "sub_dev_free",
-      user_id: "usr_dev_indie",
-      user_name: "Alex Rivera",
-      user_email: "dev@localbridge.io",
-      plan_id: "plan_free",
-      plan_name: "Free Tier",
-      plan_price: 0.0,
-      free_tokens: 84520,
-      paid_tokens: 0,
-      max_agents: 3,
-      purchase_status: "PENDING",
-      updated_at: new Date().toISOString(),
-    };
-  }
+  // No invented fallbacks: if the database has no plans or no subscription row, the page says so.
 
   return (
     <BillingV2Client

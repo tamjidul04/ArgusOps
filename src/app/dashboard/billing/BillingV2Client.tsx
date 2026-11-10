@@ -11,12 +11,11 @@ import {
   Clock,
   X,
   FileText,
-  ShieldCheck,
-  Lock,
 } from "lucide-react";
 import { useDashboard } from "@/components/layout/DashboardContext";
 import { cn, formatTokens } from "@/lib/utils";
 import { Badge, DashHeader, EmptyState, Panel, buttonClasses } from "@/components/ui";
+import { PLAN_FEATURES } from "@/lib/plan-features";
 
 export interface PricingPlanItem {
   plan_id: string;
@@ -85,7 +84,7 @@ export function BillingV2Client({
     tokens: number;
     price: number;
     label: string;
-  }>({ tokens: 2000000, price: 50, label: "2,000,000 Tokens (+$50)" });
+  }>({ tokens: 2000000, price: 50, label: "2,000,000 tokens (+$50)" });
 
   // History table collapse state
   const [showHistory, setShowHistory] = useState(true);
@@ -211,28 +210,32 @@ export function BillingV2Client({
     }
   };
 
-  // Determine current active plan
-  const currentPlanName = subscription?.plan_name || profile.planName || "Free Tier";
-  const isFreePlan = currentPlanName.toLowerCase().includes("free");
-  const isPro = currentPlanName.toLowerCase().includes("pro");
-  const isEnterprise = currentPlanName.toLowerCase().includes("enterprise");
+  // The cards and limits come from the plan rows in the database.
+  const planById = (id: string) => plans.find((p) => p.plan_id === id);
+  const freePlan = planById("plan_free");
+  const proPlan = planById("plan_pro");
+  const entPlan = planById("plan_enterprise");
+  const currentPlan = subscription ? planById(subscription.plan_id) : undefined;
+  const currentPlanName = subscription?.plan_name || profile.planName || "Free";
+  const planId = subscription?.plan_id ?? "";
+  const isFreePlan = planId ? planId === "plan_free" : currentPlanName.toLowerCase().includes("free");
+  const isPro = planId ? planId === "plan_pro" : currentPlanName.toLowerCase().includes("pro");
+  const isEnterprise = planId ? planId === "plan_enterprise" : currentPlanName.toLowerCase().includes("enterprise");
   const purchaseStatus = (subscription?.purchase_status || "NONE").toUpperCase();
   const isPendingApproval = purchaseStatus === "PENDING";
+  const pendingRequest = transactions.find((t) => t.admin_status === "PENDING" && !t.requested_plan.startsWith("Token Top-Up"));
 
-  // Free token balance calculation
-  const freeTokensCurrent = subscription?.free_tokens ?? 84520;
-  const freeTokensMax = isFreePlan ? 100000 : 50000;
-  const freePercentage = Math.min(
-    100,
-    parseFloat(((freeTokensCurrent / freeTokensMax) * 100).toFixed(1))
-  );
-
+  // Token allowance: what is left against what the current plan includes.
+  const freeTokensCurrent = subscription?.free_tokens ?? profile.freeTokens ?? 0;
+  const allowance = currentPlan?.included_tokens ?? 0;
+  const freePercentage = allowance > 0 ? Math.min(100, Math.round((freeTokensCurrent / allowance) * 1000) / 10) : null;
   const paidTokensCurrent = subscription?.paid_tokens ?? profile.paidTokens ?? 0;
+  const agentLimit = subscription?.max_agents ?? profile.maxAgents;
 
-  // Last transaction amount
-  const lastInvoiceAmount = transactions[0]?.amount
-    ? `$${transactions[0].amount.toFixed(2)}`
-    : "$0.00";
+  const lastRequestAmount = transactions[0] ? `$${transactions[0].amount.toFixed(2)}` : "None yet";
+  const price = (pl: PricingPlanItem) => (pl.price === 0 ? "$0" : `$${pl.price}`);
+  const exact = (n: number) => (n >= 1_000_000 ? `${+(n / 1_000_000).toFixed(2)}M` : n >= 1000 ? `${+(n / 1000).toFixed(1)}k` : String(n));
+  const limitsOf = (pl: PricingPlanItem) => [`Up to ${pl.agent_limit} concurrent agents`, `${exact(pl.included_tokens)} tokens included`];
 
   return (
     <div className="space-y-6 pb-12">
@@ -258,180 +261,197 @@ export function BillingV2Client({
       )}
 
       <DashHeader
-        title="Billing, Token Wallet & Plan Quota"
+        title="Plan & billing"
+        description="Your plan, token balance and upgrade requests. An administrator approves upgrades and top-ups until card payments are connected."
         actions={
-          <a href={"/api/billing/invoice"} target="_blank" rel="noopener noreferrer" className={buttonClasses("secondary", false)}>
-            <FileText className="h-4 w-4 text-slate-500" aria-hidden="true" />
-            Download Invoices (PDF)
-          </a>
+          transactions.length > 0 ? (
+            <a href={"/api/billing/invoice"} target="_blank" rel="noopener noreferrer" className={buttonClasses("secondary", false)}>
+              <FileText className="h-4 w-4 text-slate-500" aria-hidden="true" />
+              Latest receipt (PDF)
+            </a>
+          ) : undefined
         }
       />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* ==================== LEFT COLUMN ==================== */}
         <div className="space-y-6">
-          <Panel title="Free Token Allowance" action={<Badge>Auto-Reset</Badge>}>
-            <div className="text-2xl font-semibold tabular-nums tracking-[-0.02em] text-slate-900 sm:text-2xl">
-              {freeTokensCurrent.toLocaleString("en-US")} / {freeTokensMax.toLocaleString("en-US")}
+          <Panel title="Token allowance">
+            <div className="tabular text-2xl font-semibold tracking-[-0.02em] text-slate-900">
+              {freeTokensCurrent.toLocaleString("en-US")}
+              {allowance > 0 && <span className="text-slate-500"> / {allowance.toLocaleString("en-US")}</span>}
             </div>
-            <div
-              className="mt-5 h-2.5 w-full overflow-hidden rounded-full bg-slate-200"
-              role="meter"
-              aria-label="Free tokens remaining"
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={freePercentage}
-            >
-              <div className="h-full rounded-full bg-slate-900 transition-[width] duration-200 ease-spring" style={{ width: `${freePercentage}%` }} />
-            </div>
-            <div className="mt-2.5 flex items-center justify-between text-sm text-slate-600">
-              <span>{freePercentage}% remaining</span>
-              <span>resets in 18 days</span>
-            </div>
+            {freePercentage !== null && (
+              <>
+                <div
+                  className="mt-5 h-2 w-full overflow-hidden rounded-full bg-slate-200"
+                  role="meter"
+                  aria-label="Tokens remaining"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={freePercentage}
+                >
+                  <div className="h-full rounded-full bg-slate-900 transition-[width] duration-700 ease-out" style={{ width: `${freePercentage}%` }} />
+                </div>
+                <p className="mt-2.5 text-sm text-slate-600">{freePercentage}% of your {currentPlanName} plan&rsquo;s tokens left</p>
+              </>
+            )}
           </Panel>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Panel bodyClassName="flex flex-col justify-between gap-5">
               <div>
-                <span className="mb-1 block text-xs font-medium text-slate-600">Paid Token Balance</span>
+                <span className="mb-1 block text-xs font-medium text-slate-600">Paid token balance</span>
                 <div className="text-2xl font-semibold tabular-nums tracking-[-0.02em] text-slate-900">{paidTokensCurrent.toLocaleString("en-US")}</div>
-                <p className="mt-1 text-sm text-slate-600">Unmetered pay-as-you-go</p>
+                <p className="mt-1 text-sm text-slate-600">Added when a top-up is approved</p>
               </div>
               <button onClick={() => setTopupModalOpen(true)} className={buttonClasses("secondary", false, "w-full")}>
-                + Top Up
+                Request top-up
               </button>
             </Panel>
 
             <Panel bodyClassName="flex flex-col justify-between gap-5">
               <div>
-                <span className="mb-1 block text-xs font-medium text-slate-600">Upgrade Approval Status</span>
+                <span className="mb-1 block text-xs font-medium text-slate-600">Upgrade request</span>
                 <div className="mt-1 flex items-center gap-2">
                   <span
                     className={cn(
                       "h-2.5 w-2.5 shrink-0 rounded-full",
-                      isPendingApproval ? "animate-pulse bg-amber-500" : purchaseStatus === "APPROVED" ? "bg-emerald-500" : "bg-slate-700"
+                      isPendingApproval ? "bg-amber-500" : purchaseStatus === "APPROVED" ? "bg-emerald-500" : "bg-slate-700"
                     )}
                   />
                   <span className="text-base font-semibold text-slate-900">
-                    {isPendingApproval ? "Pending Approval" : purchaseStatus === "APPROVED" ? "Approved" : "Standard Quota"}
+                    {isPendingApproval ? "Waiting for review" : purchaseStatus === "APPROVED" ? "Approved" : "Nothing waiting"}
                   </span>
                 </div>
-                <p className="mt-1 text-sm text-slate-600">{isPendingApproval ? "Pro Swarm ($49/mo) queued" : `${currentPlanName} active`}</p>
+                <p className="mt-1 text-sm text-slate-600">{isPendingApproval ? `${pendingRequest?.requested_plan ?? "Upgrade"} request queued` : `${currentPlanName} plan active`}</p>
               </div>
               <div className="select-none rounded-md bg-slate-50 px-4 py-2.5 text-center text-xs font-medium text-slate-600 border border-slate-200">
-                {isPendingApproval ? "Admin Review Active" : "No Review Required"}
+                {isPendingApproval ? "An admin will review it" : "No request open"}
               </div>
             </Panel>
           </div>
 
-          <Panel
-            title="Free Tier — $0"
-            description="Core local agent experimentation"
-            action={isFreePlan ? <Badge>Current Plan</Badge> : undefined}
-            bodyClassName="flex flex-col gap-6"
-          >
-            <div className="text-sm font-semibold text-slate-900">Continue</div>
-            <ul className="space-y-3 text-sm text-slate-700">
-              {["Up to 3 concurrent agents", "100,000 free initial tokens", "24/7 loop circuit-breaker", "Local PC daemon included"].map((f) => (
-                <li key={f} className="flex items-center gap-3">
-                  <Check className="h-4 w-4 shrink-0 text-emerald-600" aria-hidden="true" />
-                  <span>{f}</span>
-                </li>
-              ))}
-            </ul>
-            <button disabled className={buttonClasses("secondary", false, "w-full cursor-default opacity-70")}>
-              Current Plan
-            </button>
-          </Panel>
-        </div>
-
-        {/* ==================== RIGHT COLUMN ==================== */}
-        <div className="space-y-6">
-          <div className="on-dark rounded-lg bg-slate-950 p-6 text-white shadow-lift ring-1 ring-slate-900 sm:p-7">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-3">
-                <h3 className="text-xl font-semibold tracking-tight">Pro Swarm — $49/mo</h3>
-                <span className="rounded-md bg-white/10 px-2.5 py-1 text-[11px] font-medium text-slate-200 ring-1 ring-white/10">POPULAR</span>
-              </div>
-              <span className="text-sm text-slate-400">Billed monthly</span>
-            </div>
-            <p className="mt-1 text-sm text-slate-300">Autonomous multi-agent swarms</p>
-
-            <div className="my-6 grid grid-cols-1 gap-x-4 gap-y-3 text-sm text-slate-200 sm:grid-cols-2">
-              {["Up to 25 concurrent agents", "2,000,000 monthly tokens", "File-locking mutex for PC agents", "Semantic vector loop detection"].map((f) => (
-                <div key={f} className="flex items-center gap-3">
-                  <Check className="h-4 w-4 shrink-0 text-emerald-400" aria-hidden="true" />
-                  <span>{f}</span>
-                </div>
-              ))}
-            </div>
-
-            {isPro ? (
-              <button disabled className="w-full cursor-default rounded-md bg-white/10 px-4 py-3 text-center text-sm font-semibold text-slate-300 ring-1 ring-white/10">
-                Current Plan
-              </button>
-            ) : isPendingApproval ? (
-              <button disabled className="w-full cursor-not-allowed rounded-md bg-amber-400/10 px-4 py-3 text-center text-sm font-semibold text-amber-300 ring-1 ring-amber-400/20">
-                Upgrade Request Queued (Pending Approval)
-              </button>
-            ) : (
-              <button
-                onClick={() => handleRequestUpgrade("Pro Tier", 49.0, "plan_pro")}
-                disabled={submitting}
-                className={buttonClasses("inverse", false, "w-full py-3 disabled:opacity-60")}
-              >
-                {submitting ? "Submitting..." : "Upgrade via Stripe / PayPal"}
-              </button>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Panel title="Enterprise — Custom" description="High-density distributed infra" bodyClassName="flex flex-col justify-between gap-5">
-              <ul className="space-y-2.5 text-sm text-slate-700">
-                {["100+ agents (dynamic scaling)", "Custom token budget enforcement", "Dedicated 99.9% uptime SLA"].map((f) => (
+          {freePlan && (
+            <Panel
+              title={`${freePlan.name} — ${price(freePlan)}`}
+              description={freePlan.description}
+              action={isFreePlan ? <Badge>Current plan</Badge> : undefined}
+              bodyClassName="flex flex-col gap-6"
+            >
+              <ul className="space-y-3 text-sm text-slate-700">
+                {[...limitsOf(freePlan), ...(PLAN_FEATURES.plan_free ?? [])].map((f) => (
                   <li key={f} className="flex items-center gap-3">
                     <Check className="h-4 w-4 shrink-0 text-emerald-600" aria-hidden="true" />
                     <span>{f}</span>
                   </li>
                 ))}
               </ul>
-              {isEnterprise ? (
-                <button disabled className={buttonClasses("secondary", false, "w-full cursor-default opacity-70")}>
-                  Current Plan
+            </Panel>
+          )}
+          {!freePlan && !proPlan && !entPlan && (
+            <Panel>
+              <EmptyState icon={AlertCircle} title="Plans are unavailable right now">
+                Your balance and requests below are still correct. Try again in a moment.
+              </EmptyState>
+            </Panel>
+          )}
+        </div>
+
+        {/* ==================== RIGHT COLUMN ==================== */}
+        <div className="space-y-6">
+          {proPlan && (
+            <div className="on-dark rounded-lg border border-slate-800 bg-slate-950 p-6 text-white sm:p-7">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-3">
+                  <h3 className="text-xl font-semibold tracking-tight">
+                    {proPlan.name} — {price(proPlan)}/mo
+                  </h3>
+                  <span className="rounded bg-white/10 px-2 py-0.5 text-[11px] font-medium text-slate-200">Most popular</span>
+                </div>
+              </div>
+              <p className="mt-1 text-sm text-slate-300">{proPlan.description}</p>
+
+              <div className="my-6 grid grid-cols-1 gap-x-4 gap-y-3 text-sm text-slate-200 sm:grid-cols-2">
+                {[...limitsOf(proPlan), ...(PLAN_FEATURES.plan_pro ?? [])].map((f) => (
+                  <div key={f} className="flex items-center gap-3">
+                    <Check className="h-4 w-4 shrink-0 text-emerald-400" aria-hidden="true" />
+                    <span>{f}</span>
+                  </div>
+                ))}
+              </div>
+
+              {isPro ? (
+                <button disabled className="w-full cursor-default rounded-md bg-white/10 px-4 py-2.5 text-center text-sm font-medium text-slate-300">
+                  Current plan
                 </button>
               ) : isPendingApproval ? (
-                <button disabled className="w-full cursor-not-allowed rounded-md bg-amber-50 px-4 py-2.5 text-center text-sm font-semibold text-amber-800 ring-1 ring-amber-600/25">
-                  Pending Review
+                <button disabled className="w-full cursor-not-allowed rounded-md bg-amber-400/10 px-4 py-2.5 text-center text-sm font-medium text-amber-300">
+                  Request queued for review
                 </button>
               ) : (
                 <button
-                  onClick={() => handleRequestUpgrade("Enterprise", 299.0, "plan_enterprise")}
+                  onClick={() => handleRequestUpgrade(proPlan.name, proPlan.price, proPlan.plan_id)}
                   disabled={submitting}
-                  className={buttonClasses("secondary", false, "w-full disabled:opacity-60")}
+                  className={buttonClasses("inverse", false, "w-full disabled:opacity-60")}
                 >
-                  {submitting ? "Submitting..." : "Request Admin Approval"}
+                  {submitting ? "Submitting…" : "Request upgrade"}
                 </button>
               )}
-            </Panel>
+              <p className="mt-3 text-center text-xs text-slate-400">An administrator approves upgrades until card payments are connected.</p>
+            </div>
+          )}
 
-            <Panel title="Ledger Stats" action={<Badge>ACTIVE</Badge>} bodyClassName="flex flex-col justify-between gap-5">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {entPlan && (
+              <Panel title="Enterprise — Custom" description={entPlan.description} bodyClassName="flex flex-col justify-between gap-5">
+                <ul className="space-y-2.5 text-sm text-slate-700">
+                  {(PLAN_FEATURES.plan_enterprise ?? []).map((f) => (
+                    <li key={f} className="flex items-start gap-3">
+                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden="true" />
+                      <span>{f}</span>
+                    </li>
+                  ))}
+                </ul>
+                {isEnterprise ? (
+                  <button disabled className={buttonClasses("secondary", false, "w-full cursor-default opacity-70")}>
+                    Current plan
+                  </button>
+                ) : isPendingApproval ? (
+                  <button disabled className="w-full cursor-not-allowed rounded-md bg-amber-50 px-4 py-2.5 text-center text-sm font-medium text-amber-800">
+                    Request queued for review
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleRequestUpgrade(entPlan.name, entPlan.price, entPlan.plan_id)}
+                    disabled={submitting}
+                    className={buttonClasses("secondary", false, "w-full disabled:opacity-60")}
+                  >
+                    {submitting ? "Submitting…" : "Request review"}
+                  </button>
+                )}
+              </Panel>
+            )}
+
+            <Panel title="Account summary" bodyClassName="flex flex-col justify-between gap-5">
               <dl className="space-y-3 text-sm">
                 <div className="flex items-center justify-between gap-2">
-                  <dt className="text-slate-600">Saved via Hibernation</dt>
-                  <dd className="font-mono text-xs font-semibold text-slate-900">&mdash;</dd>
+                  <dt className="text-slate-600">Plan</dt>
+                  <dd className="font-medium text-slate-900">{currentPlanName}</dd>
                 </div>
                 <div className="flex items-center justify-between gap-2">
-                  <dt className="text-slate-600">Last Invoice</dt>
-                  <dd className="font-mono text-xs font-semibold text-slate-900">{lastInvoiceAmount}</dd>
+                  <dt className="text-slate-600">Agent limit</dt>
+                  <dd className="tabular font-mono text-xs font-medium text-slate-900">{agentLimit}</dd>
                 </div>
                 <div className="flex items-center justify-between gap-2">
-                  <dt className="text-slate-600">Payment Gateways</dt>
-                  <dd className="font-semibold text-slate-900">Stripe / PayPal</dd>
+                  <dt className="text-slate-600">Last request</dt>
+                  <dd className="font-mono text-xs font-medium text-slate-900">{lastRequestAmount}</dd>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <dt className="text-slate-600">Payments</dt>
+                  <dd className="font-medium text-slate-900">Admin-approved</dd>
                 </div>
               </dl>
-              <div className="select-none rounded-md bg-slate-50 px-3 py-2 text-center font-mono text-[11px] text-slate-600 border border-slate-200">
-                PCI-DSS Level 1 Compliant
-              </div>
             </Panel>
           </div>
         </div>
@@ -439,8 +459,8 @@ export function BillingV2Client({
 
       {/* Invoice & Transaction Approval Queue History Table */}
       <Panel
-        title="Billing Ledger & Transaction Approval History"
-        description="Audited transaction queue for plan upgrades, token allocations, and enterprise receipts."
+        title="Requests and receipts"
+        description="Plan upgrades and token top-ups, each with a receipt."
         action={
           <button
             onClick={() => setShowHistory(!showHistory)}
@@ -469,8 +489,8 @@ export function BillingV2Client({
                 {transactions.length === 0 ? (
                   <tr>
                     <td colSpan={6}>
-                      <EmptyState icon={FileText} title="No billing records found in workspace ledger.">
-                        Upgrades and token top-ups will be listed here, with a receipt for each.
+                      <EmptyState icon={FileText} title="No requests yet">
+                        Upgrade and top-up requests will be listed here, with a receipt for each.
                       </EmptyState>
                     </td>
                   </tr>
@@ -533,9 +553,9 @@ export function BillingV2Client({
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h3 id="topup-title" className="text-lg font-semibold tracking-tight text-slate-900">
-                  Instant Token Top-Up
+                  Request a token top-up
                 </h3>
-                <p className="mt-0.5 text-sm text-slate-600">Tokens never expire and remain valid across all local and cloud cluster swarms.</p>
+                <p className="mt-0.5 text-sm text-slate-600">An administrator approves each request. The tokens are added to your paid balance once it is approved.</p>
               </div>
               <button onClick={() => setTopupModalOpen(false)} aria-label="Close" className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-800">
                 <X className="h-5 w-5" />
@@ -544,9 +564,9 @@ export function BillingV2Client({
 
             <div role="radiogroup" aria-label="Token pack" className="space-y-2.5">
               {[
-                { tokens: 500000, price: 15, label: "500,000 Tokens (+$15)" },
-                { tokens: 2000000, price: 50, label: "2,000,000 Tokens (+$50) — Popular" },
-                { tokens: 10000000, price: 200, label: "10,000,000 Tokens (+$200) — Best Value" },
+                { tokens: 500000, price: 15, label: "500,000 tokens (+$15)" },
+                { tokens: 2000000, price: 50, label: "2,000,000 tokens (+$50)" },
+                { tokens: 10000000, price: 200, label: "10,000,000 tokens (+$200)" },
               ].map((pack) => (
                 <button
                   key={pack.tokens}
@@ -575,7 +595,7 @@ export function BillingV2Client({
                 Cancel
               </button>
               <button type="button" disabled={submitting} onClick={handleTopupTokens} className={buttonClasses("primary", false, "disabled:opacity-60")}>
-                {submitting ? "Purchasing..." : `Purchase ${selectedTopupAmount.tokens.toLocaleString("en-US")} Tokens`}
+                {submitting ? "Submitting…" : `Request ${selectedTopupAmount.tokens.toLocaleString("en-US")} tokens`}
               </button>
             </div>
           </div>
