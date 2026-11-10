@@ -29,8 +29,8 @@ import { Badge, DashHeader, EmptyState, Panel, buttonClasses, inputClass } from 
 /** Centered dialog with a labelled title, Escape to close, and scroll on small screens. */
 function Dialog({ id, title, description, onClose, children }: { id: string; title: string; description?: React.ReactNode; onClose: () => void; children: React.ReactNode }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4" onKeyDown={(e) => e.key === "Escape" && onClose()}>
-      <div role="dialog" aria-modal="true" aria-labelledby={id} className="max-h-[90dvh] w-full max-w-md space-y-5 overflow-y-auto rounded-lg bg-white p-6 shadow-lift border border-slate-200">
+    <div className="fade-in fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4" onKeyDown={(e) => e.key === "Escape" && onClose()}>
+      <div role="dialog" aria-modal="true" aria-labelledby={id} className="rise-in max-h-[90dvh] w-full max-w-md space-y-5 overflow-y-auto rounded-lg bg-white p-6 shadow-lift border border-slate-200">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h3 id={id} className="text-lg font-semibold tracking-tight text-slate-900">
@@ -365,7 +365,7 @@ export function AdminClient({
         <div
           role="status"
           className={cn(
-            "fixed bottom-6 right-4 z-50 flex max-w-[calc(100vw-2rem)] items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium shadow-lift ring-1 sm:right-6",
+            "pop-in fixed bottom-6 right-4 z-50 flex max-w-[calc(100vw-2rem)] items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium shadow-lift ring-1 sm:right-6",
             toastMessage.type === "success" && "bg-emerald-50 text-emerald-900 ring-emerald-600/20",
             toastMessage.type === "error" && "bg-red-50 text-red-900 ring-red-600/20",
             toastMessage.type === "info" && "on-dark bg-slate-900 text-white ring-slate-900"

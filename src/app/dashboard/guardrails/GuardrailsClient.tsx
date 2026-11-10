@@ -604,14 +604,14 @@ export function GuardrailsClient({
       {/* ================= SEND NUDGE MODAL ================= */}
       {nudgeModalAgent && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4"
+          className="fade-in fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4"
           onKeyDown={(e) => e.key === "Escape" && setNudgeModalAgent(null)}
         >
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby="nudge-title"
-            className="max-h-[90dvh] w-full max-w-lg space-y-5 overflow-y-auto rounded-lg bg-white p-6 shadow-lift border border-slate-200"
+            className="rise-in max-h-[90dvh] w-full max-w-lg space-y-5 overflow-y-auto rounded-lg bg-white p-6 shadow-lift border border-slate-200"
           >
             <div className="flex items-start justify-between gap-3 border-b border-slate-200 pb-4">
               <div className="flex items-center gap-3">

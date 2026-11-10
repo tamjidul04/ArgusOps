@@ -131,14 +131,14 @@ export function PublicNavbar() {
           open ? "translate-y-0 opacity-100" : "pointer-events-none -translate-y-2 opacity-0"
         )}
       >
-        <nav aria-label="Mobile" className="flex flex-col">
+        <nav key={open ? "open" : "closed"} aria-label="Mobile" className={cn("flex flex-col", open && "rise-in-children")}>
           {NAV_LINKS.map((l) => (
             <Link key={l.href} href={l.href} className="border-b border-slate-100 py-3.5 text-lg font-medium text-slate-900">
               {l.label}
             </Link>
           ))}
         </nav>
-        <div className="mt-auto grid gap-2">
+        <div className={cn("mt-auto grid gap-2", open && "rise-in")} style={{ animationDelay: "260ms" }}>
           <Link href="/signup" className={cn(buttonClasses("primary", false), "w-full")}>
             Start free
           </Link>

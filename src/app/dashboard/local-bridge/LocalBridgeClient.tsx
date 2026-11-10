@@ -542,7 +542,7 @@ export function LocalBridgeClient({
       {/* CREATE KEY MODAL */}
       {showCreateModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4"
+          className="fade-in fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4"
           onKeyDown={(e) => {
             if (e.key === "Escape") {
               setShowCreateModal(false);
@@ -554,7 +554,7 @@ export function LocalBridgeClient({
             role="dialog"
             aria-modal="true"
             aria-labelledby="newkey-title"
-            className="max-h-[90dvh] w-full max-w-md space-y-5 overflow-y-auto rounded-lg bg-white p-6 shadow-lift border border-slate-200"
+            className="rise-in max-h-[90dvh] w-full max-w-md space-y-5 overflow-y-auto rounded-lg bg-white p-6 shadow-lift border border-slate-200"
           >
             <div className="flex items-center justify-between gap-3 border-b border-slate-200 pb-4">
               <h3 id="newkey-title" className="text-base font-semibold tracking-tight text-slate-900">

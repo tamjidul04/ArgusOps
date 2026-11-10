@@ -117,16 +117,21 @@ export function DocsShell({ sections }: { sections: DocSection[] }) {
         </div>
       </div>
 
-      <article key={current.id} className="fade-in min-w-0 max-w-3xl" aria-labelledby={`${current.id}-title`}>
-        <p className="font-mono text-xs text-slate-400">
+      {/* key = section id, so switching sections replays the rise-in */}
+      <article key={current.id} className="min-w-0 max-w-3xl" aria-labelledby={`${current.id}-title`}>
+        <p className="rise-in font-mono text-xs text-slate-400">
           {current.group} · {String(i + 1).padStart(2, "0")} of {String(sections.length).padStart(2, "0")}
         </p>
-        <h2 id={`${current.id}-title`} className="mt-2 text-balance text-3xl font-semibold tracking-[-0.025em] text-slate-900 md:text-4xl">
+        <h2
+          id={`${current.id}-title`}
+          className="rise-in mt-2 text-balance text-3xl font-semibold tracking-[-0.025em] text-slate-900 md:text-4xl"
+          style={{ animationDelay: "30ms" }}
+        >
           {current.label}
         </h2>
-        <div className="docs-body mt-2">{current.content}</div>
+        <div className="docs-body rise-in-children mt-2">{current.content}</div>
 
-        <nav aria-label="More documentation" className="mt-14 grid gap-3 border-t border-slate-200 pt-6 sm:grid-cols-2">
+        <nav aria-label="More documentation" className="rise-in mt-14 grid gap-3 border-t border-slate-200 pt-6 sm:grid-cols-2" style={{ animationDelay: "320ms" }}>
           {prev ? (
             <button
               type="button"

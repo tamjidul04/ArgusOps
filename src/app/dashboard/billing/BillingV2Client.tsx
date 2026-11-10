@@ -241,7 +241,7 @@ export function BillingV2Client({
         <div
           role="status"
           className={cn(
-            "fixed bottom-6 right-4 z-50 flex max-w-[calc(100vw-2rem)] items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium shadow-lift ring-1 sm:right-6",
+            "pop-in fixed bottom-6 right-4 z-50 flex max-w-[calc(100vw-2rem)] items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium shadow-lift ring-1 sm:right-6",
             toastMessage.type === "success" && "bg-emerald-50 text-emerald-900 ring-emerald-600/20",
             toastMessage.type === "error" && "bg-red-50 text-red-900 ring-red-600/20",
             toastMessage.type === "info" && "on-dark bg-slate-900 text-white ring-slate-900"
@@ -521,14 +521,14 @@ export function BillingV2Client({
       {/* Token Top-Up Modal */}
       {topupModalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4"
+          className="fade-in fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4"
           onKeyDown={(e) => e.key === "Escape" && setTopupModalOpen(false)}
         >
           <div
             role="dialog"
             aria-modal="true"
             aria-labelledby="topup-title"
-            className="max-h-[90dvh] w-full max-w-md space-y-5 overflow-y-auto rounded-lg bg-white p-6 shadow-lift border border-slate-200"
+            className="rise-in max-h-[90dvh] w-full max-w-md space-y-5 overflow-y-auto rounded-lg bg-white p-6 shadow-lift border border-slate-200"
           >
             <div className="flex items-start justify-between gap-3">
               <div>
