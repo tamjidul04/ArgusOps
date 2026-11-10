@@ -113,8 +113,8 @@ const SECTIONS: DocSection[] = [
     content: (
       <>
         <p className={p}>
-          The extension adds an <strong>ArgusOps</strong> view that lists your agents with status and tokens, a status bar item that turns amber when an
-          agent needs you, and alerts with Approve suggestion, Edit and Stop. Download it from the{" "}
+          The extension adds an <strong>Overview</strong> panel to the ArgusOps sidebar (what needs you, agents running, tokens left, 7-day usage and your latest
+          alerts), an Agents list with status and tokens, a status bar item that turns amber when an agent needs you, and alerts with Approve suggestion, Edit and Stop. Download it from the{" "}
           <Link href="/download" className="font-medium text-slate-900 underline decoration-slate-300 underline-offset-4 transition-colors hover:decoration-slate-900">
             download page
           </Link>{" "}

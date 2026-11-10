@@ -2,7 +2,7 @@
   "name": "argusops",
   "displayName": "ArgusOps",
   "description": "See and control your AI coding agents from VS Code: get told when one is stuck, then resume it with a better instruction or stop it.",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "publisher": "tamjidul04",
   "license": "SEE LICENSE IN LICENSE",
   "repository": {
@@ -38,6 +38,12 @@
     },
     "views": {
       "argusops": [
+        {
+          "id": "argusops.overview",
+          "name": "Overview",
+          "type": "webview",
+          "when": "argusops.signedIn"
+        },
         {
           "id": "argusops.agents",
           "name": "Agents"

@@ -1,5 +1,7 @@
 import * as vscode from "vscode";
-import { ApiError, ArgusClient, type AgentsResponse } from "./api";
+import { randomBytes } from "node:crypto";
+import { ApiError, ArgusClient, type AgentsResponse, type NotificationBrief, type UsageBrief } from "./api";
+import { overviewBody, overviewHtml, type OverviewState } from "./overview";
 import { clip, diffForAlerts, formatTokens, kindOf, KIND_LABEL, normalizeServerUrl, statusBar, summarize, timeAgo, type AgentView, type Kind } from "./model";
 
 const SECRET = "argusops.credentials";
@@ -24,7 +26,12 @@ const ICON: Record<Kind, { id: string; color: string }> = {
 
 const ORDER: Record<Kind, number> = { paused: 0, running: 1, stopped: 2, idle: 3 };
 
-export class ArgusController implements vscode.TreeDataProvider<Node>, vscode.Disposable {
+/** Messages the dashboard panel may send. Anything else is ignored. */
+const PANEL_ACTIONS = new Set(["approve", "resume", "stop", "dashboard", "refresh", "signin"]);
+/** The panel's extra numbers change slowly, so they are fetched less often than the agent list. */
+const EXTRAS_EVERY_MS = 20_000;
+
+export class ArgusController implements vscode.TreeDataProvider<Node>, vscode.WebviewViewProvider, vscode.Disposable {
   private readonly changed = new vscode.EventEmitter<Node | undefined>();
   readonly onDidChangeTreeData = this.changed.event;
 
@@ -35,6 +42,9 @@ export class ArgusController implements vscode.TreeDataProvider<Node>, vscode.Di
   private timer: ReturnType<typeof setInterval> | undefined;
   private readonly bar: vscode.StatusBarItem;
   private view: vscode.TreeView<Node> | undefined;
+  private panel: vscode.WebviewView | undefined;
+  private panelBody = "";
+  private extras: { usage: UsageBrief | null; notifications: NotificationBrief[] | null; unread: number; at: number } = { usage: null, notifications: null, unread: 0, at: 0 };
 
   constructor(private readonly context: vscode.ExtensionContext) {
     this.bar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 50);
@@ -49,6 +59,7 @@ export class ArgusController implements vscode.TreeDataProvider<Node>, vscode.Di
       this.view,
       this.bar,
       this,
+      vscode.window.registerWebviewViewProvider("argusops.overview", this, { webviewOptions: { retainContextWhenHidden: true } }),
       vscode.workspace.onDidChangeConfiguration((e) => {
         if (e.affectsConfiguration("argusops")) {
           this.schedule();
@@ -141,12 +152,14 @@ export class ArgusController implements vscode.TreeDataProvider<Node>, vscode.Di
       this.data = data;
       this.alert(diffForAlerts(this.previous, data.agents), this.previous === null);
       this.previous = data.agents;
+      await this.loadExtras(client);
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) {
         await this.context.secrets.delete(SECRET);
         this.creds = null;
         this.data = null;
         this.previous = null;
+        this.extras = { usage: null, notifications: null, unread: 0, at: 0 };
         void vscode.window.showWarningMessage("ArgusOps: this key is no longer valid (it may have been revoked). Sign in again.", "Sign in").then((c) => {
           if (c) void vscode.commands.executeCommand("argusops.signIn");
         });
@@ -165,8 +178,78 @@ export class ArgusController implements vscode.TreeDataProvider<Node>, vscode.Di
     this.bar.backgroundColor = s.attention ? new vscode.ThemeColor("statusBarItem.warningBackground") : undefined;
     void vscode.commands.executeCommand("setContext", "argusops.signedIn", this.signedIn);
     void vscode.commands.executeCommand("setContext", "argusops.noAgents", this.signedIn && agents.length === 0);
+    this.pushPanel();
     if (this.view) this.view.description = this.data?.plan ? `${this.data.plan.name} · ${formatTokens(this.data.plan.tokensRemaining)} tokens left` : undefined;
     this.changed.fire(undefined);
+  }
+
+  /* --------------------------- the dashboard panel --------------------------- */
+
+  /** Usage and alerts for the panel. A failure here never affects the agent list: the panel just shows a dash. */
+  private async loadExtras(client: ArgusClient) {
+    if (Date.now() - this.extras.at < EXTRAS_EVERY_MS) return;
+    this.extras.at = Date.now();
+    const [usage, notes] = await Promise.allSettled([client.usage("7d"), client.notifications(5)]);
+    if (usage.status === "fulfilled") this.extras.usage = usage.value;
+    if (notes.status === "fulfilled") {
+      this.extras.notifications = notes.value.notifications;
+      this.extras.unread = notes.value.unread;
+    }
+  }
+
+  private panelState(): OverviewState {
+    return {
+      signedIn: this.signedIn,
+      offline: this.offline,
+      user: this.data?.user ?? null,
+      plan: this.data?.plan ?? null,
+      agents: this.data?.agents ?? [],
+      usage: this.extras.usage,
+      notifications: this.extras.notifications,
+      unread: this.data?.unreadNotifications ?? this.extras.unread,
+    };
+  }
+
+  resolveWebviewView(view: vscode.WebviewView) {
+    this.panel = view;
+    view.webview.options = { enableScripts: true };
+    this.panelBody = overviewBody(this.panelState());
+    view.webview.html = overviewHtml(this.panelState(), { nonce: randomBytes(16).toString("base64") });
+    view.webview.onDidReceiveMessage((m: unknown) => void this.onPanelMessage(m));
+    view.onDidChangeVisibility(() => {
+      if (view.visible) {
+        this.panelBody = "";
+        this.pushPanel();
+      }
+    });
+    view.onDidDispose(() => {
+      if (this.panel === view) this.panel = undefined;
+    });
+  }
+
+  /** Swaps the inside of the open panel when something changed (no page reload, so no flicker or lost scroll). */
+  private pushPanel() {
+    if (!this.panel) return;
+    const body = overviewBody(this.panelState());
+    if (body === this.panelBody) return;
+    this.panelBody = body;
+    void this.panel.webview.postMessage({ type: "render", html: body });
+  }
+
+  /** The panel is a view of ours, but its messages are still checked: known action, and agents looked up by id. */
+  private async onPanelMessage(m: unknown) {
+    if (typeof m !== "object" || m === null) return;
+    const { type, id } = m as { type?: unknown; id?: unknown };
+    if (typeof type !== "string" || !PANEL_ACTIONS.has(type)) return;
+    if (type === "dashboard") return void this.openDashboard();
+    if (type === "refresh") return void (await this.refresh());
+    if (type === "signin") return void (await this.signIn());
+
+    const agent = typeof id === "string" ? (this.data?.agents ?? []).find((a) => a.id === id) : undefined;
+    if (!agent) return;
+    if (type === "approve") return void (await this.approveAsIs(agent));
+    if (type === "resume") return void (await this.resume(agent));
+    if (type === "stop") return void (await this.stop(agent));
   }
 
   /* ------------------------------- alerts -------------------------------- */
@@ -347,6 +430,7 @@ export class ArgusController implements vscode.TreeDataProvider<Node>, vscode.Di
     this.creds = null;
     this.data = null;
     this.previous = null;
+    this.extras = { usage: null, notifications: null, unread: 0, at: 0 };
     this.render();
     void vscode.window.showInformationMessage("Signed out of ArgusOps.");
   }

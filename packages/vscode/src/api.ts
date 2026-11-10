@@ -17,6 +17,22 @@ export interface AgentsResponse {
   agents: AgentView[];
 }
 
+/** The slice of /api/usage the dashboard panel needs. */
+export interface UsageBrief {
+  range: string;
+  totals: { inputTokens: number; outputTokens: number; calls: number; costUsd: number; loopsCaught: number };
+  buckets: Array<{ bucket: string; inputTokens: number; outputTokens: number }>;
+}
+
+export interface NotificationBrief {
+  id: string;
+  title: string;
+  body: string;
+  level: string; // INFO | WARN | CRITICAL
+  read: boolean;
+  createdAt: string;
+}
+
 export interface DeviceCode {
   device_code: string;
   user_code: string;
@@ -57,6 +73,14 @@ export class ArgusClient {
 
   agents() {
     return this.call<AgentsResponse>("/api/agents");
+  }
+
+  usage(range: "24h" | "7d" | "30d" = "7d") {
+    return this.call<UsageBrief>(`/api/usage?range=${range}`);
+  }
+
+  notifications(limit = 5) {
+    return this.call<{ unread: number; notifications: NotificationBrief[] }>(`/api/notifications?limit=${limit}`);
   }
 
   /** Resume a paused agent, optionally telling it something. */
