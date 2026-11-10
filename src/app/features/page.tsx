@@ -4,6 +4,7 @@ import { Check } from "lucide-react";
 import { PublicShell } from "@/components/layout";
 import { ButtonLink, Container, Eyebrow, PageHeader } from "@/components/ui";
 import { CtaBand } from "@/components/marketing/CtaBand";
+import { SectionToc } from "@/components/marketing/SectionToc";
 
 export const metadata: Metadata = {
   title: "Features",
@@ -96,22 +97,10 @@ export default function FeaturesPage() {
       </PageHeader>
 
       <Container className="py-16 md:py-24">
-        <div className="grid gap-12 lg:grid-cols-[13rem_1fr] lg:gap-16">
-          {/* On this page */}
-          <nav aria-label="On this page" className="hidden lg:block">
-            <div className="sticky top-24">
-              <p className="text-xs font-medium text-slate-900">On this page</p>
-              <ul className="mt-3 space-y-0.5 border-l border-slate-200 text-sm">
-                {FEATURES.map((f) => (
-                  <li key={f.id}>
-                    <a href={`#${f.id}`} className="-ml-px block border-l border-transparent py-1 pl-3 text-slate-500 transition-colors hover:border-slate-900 hover:text-slate-900">
-                      {f.eyebrow}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </nav>
+        <div className="grid gap-12 lg:grid-cols-[15rem_1fr] lg:gap-16">
+          <aside className="hidden lg:block">
+            <SectionToc items={FEATURES.map((f) => ({ id: f.id, label: f.eyebrow }))} />
+          </aside>
 
           <div className="divide-y divide-slate-200">
             {FEATURES.map((f) => (

@@ -57,7 +57,7 @@ export function PublicNavbar() {
 
       <header
         className={cn(
-          "fixed inset-x-0 top-0 z-40 border-b bg-white/95 transition-[border-color,box-shadow] duration-200",
+          "fixed inset-x-0 top-0 z-40 border-b bg-white transition-[border-color,box-shadow] duration-200",
           scrolled || open ? "border-slate-200 shadow-[0_1px_3px_rgb(15_23_42/0.05)]" : "border-slate-200/60"
         )}
       >
