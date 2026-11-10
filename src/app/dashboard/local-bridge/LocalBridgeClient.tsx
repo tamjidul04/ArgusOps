@@ -414,14 +414,14 @@ export function LocalBridgeClient({
               <tbody className="divide-y divide-slate-900/5">
                 {locks.map((lock) => (
                   <tr key={lock.id} className={cn("transition-colors hover:bg-slate-900/[0.02]", lock.status === "CONFLICT_QUEUED" && "bg-amber-50/60")}>
-                    <td className="px-5 py-3.5">
+                    <td className="px-5 py-2.5">
                       <span className="flex items-center gap-2">
                         <FileCode className="h-4 w-4 shrink-0 text-slate-500" aria-hidden="true" />
                         <code className="font-mono text-xs font-semibold text-slate-900">{lock.filePath}</code>
                       </span>
                     </td>
-                    <td className="px-5 py-3.5 font-medium text-slate-800">{lock.holderAgent}</td>
-                    <td className="px-5 py-3.5">
+                    <td className="px-5 py-2.5 font-medium text-slate-800">{lock.holderAgent}</td>
+                    <td className="px-5 py-2.5">
                       {lock.queuedAgent ? (
                         <Badge tone="amber">
                           <AlertTriangle className="h-3 w-3 shrink-0" aria-hidden="true" />
@@ -431,8 +431,8 @@ export function LocalBridgeClient({
                         <span className="text-slate-600">None (Clean write access)</span>
                       )}
                     </td>
-                    <td className="px-5 py-3.5 text-slate-600">{lock.acquiredAt}</td>
-                    <td className="px-5 py-3.5 text-right">
+                    <td className="px-5 py-2.5 text-slate-600">{lock.acquiredAt}</td>
+                    <td className="px-5 py-2.5 text-right">
                       <button
                         type="button"
                         onClick={() => handleReleaseLock(lock.id)}

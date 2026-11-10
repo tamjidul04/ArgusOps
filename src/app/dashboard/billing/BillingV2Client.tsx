@@ -271,7 +271,7 @@ export function BillingV2Client({
         {/* ==================== LEFT COLUMN ==================== */}
         <div className="space-y-6">
           <Panel title="Free Token Allowance" action={<Badge>Auto-Reset</Badge>}>
-            <div className="text-3xl font-semibold tabular-nums tracking-tight text-slate-900 sm:text-4xl">
+            <div className="text-2xl font-semibold tabular-nums tracking-[-0.02em] text-slate-900 sm:text-2xl">
               {freeTokensCurrent.toLocaleString("en-US")} / {freeTokensMax.toLocaleString("en-US")}
             </div>
             <div
@@ -294,7 +294,7 @@ export function BillingV2Client({
             <Panel bodyClassName="flex flex-col justify-between gap-5">
               <div>
                 <span className="mb-1 block text-xs font-medium text-slate-600">Paid Token Balance</span>
-                <div className="text-3xl font-semibold tabular-nums tracking-tight text-slate-900">{paidTokensCurrent.toLocaleString("en-US")}</div>
+                <div className="text-2xl font-semibold tabular-nums tracking-[-0.02em] text-slate-900">{paidTokensCurrent.toLocaleString("en-US")}</div>
                 <p className="mt-1 text-sm text-slate-600">Unmetered pay-as-you-go</p>
               </div>
               <button onClick={() => setTopupModalOpen(true)} className={buttonClasses("secondary", false, "w-full")}>
@@ -477,10 +477,10 @@ export function BillingV2Client({
                 ) : (
                   transactions.map((tx) => (
                     <tr key={tx.tx_id} className="transition-colors hover:bg-slate-900/[0.02]">
-                      <td className="px-6 py-3.5 font-mono text-xs font-semibold text-slate-900">{tx.tx_id.startsWith("tx_") ? tx.tx_id : `INV-${tx.tx_id}`}</td>
-                      <td className="px-6 py-3.5 font-semibold text-slate-900">{tx.requested_plan}</td>
-                      <td className="px-6 py-3.5 font-mono text-xs font-semibold text-slate-900">${tx.amount.toFixed(2)}</td>
-                      <td className="px-6 py-3.5">
+                      <td className="px-6 py-2.5 font-mono text-xs font-medium text-slate-900">{tx.tx_id.startsWith("tx_") ? tx.tx_id : `INV-${tx.tx_id}`}</td>
+                      <td className="px-6 py-2.5 font-medium text-slate-900">{tx.requested_plan}</td>
+                      <td className="px-6 py-2.5 font-mono text-xs font-medium text-slate-900">${tx.amount.toFixed(2)}</td>
+                      <td className="px-6 py-2.5">
                         {tx.admin_status === "APPROVED" ? (
                           <Badge tone="green">
                             <Check className="h-3 w-3" aria-hidden="true" /> Approved
@@ -495,10 +495,10 @@ export function BillingV2Client({
                           </Badge>
                         )}
                       </td>
-                      <td className="px-6 py-3.5 text-slate-600">
+                      <td className="px-6 py-2.5 text-slate-600">
                         {new Date(tx.created_at).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
                       </td>
-                      <td className="px-6 py-3.5 text-right">
+                      <td className="px-6 py-2.5 text-right">
                         <a
                           href={`/api/billing/invoice?txId=${tx.tx_id}`}
                           target="_blank"

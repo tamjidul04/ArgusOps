@@ -481,25 +481,25 @@ export function GuardrailsClient({
 
                   return (
                     <tr key={agent.agent_id} className="transition-colors hover:bg-slate-900/[0.02]">
-                      <td className="px-5 py-3.5 font-semibold text-slate-900">
+                      <td className="px-5 py-2.5 font-medium text-slate-900">
                         {agent.name}
                         <span className="block font-mono text-[11px] font-normal text-slate-500">{agent.agent_id}</span>
                       </td>
-                      <td className="px-5 py-3.5">
+                      <td className="px-5 py-2.5">
                         <span className={cn("inline-flex items-center rounded-md px-2.5 py-0.5 text-[11px] font-medium", statusStyle.badge)}>
                           {statusStyle.label}
                         </span>
                       </td>
-                      <td className="px-5 py-3.5 font-mono font-semibold">
+                      <td className="px-5 py-2.5 font-mono font-medium">
                         <span className={cn(agent.loop_score > 0.8 ? "text-red-700" : agent.loop_score > 0.5 ? "text-amber-700" : "text-emerald-700")}>
                           {agent.loop_score}
                         </span>
                       </td>
-                      <td className="px-5 py-3.5 font-mono text-xs text-slate-600">
+                      <td className="px-5 py-2.5 font-mono text-xs text-slate-600">
                         {agent.ram_usage} MB • {agent.cpu_usage}%
                       </td>
-                      <td className="max-w-xs truncate px-5 py-3.5 text-slate-600">{agent.current_task || "No active task"}</td>
-                      <td className="whitespace-nowrap px-5 py-3.5 text-right">
+                      <td className="max-w-xs truncate px-5 py-2.5 text-slate-600">{agent.current_task || "No active task"}</td>
+                      <td className="whitespace-nowrap px-5 py-2.5 text-right">
                         {agent.status === "PAUSED_NUDGE" ? (
                           <div className="flex items-center justify-end gap-1.5">
                             <button

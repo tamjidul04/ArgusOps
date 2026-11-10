@@ -131,7 +131,7 @@ export function OrchestratorClient({
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Panel title="Dynamic Swarm Allocation" action={<Badge>{clusterSize}-agent cluster</Badge>} bodyClassName="space-y-4">
           <div>
-            <p className="text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
+            <p className="text-2xl font-semibold tracking-[-0.02em] text-slate-900 sm:text-2xl">
               {activeAgents} Active / {hibernatedAgents} Hibernated
             </p>
             <p className="mt-1.5 text-sm text-slate-600">
@@ -199,7 +199,7 @@ export function OrchestratorClient({
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
         <Panel title="Smart Model Router" action={<Badge tone="green">+64% routed</Badge>} bodyClassName="space-y-3">
           <div>
-            <p className="text-3xl font-semibold tracking-tight text-slate-900">64% Downgraded</p>
+            <p className="text-2xl font-semibold tracking-[-0.02em] text-slate-900">64% Downgraded</p>
             <p className="mt-1.5 text-sm text-slate-600">Simple JSON, regex, and tests routed to fast/local models.</p>
           </div>
           <div className="flex items-center justify-between border-t border-slate-200 pt-3 font-mono text-xs text-slate-600">
@@ -210,7 +210,7 @@ export function OrchestratorClient({
 
         <Panel title="Shared Context Cache" action={<Badge>AST SHA256</Badge>} bodyClassName="space-y-3">
           <div>
-            <p className="text-3xl font-semibold tracking-tight text-slate-900">1.80M Cached</p>
+            <p className="text-2xl font-semibold tracking-[-0.02em] text-slate-900">1.80M Cached</p>
             <p className="mt-1.5 text-sm text-slate-600">Single codebase read shared across swarm without redundant tokens.</p>
           </div>
           <div className="truncate border-t border-slate-200 pt-3 font-mono text-xs text-slate-600">
@@ -228,7 +228,7 @@ export function OrchestratorClient({
           bodyClassName="space-y-3"
         >
           <div>
-            <p className="text-3xl font-semibold tracking-tight text-slate-900">Agents #31-#100</p>
+            <p className="text-2xl font-semibold tracking-[-0.02em] text-slate-900">Agents #31-#100</p>
             <p className="mt-1.5 text-sm text-slate-600">
               {hibernatedAgents} Nodes in hibernation • Target: <code className="font-mono text-xs text-slate-800">--hibernated (0 Tok)</code>
             </p>
@@ -274,15 +274,15 @@ export function OrchestratorClient({
               <tbody className="divide-y divide-slate-900/5">
                 {subtasks.map((task) => (
                   <tr key={task.step} className="transition-colors hover:bg-slate-900/[0.02]">
-                    <td className="px-5 py-3.5 font-mono text-xs font-semibold text-slate-500">{task.step}</td>
-                    <td className="px-5 py-3.5 font-semibold text-slate-900">{task.subtask}</td>
-                    <td className="px-5 py-3.5 text-slate-700">{task.assigned_agents}</td>
-                    <td className="px-5 py-3.5">
+                    <td className="px-5 py-2.5 font-mono text-xs font-medium text-slate-500">{task.step}</td>
+                    <td className="px-5 py-2.5 font-medium text-slate-900">{task.subtask}</td>
+                    <td className="px-5 py-2.5 text-slate-700">{task.assigned_agents}</td>
+                    <td className="px-5 py-2.5">
                       <Badge tone={task.model_tier === "FRONTIER" ? "blue" : "neutral"}>{task.routed_model}</Badge>
                     </td>
-                    <td className="max-w-[200px] truncate px-5 py-3.5 font-mono text-xs text-slate-600">{task.target_path}</td>
-                    <td className="px-5 py-3.5 font-mono text-xs font-semibold text-slate-900">{formatTokens(task.tokens, { compact: false })}</td>
-                    <td className="px-5 py-3.5 text-right">
+                    <td className="max-w-[200px] truncate px-5 py-2.5 font-mono text-xs text-slate-600">{task.target_path}</td>
+                    <td className="px-5 py-2.5 font-mono text-xs font-medium text-slate-900">{formatTokens(task.tokens, { compact: false })}</td>
+                    <td className="px-5 py-2.5 text-right">
                       {task.state === "Done" && <Badge>Done</Badge>}
                       {task.state === "Run" && (
                         <Badge tone="green">
