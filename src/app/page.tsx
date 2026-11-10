@@ -3,6 +3,7 @@ import { ShieldCheck } from "lucide-react";
 import { PublicShell } from "@/components/layout";
 import { ButtonLink, CodeBlock, Container, Eyebrow, Section, SectionHeading } from "@/components/ui";
 import { HeroMock } from "@/components/marketing/HeroMock";
+import { LoopCompare } from "@/components/marketing/LoopCompare";
 
 const STEPS = [
   { t: "Watch", body: "Run your agent through argus. A small proxy on your machine sees each model call and its real token usage." },
@@ -229,7 +230,7 @@ export default function LandingPage() {
 
       {/* Pricing teaser */}
       <Section labelledBy="cta-title">
-        <div className="flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
+        <div className="grid items-center gap-10 lg:grid-cols-[1fr_1.15fr] lg:gap-16">
           <div className="max-w-xl space-y-3">
             <Eyebrow>Pricing</Eyebrow>
             <h2 id="cta-title" className="text-balance text-4xl font-semibold leading-[1.05] tracking-[-0.03em] text-slate-900 md:text-5xl">
@@ -238,13 +239,14 @@ export default function LandingPage() {
             <p className="text-pretty text-[17px] leading-relaxed text-slate-500">
               Start free, supervise your first agent in minutes, and upgrade only when you need more of them running at once.
             </p>
+            <div className="flex flex-col gap-2.5 pt-4 sm:flex-row">
+              <ButtonLink href="/signup">Start free</ButtonLink>
+              <ButtonLink href="/pricing" variant="secondary" arrow={false}>
+                Compare plans
+              </ButtonLink>
+            </div>
           </div>
-          <div className="flex shrink-0 flex-col gap-2.5 sm:flex-row">
-            <ButtonLink href="/signup">Start free</ButtonLink>
-            <ButtonLink href="/pricing" variant="secondary" arrow={false}>
-              Compare plans
-            </ButtonLink>
-          </div>
+          <LoopCompare />
         </div>
       </Section>
     </PublicShell>
