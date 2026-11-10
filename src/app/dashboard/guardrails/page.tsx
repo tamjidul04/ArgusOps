@@ -1,13 +1,14 @@
 import React, { Suspense } from "react";
 import { Metadata } from "next";
 import { DashboardShell } from "@/components/layout";
+import { PageLoading } from "@/components/ui";
 import { GuardrailsClient } from "./GuardrailsClient";
 import { prisma } from "@/lib/prisma";
 import { requirePageUser } from "@/lib/auth";
 import { getLatencyStats, getPolicy, listStreamEvents } from "@/lib/control-plane";
 
 export const metadata: Metadata = {
-  title: "Loop Detection & Resource Guardrails | ArgusOps",
+  title: "Loop Detection & Guardrails",
   description:
     "Loop detection incident stream, pause-versus-kill controls, and per-agent memory governance.",
 };
@@ -49,14 +50,7 @@ async function GuardrailsLoader() {
 export default function GuardrailsPage() {
   return (
     <DashboardShell>
-      <Suspense
-        fallback={
-          <div className="flex h-64 items-center justify-center font-mono text-xs text-slate-400 gap-2">
-            <span className="h-2 w-2 rounded-full bg-slate-400 animate-ping" />
-            <span>Loading loop detection streams &amp; resource guardrails...</span>
-          </div>
-        }
-      >
+      <Suspense fallback={<PageLoading label="Loading guardrails" />}>
         <GuardrailsLoader />
       </Suspense>
     </DashboardShell>

@@ -1,21 +1,21 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Figtree } from "next/font/google";
+import { Cursor } from "@/components/ui/Cursor";
+import { RevealObserver } from "@/components/ui/Reveal";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const figtree = Figtree({
+  variable: "--font-figtree",
   subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
-  title: "ArgusOps v1.1 | AI Agent Swarm Orchestration & Cost Hypervisor",
+  title: {
+    default: "ArgusOps | Supervise your AI coding agents",
+    template: "%s | ArgusOps",
+  },
   description:
-    "Intelligent AI Agent Cluster Management, 24/7 loop circuit breaker, dynamic 100-to-30 right-sizing, and local PC multi-agent coordination for Claude, Antigravity, and Hermes.",
+    "ArgusOps watches the AI coding agents you run, catches loops before they burn your tokens, pauses the agent, suggests a fix and alerts you. Bring your own key.",
 };
 
 export default function RootLayout({
@@ -24,12 +24,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col bg-slate-50 text-slate-900 font-sans">
+    <html lang="en" className={`${figtree.variable} h-full antialiased`}>
+      <body className="flex min-h-full flex-col bg-slate-50 font-sans text-slate-900">
         {children}
+        <Cursor />
+        <RevealObserver />
       </body>
     </html>
   );
