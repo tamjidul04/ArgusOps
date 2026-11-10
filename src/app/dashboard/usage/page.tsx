@@ -20,7 +20,7 @@ async function UsageLoader() {
 export default function UsagePage() {
   return (
     <DashboardShell>
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-slate-100" />}>
+      <Suspense fallback={<div className="h-96 animate-pulse rounded-md bg-slate-100" />}>
         <UsageLoader />
       </Suspense>
     </DashboardShell>

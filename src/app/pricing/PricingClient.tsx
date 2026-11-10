@@ -95,16 +95,16 @@ export function PricingClient({ plans }: PricingClientProps) {
           const enterprise = plan.plan_id === "plan_enterprise";
           const free = plan.plan_id === "plan_free" || plan.price === 0;
           return (
-            <Bezel key={plan.plan_id} tone={popular ? "dark" : "light"} className="reveal" innerClassName="flex flex-col sm:p-8">
+            <Bezel key={plan.plan_id} tone={popular ? "dark" : "light"} className="" innerClassName="flex flex-col sm:p-8">
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-semibold tracking-tight">{plan.name}</h2>
                 {popular && (
-                  <span className="rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-slate-200 ring-1 ring-white/10">
+                  <span className="rounded-md bg-white/10 px-2.5 py-1 text-[11px] font-medium text-slate-200 ring-1 ring-white/10">
                     Most popular
                   </span>
                 )}
                 {!popular && plan.requires_admin_approval && (
-                  <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-amber-800 ring-1 ring-amber-600/20">
+                  <span className="rounded-md bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-800 ring-1 ring-amber-600/20">
                     Manual approval
                   </span>
                 )}
@@ -116,7 +116,7 @@ export function PricingClient({ plans }: PricingClientProps) {
                 {!enterprise && <span className={cn("text-sm", popular ? "text-slate-400" : "text-slate-500")}>/ month</span>}
               </p>
 
-              <dl className={cn("mt-6 grid grid-cols-2 gap-4 border-y py-5 text-sm", popular ? "border-white/10" : "border-slate-900/5")}>
+              <dl className={cn("mt-6 grid grid-cols-2 gap-4 border-y py-5 text-sm", popular ? "border-white/10" : "border-slate-200")}>
                 <div>
                   <dt className={cn("text-xs", popular ? "text-slate-400" : "text-slate-500")}>Concurrent agents</dt>
                   <dd className="mt-1 text-lg font-semibold">{enterprise ? "Custom" : plan.agent_limit}</dd>
@@ -153,37 +153,37 @@ export function PricingClient({ plans }: PricingClientProps) {
 
       <section aria-labelledby="compare-title">
         <SectionHeading id="compare-title" eyebrow="Compare" title="What’s in each plan." />
-        <div className="reveal mt-10 overflow-x-auto rounded-[1.75rem] bg-white shadow-soft ring-1 ring-slate-900/5">
-          <table className="w-full min-w-[34rem] text-left text-sm">
+        <div className="mt-10 overflow-x-auto rounded-lg bg-white border border-slate-200">
+          <table className="w-full text-left text-[13px] sm:min-w-[34rem] sm:text-sm">
             <thead>
-              <tr className="border-b border-slate-900/5 text-xs uppercase tracking-[0.14em] text-slate-500">
+              <tr className="border-b border-slate-200 text-xs text-slate-500">
                 <th scope="col" className="px-6 py-4 font-medium">
                   Feature
                 </th>
-                <th scope="col" className="px-4 py-4 text-center font-medium">
+                <th scope="col" className="px-2 py-3 sm:px-4 sm:py-4 text-center font-medium">
                   Free
                 </th>
-                <th scope="col" className="px-4 py-4 text-center font-medium">
+                <th scope="col" className="px-2 py-3 sm:px-4 sm:py-4 text-center font-medium">
                   Pro
                 </th>
-                <th scope="col" className="px-4 py-4 text-center font-medium">
+                <th scope="col" className="px-2 py-3 sm:px-4 sm:py-4 text-center font-medium">
                   Enterprise
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-900/5 text-slate-700">
+            <tbody className="divide-y divide-slate-100 text-slate-700">
               {ROWS.map((r) => (
                 <tr key={r.label}>
                   <th scope="row" className="px-6 py-4 font-medium text-slate-900">
                     {r.label}
                   </th>
-                  <td className="px-4 py-4 text-center">
+                  <td className="px-2 py-3 sm:px-4 sm:py-4 text-center">
                     <Cell v={r.free} />
                   </td>
-                  <td className="px-4 py-4 text-center">
+                  <td className="px-2 py-3 sm:px-4 sm:py-4 text-center">
                     <Cell v={r.pro} />
                   </td>
-                  <td className="px-4 py-4 text-center">
+                  <td className="px-2 py-3 sm:px-4 sm:py-4 text-center">
                     <Cell v={r.ent} />
                   </td>
                 </tr>
@@ -197,10 +197,10 @@ export function PricingClient({ plans }: PricingClientProps) {
         <SectionHeading id="faq-title" eyebrow="FAQ" title="Questions, answered." align="center" />
         <div className="mt-10 space-y-3">
           {FAQS.map((f) => (
-            <details key={f.q} className="reveal group rounded-2xl bg-white px-5 shadow-soft ring-1 ring-slate-900/5">
+            <details key={f.q} className="group rounded-lg bg-white px-5 border border-slate-200">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-5 text-left text-base font-semibold text-slate-900 [&::-webkit-details-marker]:hidden">
                 {f.q}
-                <ChevronDown className="h-4 w-4 shrink-0 text-slate-500 transition-transform duration-500 ease-spring group-open:rotate-180" aria-hidden="true" />
+                <ChevronDown className="h-4 w-4 shrink-0 text-slate-500 transition-transform duration-200 ease-spring group-open:rotate-180" aria-hidden="true" />
               </summary>
               <p className="pb-5 text-sm leading-relaxed text-slate-600">{f.a}</p>
             </details>

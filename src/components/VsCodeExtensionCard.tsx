@@ -4,7 +4,7 @@ import extension from "../../packages/vscode/package.json";
 import { Bezel } from "@/components/ui/Bezel";
 import { buttonClasses } from "@/components/ui/Button";
 
-const kbd = "rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] text-slate-700 ring-1 ring-slate-900/10";
+const kbd = "rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] text-slate-700 border border-slate-200";
 
 /** Offers the VS Code extension for download with click-through install steps (no terminal needed). */
 export function VsCodeExtensionCard({ variant = "bezel" }: { variant?: "bezel" | "panel" }) {
@@ -25,7 +25,7 @@ export function VsCodeExtensionCard({ variant = "bezel" }: { variant?: "bezel" |
 
   const wrap = (children: React.ReactNode) =>
     variant === "panel" ? (
-      <div className="rounded-2xl bg-white p-5 shadow-soft ring-1 ring-slate-900/5 sm:p-6">{children}</div>
+      <div className="rounded-lg bg-white p-5 border border-slate-200 sm:p-6">{children}</div>
     ) : (
       <Bezel innerClassName="sm:p-8">{children}</Bezel>
     );
@@ -36,7 +36,7 @@ export function VsCodeExtensionCard({ variant = "bezel" }: { variant?: "bezel" |
           <div className="min-w-0 flex-1">
             <h2 id="vscode-ext-title" className="flex flex-wrap items-center gap-2.5 text-xl font-semibold tracking-tight text-slate-900">
               <PlugZap className="h-5 w-5 text-slate-500" aria-hidden="true" /> VS Code extension
-              <span className="rounded-full bg-slate-900/[0.05] px-2.5 py-0.5 font-mono text-[11px] font-medium text-slate-600">{`v${extension.version}`}</span>
+              <span className="rounded-md bg-slate-100 px-2.5 py-0.5 font-mono text-[11px] font-medium text-slate-600">{`v${extension.version}`}</span>
             </h2>
             <p className="mt-2 max-w-xl text-sm leading-relaxed text-slate-600">
               See your agents, get alerted when one is stuck, and approve a suggested instruction, resume or stop it without leaving the editor.
@@ -44,7 +44,7 @@ export function VsCodeExtensionCard({ variant = "bezel" }: { variant?: "bezel" |
             <ol className="mt-6 space-y-3 text-sm text-slate-700">
               {steps.map((s, i) => (
                 <li key={i} className="flex gap-3">
-                  <span className="mt-px flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-900 text-[11px] font-semibold text-white">{i + 1}</span>
+                  <span className="mt-px flex h-5 w-5 shrink-0 items-center justify-center rounded border border-slate-200 bg-white font-mono text-[11px] text-slate-500">{i + 1}</span>
                   <span className="leading-relaxed">{s}</span>
                 </li>
               ))}

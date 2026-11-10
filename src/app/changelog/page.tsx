@@ -51,15 +51,15 @@ export default function ChangelogPage() {
       <PageHeader eyebrow="Changelog" title="What’s new." lead="ArgusOps is in early access. Here is what has shipped, newest first." />
 
       <Container className="py-20 md:py-28">
-        <ol className="relative mx-auto max-w-3xl space-y-14 border-l border-slate-900/10 pl-8 md:pl-12">
+        <ol className="relative mx-auto max-w-3xl space-y-14 border-l border-slate-200 pl-8 md:pl-12">
           {ENTRIES.map((e) => (
-            <li key={e.title} className="reveal relative">
+            <li key={e.title} className="relative">
               <span aria-hidden="true" className="absolute -left-[2.45rem] top-2 h-3 w-3 rounded-full bg-slate-900 ring-4 ring-slate-50 md:-left-[3.45rem]" />
               <div className="flex flex-wrap items-center gap-3">
                 <time dateTime={e.date} className="font-mono text-xs text-slate-500">
                   {e.date}
                 </time>
-                <span className="rounded-full bg-slate-900/[0.05] px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.18em] text-slate-600">{e.tag}</span>
+                <span className="rounded-md bg-slate-100 px-2.5 py-0.5 text-[11px] font-medium text-slate-600">{e.tag}</span>
               </div>
               <h2 className="mt-3 text-2xl font-semibold tracking-tight text-slate-900">{e.title}</h2>
               <ul className="mt-4 space-y-2.5 text-sm leading-relaxed text-slate-600">

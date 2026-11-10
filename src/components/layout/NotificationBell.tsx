@@ -159,7 +159,7 @@ export function NotificationBell() {
       </div>
 
       {toast && (
-        <div role="status" className="fixed bottom-6 right-6 z-[60] w-80 rounded-xl border border-slate-200 bg-white p-4 shadow-xl animate-in fade-in slide-in-from-bottom-2">
+        <div role="status" className="fixed bottom-6 right-6 z-[60] w-80 rounded-md border border-slate-200 bg-white p-4 shadow-xl animate-in fade-in slide-in-from-bottom-2">
           <div className="flex items-start gap-3">
             {(() => {
               const { icon: Icon, tone } = LEVEL_STYLE[toast.level] ?? LEVEL_STYLE.INFO;

@@ -2,7 +2,7 @@ import React from "react";
 import type { Metadata } from "next";
 import { Check } from "lucide-react";
 import { PublicShell } from "@/components/layout";
-import { Bezel, ButtonLink, Container, Eyebrow, PageHeader } from "@/components/ui";
+import { ButtonLink, Container, Eyebrow, PageHeader } from "@/components/ui";
 import { CtaBand } from "@/components/marketing/CtaBand";
 
 export const metadata: Metadata = {
@@ -89,43 +89,57 @@ export default function FeaturesPage() {
       >
         <div className="flex flex-col gap-3 pt-2 sm:flex-row">
           <ButtonLink href="/signup">Start free</ButtonLink>
-          <ButtonLink href="/how-it-works" variant="secondary">
+          <ButtonLink href="/how-it-works" variant="secondary" arrow={false}>
             How it works
           </ButtonLink>
         </div>
       </PageHeader>
 
-      <Container className="py-20 md:py-28">
-        <div className="space-y-20 md:space-y-28">
-          {FEATURES.map((f, i) => (
-            <section key={f.id} id={f.id} aria-labelledby={`${f.id}-title`} className="reveal grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
-              <div className={i % 2 ? "lg:order-2" : undefined}>
+      <Container className="py-16 md:py-24">
+        <div className="grid gap-12 lg:grid-cols-[13rem_1fr] lg:gap-16">
+          {/* On this page */}
+          <nav aria-label="On this page" className="hidden lg:block">
+            <div className="sticky top-24">
+              <p className="text-xs font-medium text-slate-900">On this page</p>
+              <ul className="mt-3 space-y-0.5 border-l border-slate-200 text-sm">
+                {FEATURES.map((f) => (
+                  <li key={f.id}>
+                    <a href={`#${f.id}`} className="-ml-px block border-l border-transparent py-1 pl-3 text-slate-500 transition-colors hover:border-slate-900 hover:text-slate-900">
+                      {f.eyebrow}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </nav>
+
+          <div className="divide-y divide-slate-200">
+            {FEATURES.map((f) => (
+              <section key={f.id} id={f.id} aria-labelledby={`${f.id}-title`} className="py-12 first:pt-0 last:pb-0">
                 <Eyebrow>{f.eyebrow}</Eyebrow>
-                <h2 id={`${f.id}-title`} className="mt-4 text-balance text-3xl font-semibold leading-[1.1] tracking-tight text-slate-900 md:text-4xl">
+                <h2 id={`${f.id}-title`} className="mt-3 text-balance text-2xl font-semibold leading-tight tracking-[-0.02em] text-slate-900 md:text-3xl">
                   {f.title}
                 </h2>
-                <p className="mt-4 text-pretty text-base leading-relaxed text-slate-600">{f.body}</p>
-                <ul className="mt-6 space-y-3 text-sm text-slate-700">
+                <p className="mt-3 max-w-2xl text-pretty text-[17px] leading-relaxed text-slate-500">{f.body}</p>
+                <dl className="mt-6 flex flex-wrap gap-x-10 gap-y-3">
+                  {f.aside.map((a) => (
+                    <div key={a.label}>
+                      <dt className="text-xs text-slate-400">{a.label}</dt>
+                      <dd className="mt-0.5 font-mono text-sm text-slate-900">{a.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+                <ul className="mt-6 grid gap-x-8 gap-y-2.5 text-[15px] text-slate-700 sm:grid-cols-2">
                   {f.points.map((p) => (
-                    <li key={p} className="flex gap-3">
-                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-hidden="true" />
+                    <li key={p} className="flex gap-2.5">
+                      <Check className="mt-1 h-3.5 w-3.5 shrink-0 text-emerald-600" aria-hidden="true" />
                       <span>{p}</span>
                     </li>
                   ))}
                 </ul>
-              </div>
-              <Bezel tone={i % 2 ? "light" : "dark"} className={i % 2 ? "lg:order-1" : undefined}>
-                <dl className="grid grid-cols-2 gap-6">
-                  {f.aside.map((a) => (
-                    <div key={a.label}>
-                      <dt className={i % 2 ? "text-xs text-slate-500" : "text-xs text-slate-400"}>{a.label}</dt>
-                      <dd className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">{a.value}</dd>
-                    </div>
-                  ))}
-                </dl>
-              </Bezel>
-            </section>
-          ))}
+              </section>
+            ))}
+          </div>
         </div>
       </Container>
 

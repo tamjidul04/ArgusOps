@@ -15,7 +15,7 @@ export default function PrivacyPage() {
       <PageHeader eyebrow="Privacy" title="Your code stays on your machine." lead="Effective October 30, 2026 · Owner: MD.Tamjidul Islam" />
       <Container className="max-w-3xl py-16 md:py-24">
         <div className="space-y-12">
-          <div className="rounded-[1.75rem] ring-1 ring-emerald-600/20 bg-emerald-50/70 p-6 sm:p-8 space-y-3">
+          <div className="rounded-lg ring-1 ring-emerald-600/20 bg-emerald-50/70 p-6 sm:p-8 space-y-3">
           <h2 className="text-base font-bold text-emerald-950 flex items-center gap-2">
             <Lock className="h-4 w-4 text-emerald-600" />
             <span>The ArgusOps Zero-Trust Core Principle</span>

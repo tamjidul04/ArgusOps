@@ -20,7 +20,7 @@ export default function DownloadPage() {
       />
 
       <Container className="space-y-6 py-20 md:py-28">
-        <Bezel className="reveal" innerClassName="sm:p-8">
+        <Bezel className="" innerClassName="sm:p-8">
           <div className="grid gap-8 lg:grid-cols-2">
             <div>
               <Eyebrow>CLI</Eyebrow>
@@ -41,7 +41,7 @@ export default function DownloadPage() {
           </div>
         </Bezel>
 
-        <div className="reveal">
+        <div className="">
           <VsCodeExtensionCard />
         </div>
       </Container>

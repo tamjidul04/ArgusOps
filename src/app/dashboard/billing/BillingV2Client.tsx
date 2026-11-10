@@ -241,7 +241,7 @@ export function BillingV2Client({
         <div
           role="status"
           className={cn(
-            "fixed bottom-6 right-4 z-50 flex max-w-[calc(100vw-2rem)] items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium shadow-lift ring-1 sm:right-6",
+            "fixed bottom-6 right-4 z-50 flex max-w-[calc(100vw-2rem)] items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium shadow-lift ring-1 sm:right-6",
             toastMessage.type === "success" && "bg-emerald-50 text-emerald-900 ring-emerald-600/20",
             toastMessage.type === "error" && "bg-red-50 text-red-900 ring-red-600/20",
             toastMessage.type === "info" && "on-dark bg-slate-900 text-white ring-slate-900"
@@ -251,7 +251,7 @@ export function BillingV2Client({
           {toastMessage.type === "error" && <AlertCircle className="h-5 w-5 shrink-0 text-red-600" aria-hidden="true" />}
           {toastMessage.type === "info" && <Coins className="h-5 w-5 shrink-0 text-amber-400" aria-hidden="true" />}
           <span>{toastMessage.text}</span>
-          <button onClick={() => setToastMessage(null)} aria-label="Dismiss message" className="ml-1 rounded-full p-1 text-inherit hover:opacity-70">
+          <button onClick={() => setToastMessage(null)} aria-label="Dismiss message" className="ml-1 rounded-md p-1 text-inherit hover:opacity-70">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -272,17 +272,17 @@ export function BillingV2Client({
         <div className="space-y-6">
           <Panel title="Free Token Allowance" action={<Badge>Auto-Reset</Badge>}>
             <div className="text-3xl font-semibold tabular-nums tracking-tight text-slate-900 sm:text-4xl">
-              {freeTokensCurrent.toLocaleString()} / {freeTokensMax.toLocaleString()}
+              {freeTokensCurrent.toLocaleString("en-US")} / {freeTokensMax.toLocaleString("en-US")}
             </div>
             <div
-              className="mt-5 h-2.5 w-full overflow-hidden rounded-full bg-slate-900/10"
+              className="mt-5 h-2.5 w-full overflow-hidden rounded-full bg-slate-200"
               role="meter"
               aria-label="Free tokens remaining"
               aria-valuemin={0}
               aria-valuemax={100}
               aria-valuenow={freePercentage}
             >
-              <div className="h-full rounded-full bg-slate-900 transition-[width] duration-500 ease-spring" style={{ width: `${freePercentage}%` }} />
+              <div className="h-full rounded-full bg-slate-900 transition-[width] duration-200 ease-spring" style={{ width: `${freePercentage}%` }} />
             </div>
             <div className="mt-2.5 flex items-center justify-between text-sm text-slate-600">
               <span>{freePercentage}% remaining</span>
@@ -294,7 +294,7 @@ export function BillingV2Client({
             <Panel bodyClassName="flex flex-col justify-between gap-5">
               <div>
                 <span className="mb-1 block text-xs font-medium text-slate-600">Paid Token Balance</span>
-                <div className="text-3xl font-semibold tabular-nums tracking-tight text-slate-900">{paidTokensCurrent.toLocaleString()}</div>
+                <div className="text-3xl font-semibold tabular-nums tracking-tight text-slate-900">{paidTokensCurrent.toLocaleString("en-US")}</div>
                 <p className="mt-1 text-sm text-slate-600">Unmetered pay-as-you-go</p>
               </div>
               <button onClick={() => setTopupModalOpen(true)} className={buttonClasses("secondary", false, "w-full")}>
@@ -318,7 +318,7 @@ export function BillingV2Client({
                 </div>
                 <p className="mt-1 text-sm text-slate-600">{isPendingApproval ? "Pro Swarm ($49/mo) queued" : `${currentPlanName} active`}</p>
               </div>
-              <div className="select-none rounded-full bg-slate-900/[0.04] px-4 py-2.5 text-center text-xs font-medium text-slate-600 ring-1 ring-slate-900/[0.07]">
+              <div className="select-none rounded-md bg-slate-50 px-4 py-2.5 text-center text-xs font-medium text-slate-600 border border-slate-200">
                 {isPendingApproval ? "Admin Review Active" : "No Review Required"}
               </div>
             </Panel>
@@ -347,11 +347,11 @@ export function BillingV2Client({
 
         {/* ==================== RIGHT COLUMN ==================== */}
         <div className="space-y-6">
-          <div className="on-dark rounded-2xl bg-slate-950 p-6 text-white shadow-lift ring-1 ring-slate-900 sm:p-7">
+          <div className="on-dark rounded-lg bg-slate-950 p-6 text-white shadow-lift ring-1 ring-slate-900 sm:p-7">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-3">
                 <h3 className="text-xl font-semibold tracking-tight">Pro Swarm — $49/mo</h3>
-                <span className="rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.16em] text-slate-200 ring-1 ring-white/10">POPULAR</span>
+                <span className="rounded-md bg-white/10 px-2.5 py-1 text-[11px] font-medium text-slate-200 ring-1 ring-white/10">POPULAR</span>
               </div>
               <span className="text-sm text-slate-400">Billed monthly</span>
             </div>
@@ -367,11 +367,11 @@ export function BillingV2Client({
             </div>
 
             {isPro ? (
-              <button disabled className="w-full cursor-default rounded-full bg-white/10 px-4 py-3 text-center text-sm font-semibold text-slate-300 ring-1 ring-white/10">
+              <button disabled className="w-full cursor-default rounded-md bg-white/10 px-4 py-3 text-center text-sm font-semibold text-slate-300 ring-1 ring-white/10">
                 Current Plan
               </button>
             ) : isPendingApproval ? (
-              <button disabled className="w-full cursor-not-allowed rounded-full bg-amber-400/10 px-4 py-3 text-center text-sm font-semibold text-amber-300 ring-1 ring-amber-400/20">
+              <button disabled className="w-full cursor-not-allowed rounded-md bg-amber-400/10 px-4 py-3 text-center text-sm font-semibold text-amber-300 ring-1 ring-amber-400/20">
                 Upgrade Request Queued (Pending Approval)
               </button>
             ) : (
@@ -400,7 +400,7 @@ export function BillingV2Client({
                   Current Plan
                 </button>
               ) : isPendingApproval ? (
-                <button disabled className="w-full cursor-not-allowed rounded-full bg-amber-50 px-4 py-2.5 text-center text-sm font-semibold text-amber-800 ring-1 ring-amber-600/25">
+                <button disabled className="w-full cursor-not-allowed rounded-md bg-amber-50 px-4 py-2.5 text-center text-sm font-semibold text-amber-800 ring-1 ring-amber-600/25">
                   Pending Review
                 </button>
               ) : (
@@ -429,7 +429,7 @@ export function BillingV2Client({
                   <dd className="font-semibold text-slate-900">Stripe / PayPal</dd>
                 </div>
               </dl>
-              <div className="select-none rounded-full bg-slate-900/[0.04] px-3 py-2 text-center font-mono text-[11px] text-slate-600 ring-1 ring-slate-900/[0.07]">
+              <div className="select-none rounded-md bg-slate-50 px-3 py-2 text-center font-mono text-[11px] text-slate-600 border border-slate-200">
                 PCI-DSS Level 1 Compliant
               </div>
             </Panel>
@@ -445,7 +445,7 @@ export function BillingV2Client({
           <button
             onClick={() => setShowHistory(!showHistory)}
             aria-expanded={showHistory}
-            className="rounded-full px-3.5 py-1.5 text-xs font-semibold text-slate-700 ring-1 ring-slate-900/10 hover:bg-slate-50"
+            className="rounded-md px-3.5 py-1.5 text-xs font-semibold text-slate-700 border border-slate-200 hover:bg-slate-50"
           >
             {showHistory ? "Hide Records" : "Show Records"}
           </button>
@@ -456,7 +456,7 @@ export function BillingV2Client({
           <div className="overflow-x-auto">
             <table className="w-full min-w-[40rem] border-collapse text-left text-sm">
               <thead>
-                <tr className="border-b border-slate-900/5 bg-slate-900/[0.02] text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500">
+                <tr className="border-b border-slate-200 bg-slate-50 text-[11px] font-medium text-slate-500">
                   <th scope="col" className="px-6 py-3">Transaction ID</th>
                   <th scope="col" className="px-6 py-3">Requested Tier / Item</th>
                   <th scope="col" className="px-6 py-3">Amount</th>
@@ -465,7 +465,7 @@ export function BillingV2Client({
                   <th scope="col" className="px-6 py-3 text-right">Receipt</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-900/5 text-slate-700">
+              <tbody className="divide-y divide-slate-100 text-slate-700">
                 {transactions.length === 0 ? (
                   <tr>
                     <td colSpan={6}>
@@ -503,7 +503,7 @@ export function BillingV2Client({
                           href={`/api/billing/invoice?txId=${tx.tx_id}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 ring-1 ring-slate-900/10 hover:bg-slate-50"
+                          className="inline-flex items-center gap-1.5 rounded-md bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 border border-slate-200 hover:bg-slate-50"
                         >
                           <Download className="h-3 w-3 text-slate-500" aria-hidden="true" />
                           PDF
@@ -528,7 +528,7 @@ export function BillingV2Client({
             role="dialog"
             aria-modal="true"
             aria-labelledby="topup-title"
-            className="max-h-[90dvh] w-full max-w-md space-y-5 overflow-y-auto rounded-3xl bg-white p-6 shadow-lift ring-1 ring-slate-900/10"
+            className="max-h-[90dvh] w-full max-w-md space-y-5 overflow-y-auto rounded-lg bg-white p-6 shadow-lift border border-slate-200"
           >
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -537,7 +537,7 @@ export function BillingV2Client({
                 </h3>
                 <p className="mt-0.5 text-sm text-slate-600">Tokens never expire and remain valid across all local and cloud cluster swarms.</p>
               </div>
-              <button onClick={() => setTopupModalOpen(false)} aria-label="Close" className="rounded-full p-1.5 text-slate-500 hover:bg-slate-900/5 hover:text-slate-800">
+              <button onClick={() => setTopupModalOpen(false)} aria-label="Close" className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-800">
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -555,10 +555,10 @@ export function BillingV2Client({
                   aria-checked={selectedTopupAmount.tokens === pack.tokens}
                   onClick={() => setSelectedTopupAmount(pack)}
                   className={cn(
-                    "flex w-full items-center justify-between gap-3 rounded-xl p-4 text-left text-sm font-medium transition-colors",
+                    "flex w-full items-center justify-between gap-3 rounded-md p-4 text-left text-sm font-medium transition-colors",
                     selectedTopupAmount.tokens === pack.tokens
-                      ? "bg-slate-900/[0.04] font-semibold text-slate-900 ring-2 ring-slate-900"
-                      : "bg-white text-slate-700 ring-1 ring-slate-900/10 hover:bg-slate-50"
+                      ? "bg-slate-50 font-semibold text-slate-900 ring-2 ring-slate-900"
+                      : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50"
                   )}
                 >
                   <div className="flex items-center gap-3">
@@ -570,12 +570,12 @@ export function BillingV2Client({
               ))}
             </div>
 
-            <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-900/5 pt-4">
+            <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-200 pt-4">
               <button type="button" onClick={() => setTopupModalOpen(false)} className={buttonClasses("secondary", false)}>
                 Cancel
               </button>
               <button type="button" disabled={submitting} onClick={handleTopupTokens} className={buttonClasses("primary", false, "disabled:opacity-60")}>
-                {submitting ? "Purchasing..." : `Purchase ${selectedTopupAmount.tokens.toLocaleString()} Tokens`}
+                {submitting ? "Purchasing..." : `Purchase ${selectedTopupAmount.tokens.toLocaleString("en-US")} Tokens`}
               </button>
             </div>
           </div>
@@ -583,7 +583,7 @@ export function BillingV2Client({
       )}
 
       {/* Owner strip */}
-      <div className="flex flex-col items-start justify-between gap-2 border-t border-slate-900/5 pt-6 text-xs text-slate-600 sm:flex-row sm:items-center">
+      <div className="flex flex-col items-start justify-between gap-2 border-t border-slate-200 pt-6 text-xs text-slate-600 sm:flex-row sm:items-center">
         <div>
           <span>
             Owner: <strong className="text-slate-900">{profile.name}</strong>

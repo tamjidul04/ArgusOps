@@ -12,11 +12,11 @@ import {
   Bell,
   BarChart3,
   Lock,
-  ChevronDown,
+  ChevronsUpDown,
   Coins,
   Cloud,
   LogOut,
-  ExternalLink,
+  ArrowUpRight,
   Menu,
   X,
 } from "lucide-react";
@@ -25,27 +25,40 @@ import { DashboardProvider, useDashboard } from "./DashboardContext";
 import { NotificationBell } from "./NotificationBell";
 import { BrainProvider, useBrain } from "@/context/BrainContext";
 import { Logo } from "@/components/ui/Logo";
+import { Segmented } from "@/components/ui/Dash";
 
 interface NavItem {
   name: string;
   href: string;
   icon: React.ElementType;
-  badge?: string;
   adminOnly?: boolean;
 }
 
-const NAV_ITEMS: NavItem[] = [
-  { name: "Cluster Visualizer", href: "/dashboard", icon: Activity },
-  { name: "Master Orchestrator", href: "/dashboard/orchestrator", icon: Sliders },
-  { name: "Loop & RAM Guardrails", href: "/dashboard/guardrails", icon: Shield },
-  { name: "Local PC Bridge & SDK", href: "/dashboard/local-bridge", icon: Laptop },
-  { name: "Usage & Savings", href: "/dashboard/usage", icon: BarChart3 },
-  { name: "Notifications", href: "/dashboard/notifications", icon: Bell },
-  { name: "Plan & Token Billing", href: "/dashboard/billing", icon: CreditCard },
-  { name: "Admin Control Panel", href: "/admin", icon: Lock, badge: "Admin", adminOnly: true },
+const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
+  {
+    label: "Supervise",
+    items: [
+      { name: "Overview", href: "/dashboard", icon: Activity },
+      { name: "Orchestrator", href: "/dashboard/orchestrator", icon: Sliders },
+      { name: "Guardrails", href: "/dashboard/guardrails", icon: Shield },
+      { name: "Local bridge", href: "/dashboard/local-bridge", icon: Laptop },
+    ],
+  },
+  {
+    label: "Insights",
+    items: [
+      { name: "Usage & savings", href: "/dashboard/usage", icon: BarChart3 },
+      { name: "Notifications", href: "/dashboard/notifications", icon: Bell },
+    ],
+  },
+  {
+    label: "Account",
+    items: [
+      { name: "Plan & billing", href: "/dashboard/billing", icon: CreditCard },
+      { name: "Admin", href: "/admin", icon: Lock, adminOnly: true },
+    ],
+  },
 ];
-
-const EASE = "ease-spring";
 
 function DashboardShellInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -54,115 +67,97 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
   const [accountOpen, setAccountOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
   const [lastPath, setLastPath] = useState(pathname);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const accountRef = useRef<HTMLDivElement>(null);
 
-  // Close the mobile drawer when the route changes.
   if (lastPath !== pathname) {
     setLastPath(pathname);
     setNavOpen(false);
+    setAccountOpen(false);
   }
 
-  // Close dropdown when clicking outside
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setAccountOpen(false);
-      }
+    function onDown(event: MouseEvent) {
+      if (accountRef.current && !accountRef.current.contains(event.target as Node)) setAccountOpen(false);
     }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  // Escape closes menus; the drawer also locks page scroll while open.
-  useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setAccountOpen(false);
         setNavOpen(false);
       }
     };
+    document.addEventListener("mousedown", onDown);
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      window.removeEventListener("keydown", onKey);
+    };
   }, []);
 
-  const sidebar = (
-    <div className="flex h-full flex-col justify-between">
-      <div>
-        <div className="flex h-16 items-center justify-between px-5">
-          <Link href="/" aria-label="ArgusOps home" className="rounded-lg">
-            <Logo />
-          </Link>
-          <button
-            type="button"
-            onClick={() => setNavOpen(false)}
-            aria-label="Close navigation"
-            className="flex h-9 w-9 items-center justify-center rounded-full text-slate-600 hover:bg-slate-900/5 lg:hidden"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
+  const initial = loading ? "·" : (profile.name || profile.email || "?").charAt(0).toUpperCase();
+  const usedPct = profile.maxAgents > 0 ? Math.min(100, (profile.activeAgents / profile.maxAgents) * 100) : 0;
 
-        <nav aria-label="Dashboard" className="space-y-1 p-3">
-          <div className="px-3 pb-1.5 pt-2 text-[10px] font-medium uppercase tracking-[0.18em] text-slate-500">Supervision</div>
-          {NAV_ITEMS.filter((item) => !item.adminOnly || profile.role === "ADMIN").map((item) => {
-            const isActive = item.href === "/dashboard" ? pathname === "/dashboard" : pathname?.startsWith(item.href);
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                aria-current={isActive ? "page" : undefined}
-                className={cn(
-                  "group flex items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium transition-colors duration-300",
-                  isActive ? "bg-slate-900 text-white shadow-soft" : "text-slate-600 hover:bg-slate-900/[0.05] hover:text-slate-900"
-                )}
-              >
-                <div className="flex min-w-0 items-center gap-3">
-                  <Icon className={cn("h-4 w-4 shrink-0", isActive ? "text-white" : "text-slate-500 group-hover:text-slate-800")} aria-hidden="true" />
-                  <span className="truncate">{item.name}</span>
-                </div>
-                {item.badge && (
-                  <span
-                    className={cn(
-                      "rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider",
-                      isActive ? "bg-white/15 text-white" : "bg-slate-900 text-white"
-                    )}
-                  >
-                    {item.badge}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
-        </nav>
+  const sidebar = (
+    <div className="flex h-full flex-col">
+      <div className="flex h-14 shrink-0 items-center justify-between px-4">
+        <Link href="/" aria-label="ArgusOps home" className="rounded-md">
+          <Logo />
+        </Link>
+        <button
+          type="button"
+          onClick={() => setNavOpen(false)}
+          aria-label="Close navigation"
+          className="flex h-8 w-8 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 lg:hidden"
+        >
+          <X className="h-4 w-4" />
+        </button>
       </div>
 
-      <div className="space-y-2 p-3">
-        <div className="rounded-2xl bg-slate-900/[0.04] p-3.5 ring-1 ring-slate-900/5">
-          <div className="mb-1 flex items-center justify-between text-xs">
-            <span className="truncate font-semibold text-slate-900">{profile.planName}</span>
-            <span className="font-mono text-[10px] text-slate-500">v0.2</span>
-          </div>
-          <div className="flex items-center gap-2 text-xs text-slate-600">
-            <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" />
-            <span className="truncate">
-              {profile.activeAgents} / {profile.maxAgents} agents active
-            </span>
-          </div>
-          <div className="mt-2.5 flex items-center justify-between border-t border-slate-900/5 pt-2.5 text-[11px] text-slate-500">
-            <span className="max-w-[130px] truncate">{profile.name}</span>
-            <span className="font-mono text-[10px]">{profile.role}</span>
-          </div>
-        </div>
+      <nav aria-label="Dashboard" className="flex-1 space-y-5 overflow-y-auto px-2.5 py-3">
+        {NAV_GROUPS.map((group) => {
+          const items = group.items.filter((item) => !item.adminOnly || profile.role === "ADMIN");
+          if (!items.length) return null;
+          return (
+            <div key={group.label}>
+              <p className="px-2 pb-1 text-[11px] font-medium text-slate-400">{group.label}</p>
+              <ul className="space-y-px">
+                {items.map((item) => {
+                  const isActive = item.href === "/dashboard" ? pathname === "/dashboard" : pathname?.startsWith(item.href);
+                  const Icon = item.icon;
+                  return (
+                    <li key={item.href}>
+                      <Link
+                        href={item.href}
+                        aria-current={isActive ? "page" : undefined}
+                        className={cn(
+                          "flex h-8 items-center gap-2.5 rounded-md px-2 text-[13px] transition-colors duration-100",
+                          isActive ? "bg-slate-100 font-medium text-slate-900" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                        )}
+                      >
+                        <Icon className={cn("h-4 w-4 shrink-0", isActive ? "text-slate-900" : "text-slate-400")} aria-hidden="true" />
+                        <span className="truncate">{item.name}</span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          );
+        })}
+      </nav>
 
-        <div className="flex items-center justify-between px-2 pt-1 text-xs text-slate-500">
-          <Link href="/" className="inline-flex items-center gap-1.5 rounded-md transition-colors hover:text-slate-900">
-            <ExternalLink className="h-3 w-3" aria-hidden="true" /> Public site
+      <div className="shrink-0 border-t border-slate-200 p-3">
+        <div className="flex items-center justify-between text-xs">
+          <span className="font-medium text-slate-900">{profile.planName} plan</span>
+          <Link href="/dashboard/billing" className="text-slate-500 transition-colors hover:text-slate-900">
+            Upgrade
           </Link>
-          <button type="button" onClick={signOut} className="inline-flex items-center gap-1.5 rounded-md transition-colors hover:text-rose-700">
-            <LogOut className="h-3 w-3" aria-hidden="true" /> Sign out
-          </button>
         </div>
+        <div className="mt-2 h-1 overflow-hidden rounded-full bg-slate-100" aria-hidden="true">
+          <div className="h-full rounded-full bg-slate-900 transition-[width] duration-500 ease-out" style={{ width: `${usedPct}%` }} />
+        </div>
+        <p className="tabular mt-1.5 text-[11px] text-slate-500">
+          {profile.activeAgents} of {profile.maxAgents} agents running
+        </p>
       </div>
     </div>
   );
@@ -171,31 +166,22 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
     <div className="flex h-dvh w-full overflow-hidden bg-slate-50 font-sans text-slate-900 antialiased">
       <a
         href="#dashboard-main"
-        className="fixed left-4 top-4 z-[60] -translate-y-20 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition-transform focus:translate-y-0"
+        className="fixed left-4 top-3 z-[60] -translate-y-20 rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white transition-transform focus:translate-y-0"
       >
         Skip to content
       </a>
 
-      {/* Desktop sidebar */}
-      <aside className="z-20 hidden h-full w-64 shrink-0 border-r border-slate-900/5 bg-white lg:block">{sidebar}</aside>
+      <aside className="z-20 hidden h-full w-60 shrink-0 border-r border-slate-200 bg-white lg:block">{sidebar}</aside>
 
       {/* Mobile drawer */}
-      <div
-        className={cn("fixed inset-0 z-50 lg:hidden", navOpen ? "" : "pointer-events-none")}
-        aria-hidden={!navOpen}
-        inert={!navOpen}
-      >
-        <div
-          onClick={() => setNavOpen(false)}
-          className={cn("absolute inset-0 bg-slate-950/40 transition-opacity duration-500", EASE, navOpen ? "opacity-100" : "opacity-0")}
-        />
+      <div className={cn("fixed inset-0 z-50 lg:hidden", navOpen ? "" : "pointer-events-none")} aria-hidden={!navOpen} inert={!navOpen}>
+        <div onClick={() => setNavOpen(false)} className={cn("absolute inset-0 bg-slate-950/30 transition-opacity duration-200", navOpen ? "opacity-100" : "opacity-0")} />
         <aside
           role="dialog"
           aria-modal="true"
           aria-label="Navigation"
           className={cn(
-            "absolute inset-y-0 left-0 w-72 max-w-[85vw] bg-white shadow-lift transition-transform duration-500",
-            EASE,
+            "absolute inset-y-0 left-0 w-64 max-w-[85vw] border-r border-slate-200 bg-white transition-transform duration-200 ease-out",
             navOpen ? "translate-x-0" : "-translate-x-full"
           )}
         >
@@ -204,121 +190,93 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
       </div>
 
       <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-3 border-b border-slate-900/5 bg-white/85 px-4 backdrop-blur-xl sm:px-6">
+        <header className="z-30 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-slate-200 bg-white px-3 sm:px-5">
           <div className="flex min-w-0 items-center gap-2">
             <button
               type="button"
               onClick={() => setNavOpen(true)}
               aria-label="Open navigation"
               aria-expanded={navOpen}
-              className="flex h-10 w-10 items-center justify-center rounded-full text-slate-900 hover:bg-slate-900/5 lg:hidden"
+              className="flex h-8 w-8 items-center justify-center rounded-md text-slate-700 hover:bg-slate-100 lg:hidden"
             >
-              <Menu className="h-5 w-5" />
+              <Menu className="h-4 w-4" />
             </button>
-
-            <div role="group" aria-label="Environment" className="flex items-center rounded-full bg-slate-900/[0.05] p-1">
-              <button
-                type="button"
-                onClick={() => setEnvironment("CLOUD")}
-                aria-pressed={environment === "CLOUD"}
-                className={cn(
-                  "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-[background-color,box-shadow] duration-300",
-                  environment === "CLOUD" ? "bg-white font-semibold text-slate-900 shadow-soft" : "text-slate-600 hover:text-slate-900"
-                )}
-              >
-                <Cloud className="h-3.5 w-3.5 text-sky-600" aria-hidden="true" />
-                <span>Cloud</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setEnvironment("LOCAL_PC")}
-                aria-pressed={environment === "LOCAL_PC"}
-                className={cn(
-                  "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-[background-color,box-shadow] duration-300",
-                  environment === "LOCAL_PC" ? "bg-white font-semibold text-slate-900 shadow-soft" : "text-slate-600 hover:text-slate-900"
-                )}
-              >
-                <Laptop className="h-3.5 w-3.5 text-indigo-600" aria-hidden="true" />
-                <span>Local PC</span>
-              </button>
-            </div>
+            <Segmented
+              label="Environment"
+              value={environment}
+              onChange={setEnvironment}
+              options={[
+                { value: "CLOUD", label: "Cloud", icon: Cloud, iconClassName: "text-sky-600" },
+                { value: "LOCAL_PC", label: "Local PC", icon: Laptop, iconClassName: "text-indigo-600" },
+              ]}
+            />
           </div>
 
-          <div className="flex items-center gap-2">
-            <div className="hidden items-center gap-2 rounded-full bg-white px-3 py-1.5 text-xs text-slate-600 ring-1 ring-slate-900/10 xl:flex">
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
-              </span>
-              <span className="font-mono font-semibold text-slate-900">
-                Loop guard: {interceptionLatencyMs > 0 ? `${Math.round(interceptionLatencyMs)}ms` : "idle"}
-              </span>
+          <div className="flex items-center gap-1.5">
+            <div className="hidden h-8 items-center gap-2 rounded-md px-2.5 text-xs text-slate-500 xl:flex" title="Time the loop guard takes to check each call">
+              <span className="live-dot h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
+              Loop guard
+              <span className="font-mono text-slate-900">{interceptionLatencyMs > 0 ? `${Math.round(interceptionLatencyMs)}ms` : "idle"}</span>
             </div>
-
-            <NotificationBell />
 
             <Link
               href="/dashboard/billing"
-              className="group hidden items-center gap-2 rounded-full bg-white px-3.5 py-2 text-xs ring-1 ring-slate-900/10 transition-colors hover:bg-slate-50 sm:flex"
-              title="View token wallet and quotas"
+              className="hidden h-8 items-center gap-2 rounded-md border border-slate-200 px-2.5 text-xs transition-colors hover:border-slate-300 hover:bg-slate-50 sm:flex"
+              title="Token wallet"
             >
               <Coins className="h-3.5 w-3.5 shrink-0 text-amber-600" aria-hidden="true" />
-              <div className="flex items-center gap-1.5">
-                <span className="font-semibold text-slate-900">{formatTokens(wallet ? wallet.free_tokens : profile.freeTokens)}</span>
-                <span className="text-slate-500">Free</span>
-                <span className="text-slate-300">·</span>
-                <span className="font-semibold text-slate-900">{formatTokens(wallet ? wallet.paid_tokens : profile.paidTokens)}</span>
-                <span className="text-slate-500">Paid</span>
-              </div>
+              <span className="tabular font-medium text-slate-900">{formatTokens(wallet ? wallet.free_tokens : profile.freeTokens)}</span>
+              <span className="text-slate-400">free</span>
+              <span className="h-3 w-px bg-slate-200" aria-hidden="true" />
+              <span className="tabular font-medium text-slate-900">{formatTokens(wallet ? wallet.paid_tokens : profile.paidTokens)}</span>
+              <span className="text-slate-400">paid</span>
             </Link>
 
-            <div className="relative" ref={dropdownRef}>
+            <NotificationBell />
+
+            <div className="relative" ref={accountRef}>
               <button
                 type="button"
-                onClick={() => setAccountOpen(!accountOpen)}
+                onClick={() => setAccountOpen((v) => !v)}
                 aria-haspopup="menu"
                 aria-expanded={accountOpen}
-                className="flex items-center gap-2 rounded-full bg-white py-1 pl-1 pr-2.5 text-xs font-medium text-slate-800 ring-1 ring-slate-900/10 transition-colors hover:bg-slate-50"
+                className="flex h-8 items-center gap-2 rounded-md pl-1 pr-1.5 text-xs transition-colors hover:bg-slate-100"
               >
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-900 text-[11px] font-semibold text-white">
-                  {loading ? "…" : (profile.name || profile.email || "?").charAt(0).toUpperCase()}
-                </span>
-                <span className="hidden max-w-[120px] truncate font-semibold text-slate-900 sm:inline">{loading ? "Loading…" : profile.name}</span>
-                <ChevronDown className="h-3.5 w-3.5 text-slate-500" aria-hidden="true" />
+                <span className="flex h-6 w-6 items-center justify-center rounded bg-slate-900 text-[11px] font-semibold text-white">{initial}</span>
+                <span className="hidden max-w-[120px] truncate font-medium text-slate-900 sm:inline">{loading ? "Loading…" : profile.name}</span>
+                <ChevronsUpDown className="h-3.5 w-3.5 text-slate-400" aria-hidden="true" />
               </button>
 
               {accountOpen && (
-                <div role="menu" className="absolute right-0 z-50 mt-2 w-64 rounded-2xl bg-white p-1.5 shadow-lift ring-1 ring-slate-900/10">
-                  <div className="border-b border-slate-900/5 px-3 py-2.5">
+                <div role="menu" className="pop-in absolute right-0 z-50 mt-1.5 w-64 origin-top-right rounded-lg border border-slate-200 bg-white p-1 shadow-lift">
+                  <div className="px-2.5 py-2">
                     <div className="flex items-center gap-1.5">
-                      <span className="truncate text-sm font-semibold text-slate-900">{profile.name}</span>
-                      <span
-                        className={cn(
-                          "rounded-full px-2 py-0.5 font-mono text-[10px] font-medium",
-                          profile.role === "ADMIN" ? "bg-slate-900 text-white" : "bg-slate-900/[0.06] text-slate-600"
-                        )}
-                      >
-                        {profile.role}
-                      </span>
+                      <span className="truncate text-sm font-medium text-slate-900">{profile.name}</span>
+                      {profile.role === "ADMIN" && <span className="rounded bg-slate-900 px-1.5 py-px font-mono text-[10px] text-white">admin</span>}
                     </div>
-                    <p className="mt-0.5 truncate text-[11px] text-slate-500">{profile.email}</p>
-                    <p className="mt-0.5 font-mono text-[11px] text-slate-500">
-                      {profile.planName} · {profile.activeAgents}/{profile.maxAgents} agents
-                    </p>
+                    <p className="truncate text-xs text-slate-500">{profile.email}</p>
                   </div>
+                  <div className="my-1 h-px bg-slate-100" />
                   <Link
                     href="/dashboard/billing"
                     role="menuitem"
                     onClick={() => setAccountOpen(false)}
-                    className="mt-1 flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs text-slate-700 hover:bg-slate-900/[0.05]"
+                    className="flex h-8 items-center gap-2 rounded-md px-2.5 text-[13px] text-slate-700 hover:bg-slate-100"
                   >
-                    <CreditCard className="h-3.5 w-3.5 text-slate-500" aria-hidden="true" /> Plan &amp; billing
+                    <CreditCard className="h-3.5 w-3.5 text-slate-400" aria-hidden="true" /> Plan &amp; billing
+                    <span className="tabular ml-auto font-mono text-[11px] text-slate-400">
+                      {profile.activeAgents}/{profile.maxAgents}
+                    </span>
                   </Link>
+                  <Link href="/" role="menuitem" className="flex h-8 items-center gap-2 rounded-md px-2.5 text-[13px] text-slate-700 hover:bg-slate-100">
+                    <ArrowUpRight className="h-3.5 w-3.5 text-slate-400" aria-hidden="true" /> Public site
+                  </Link>
+                  <div className="my-1 h-px bg-slate-100" />
                   <button
                     type="button"
                     role="menuitem"
                     onClick={signOut}
-                    className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-xs text-rose-700 hover:bg-rose-50"
+                    className="flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-[13px] text-rose-700 hover:bg-rose-50"
                   >
                     <LogOut className="h-3.5 w-3.5" aria-hidden="true" /> Sign out
                   </button>
@@ -328,27 +286,24 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <main id="dashboard-main" className="min-w-0 flex-1 space-y-6 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-8">
-          {children}
-
-          <footer className="flex flex-col items-center justify-between gap-3 border-t border-slate-900/5 pb-2 pt-6 text-xs text-slate-500 sm:flex-row">
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[11px]">
-              <span>ArgusOps v0.2</span>
-              <span className="hidden sm:inline">•</span>
-              <span>Your prompts and code stay on your machine</span>
-            </div>
-            <div className="flex items-center gap-4">
-              <Link href="/docs" className="hover:text-slate-900">
-                Docs
-              </Link>
-              <Link href="/status" className="hover:text-slate-900">
-                Status
-              </Link>
-              <Link href="/privacy" className="hover:text-slate-900">
-                Privacy
-              </Link>
-            </div>
-          </footer>
+        <main id="dashboard-main" className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
+          <div className="dash mx-auto w-full max-w-7xl space-y-6 p-4 sm:p-6 lg:px-8">
+            {children}
+            <footer className="flex flex-col gap-2 border-t border-slate-200 pb-2 pt-5 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between">
+              <span>Your prompts and code stay on your machine.</span>
+              <div className="flex items-center gap-4">
+                <Link href="/docs" className="hover:text-slate-900">
+                  Docs
+                </Link>
+                <Link href="/status" className="hover:text-slate-900">
+                  Status
+                </Link>
+                <Link href="/privacy" className="hover:text-slate-900">
+                  Privacy
+                </Link>
+              </div>
+            </footer>
+          </div>
         </main>
       </div>
     </div>

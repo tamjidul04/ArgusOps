@@ -24,7 +24,7 @@ const ITEMS = [
   {
     icon: Lock,
     title: "Credentials stored as hashes",
-    body: "Passwords are hashed with scrypt. Session tokens and API keys are stored only as SHA-256 hashes, so a database leak does not reveal them.",
+    body: "Passwords are hashed with scrypt. Session tokens and API keys are stored only as SHA-256 hashes, so a database leak does not them.",
   },
   {
     icon: UserCheck,
@@ -55,7 +55,7 @@ export default function SecurityPage() {
       <Container className="py-20 md:py-28">
         <ul className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {ITEMS.map((it) => (
-            <Bezel as="li" key={it.title} className="reveal">
+            <Bezel as="li" key={it.title} className="">
               <it.icon className="h-5 w-5 text-slate-900" aria-hidden="true" />
               <h2 className="mt-5 text-lg font-semibold tracking-tight text-slate-900">{it.title}</h2>
               <p className="mt-2 text-sm leading-relaxed text-slate-600">{it.body}</p>
@@ -63,7 +63,7 @@ export default function SecurityPage() {
           ))}
         </ul>
 
-        <Bezel className="reveal mt-6" innerClassName="sm:p-8">
+        <Bezel className="mt-6" innerClassName="sm:p-8">
           <h2 className="text-lg font-semibold tracking-tight text-slate-900">Other safeguards</h2>
           <ul className="mt-4 grid gap-3 text-sm text-slate-700 md:grid-cols-2">
             <li>Writes made with a browser session must come from the same origin.</li>

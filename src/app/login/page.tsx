@@ -63,7 +63,7 @@ function LoginForm() {
       footer={
         <>
           New to ArgusOps?{" "}
-          <Link href="/signup" className="font-semibold text-slate-900 underline underline-offset-4">
+          <Link href="/signup" className="font-medium text-slate-900 underline decoration-slate-300 underline-offset-4 transition-colors hover:decoration-slate-900">
             Create a free account
           </Link>
         </>
@@ -74,7 +74,7 @@ function LoginForm() {
 
       <form onSubmit={onSubmit} className="space-y-4">
         {error && (
-          <div role="alert" className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">
+          <div role="alert" className="flex items-start gap-2 rounded-md border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
             <span>{error}</span>
           </div>
@@ -104,7 +104,7 @@ function LoginForm() {
         />
 
         {needsOtp && (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
+          <div className="rounded-md border border-amber-200 bg-amber-50 p-3">
             <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-amber-800">
               <KeyRound className="h-4 w-4" /> Two-factor code
             </div>
