@@ -26,26 +26,26 @@ export default function StatusPage() {
       />
 
       <Container className="max-w-3xl space-y-6 py-16 md:py-24">
-        <Bezel className="reveal" innerClassName="sm:p-8">
+        <Bezel className="" innerClassName="sm:p-8">
           <div className="flex items-start gap-4">
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-900/[0.05]">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white">
               <Activity className="h-5 w-5 text-slate-700" aria-hidden="true" />
             </span>
             <div>
               <h2 className="text-lg font-semibold tracking-tight text-slate-900">When an agent is affected, you will know</h2>
               <p className="mt-2 text-sm leading-relaxed text-slate-600">
                 Your own agents are always visible in the dashboard, with every pause, stop and incident. If the CLI cannot reach ArgusOps it keeps supervising on your
-                machine, and you can run with <code className="rounded-md bg-slate-900/[0.06] px-1.5 py-0.5 font-mono text-[0.85em]">--offline</code> at any time.
+                machine, and you can run with <code className="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[0.85em]">--offline</code> at any time.
               </p>
             </div>
           </div>
         </Bezel>
 
-        <section aria-labelledby="parts-title" className="reveal">
-          <h2 id="parts-title" className="px-1 text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
+        <section aria-labelledby="parts-title" className="">
+          <h2 id="parts-title" className="px-1 text-xs font-medium text-slate-500">
             What a future status page will cover
           </h2>
-          <ul className="mt-3 divide-y divide-slate-900/5 overflow-hidden rounded-[1.75rem] bg-white shadow-soft ring-1 ring-slate-900/5">
+          <ul className="mt-3 divide-y divide-slate-100 overflow-hidden rounded-lg bg-white border border-slate-200">
             {PARTS.map((p) => (
               <li key={p.name} className="flex flex-col gap-1 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
                 <span className="text-sm font-semibold text-slate-900">{p.name}</span>
@@ -55,7 +55,7 @@ export default function StatusPage() {
           </ul>
         </section>
 
-        <div className="reveal flex flex-col gap-3 pt-4 sm:flex-row">
+        <div className="flex flex-col gap-3 pt-4 sm:flex-row">
           <ButtonLink href="/dashboard/guardrails">See your agents</ButtonLink>
           <ButtonLink href="/changelog" variant="secondary">
             Read the changelog

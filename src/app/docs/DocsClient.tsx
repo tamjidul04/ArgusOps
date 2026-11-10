@@ -18,15 +18,15 @@ const SECTIONS = [
 const h2 = "scroll-mt-28 text-2xl font-semibold tracking-tight text-slate-900 md:text-3xl";
 const h3 = "mt-8 text-base font-semibold text-slate-900";
 const p = "mt-3 text-pretty leading-relaxed text-slate-600";
-const code = "rounded-md bg-slate-900/[0.06] px-1.5 py-0.5 font-mono text-[0.85em] text-slate-800";
+const code = "rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[0.85em] text-slate-800";
 
 function Toc({ className }: { className?: string }) {
   return (
     <nav aria-label="On this page" className={className}>
-      <p className="mb-3 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
+      <p className="mb-3 flex items-center gap-2 text-xs font-medium text-slate-500">
         <BookOpen className="h-3.5 w-3.5" aria-hidden="true" /> On this page
       </p>
-      <ul className="space-y-0.5 border-l border-slate-900/10">
+      <ul className="space-y-0.5 border-l border-slate-200">
         {SECTIONS.map((s) => (
           <li key={s.id}>
             <a href={`#${s.id}`} className="-ml-px block border-l border-transparent py-1.5 pl-4 text-sm text-slate-600 transition-colors hover:border-slate-900 hover:text-slate-900">
@@ -47,7 +47,7 @@ export function DocsClient() {
         <Toc className="sticky top-28" />
       </aside>
 
-      <details className="rounded-2xl bg-white px-4 py-3 shadow-soft ring-1 ring-slate-900/5 lg:hidden">
+      <details className="rounded-lg bg-white px-4 py-3 border border-slate-200 lg:hidden">
         <summary className="cursor-pointer text-sm font-semibold text-slate-900">On this page</summary>
         <Toc className="mt-4" />
       </details>
@@ -74,7 +74,7 @@ export function DocsClient() {
 
           <h3 className={h3}>1. Create an account</h3>
           <p className={p}>
-            <Link href="/signup" className="font-medium text-slate-900 underline underline-offset-4">
+            <Link href="/signup" className="font-medium text-slate-900 underline decoration-slate-300 underline-offset-4 transition-colors hover:decoration-slate-900">
               Sign up
             </Link>{" "}
             with email, Google or GitHub. The Free plan supervises two agents at once.
@@ -82,7 +82,7 @@ export function DocsClient() {
 
           <h3 className={h3}>2. Get the CLI</h3>
           <p className={p}>
-            From the repository root, build the bundled CLI. A published npm package is planned. See <Link href="/download" className="font-medium text-slate-900 underline underline-offset-4">Download</Link>. Until then, run{" "}
+            From the repository root, build the bundled CLI. A published npm package is planned. See <Link href="/download" className="font-medium text-slate-900 underline decoration-slate-300 underline-offset-4 transition-colors hover:decoration-slate-900">Download</Link>. Until then, run{" "}
             <code className={code}>node packages/cli/dist/argus.mjs</code> wherever these docs say <code className={code}>argus</code>.
           </p>
           <CodeBlock className="mt-4" title="terminal" code={"npm install\nnpm run cli:build"} />
@@ -103,10 +103,10 @@ export function DocsClient() {
           <h2 id="cli" className={h2}>
             CLI reference
           </h2>
-          <div className="mt-4 overflow-x-auto rounded-2xl bg-white shadow-soft ring-1 ring-slate-900/5">
+          <div className="mt-4 overflow-x-auto rounded-lg bg-white border border-slate-200">
             <table className="w-full min-w-[32rem] text-left text-sm">
               <thead>
-                <tr className="border-b border-slate-900/5 text-xs uppercase tracking-[0.14em] text-slate-500">
+                <tr className="border-b border-slate-200 text-xs text-slate-500">
                   <th scope="col" className="px-5 py-3 font-medium">
                     Command
                   </th>
@@ -115,7 +115,7 @@ export function DocsClient() {
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-900/5 text-slate-700">
+              <tbody className="divide-y divide-slate-100 text-slate-700">
                 {[
                   ["argus login", "Pairs this machine with your account through the browser."],
                   ["argus run claude [args]", "Runs Claude Code under supervision. Arguments go to Claude Code."],
@@ -148,7 +148,7 @@ export function DocsClient() {
           <p className={p}>
             The extension adds an <strong>ArgusOps</strong> view that lists your agents with status and tokens, a status bar item that turns amber when an
             agent needs you, and alerts with Approve suggestion, Edit and Stop. Download it from the{" "}
-            <Link href="/download" className="font-medium text-slate-900 underline underline-offset-4">
+            <Link href="/download" className="font-medium text-slate-900 underline decoration-slate-300 underline-offset-4 transition-colors hover:decoration-slate-900">
               download page
             </Link>{" "}
             and use <strong>Install from VSIX…</strong>.
@@ -198,7 +198,7 @@ export function DocsClient() {
           </h2>
           <p className={p}>
             Free supervises 2 agents at once, Pro 10, Enterprise is custom. The limit is checked when an agent starts. See{" "}
-            <Link href="/pricing" className="font-medium text-slate-900 underline underline-offset-4">
+            <Link href="/pricing" className="font-medium text-slate-900 underline decoration-slate-300 underline-offset-4 transition-colors hover:decoration-slate-900">
               pricing
             </Link>
             .
@@ -211,7 +211,7 @@ export function DocsClient() {
           </h2>
           <p className={p}>
             Model calls go from your machine to the provider with your own credentials. ArgusOps receives token counts and incident reports. Read the{" "}
-            <Link href="/security" className="font-medium text-slate-900 underline underline-offset-4">
+            <Link href="/security" className="font-medium text-slate-900 underline decoration-slate-300 underline-offset-4 transition-colors hover:decoration-slate-900">
               security page
             </Link>{" "}
             for details.

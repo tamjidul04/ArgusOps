@@ -1,6 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import { Logo } from "@/components/ui/Logo";
+import { Logo, Wordmark } from "@/components/ui/Logo";
 import { Container } from "@/components/ui/Layout";
 
 const COLUMNS: { title: string; links: { label: string; href: string }[] }[] = [
@@ -38,24 +38,24 @@ const COLUMNS: { title: string; links: { label: string; href: string }[] }[] = [
 
 export function PublicFooter() {
   return (
-    <footer className="border-t border-slate-900/5 bg-white">
-      <Container className="py-16">
-        <div className="grid gap-12 md:grid-cols-[1.4fr_repeat(3,1fr)]">
-          <div className="max-w-xs space-y-4">
-            <Link href="/" aria-label="ArgusOps home" className="inline-block rounded-lg">
+    <footer className="overflow-hidden border-t border-slate-200 bg-white">
+      <Container className="pt-14">
+        <div className="grid gap-10 md:grid-cols-[1.4fr_repeat(3,1fr)]">
+          <div className="max-w-xs space-y-3">
+            <Link href="/" aria-label="ArgusOps home" className="inline-block rounded-md">
               <Logo />
             </Link>
-            <p className="text-sm leading-relaxed text-slate-600">
+            <p className="text-sm leading-relaxed text-slate-500">
               A supervisor for AI coding agents. It catches loops, pauses the agent, and tells you before the tokens are gone.
             </p>
           </div>
           {COLUMNS.map((col) => (
             <nav key={col.title} aria-label={col.title}>
-              <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">{col.title}</p>
-              <ul className="mt-4 space-y-3 text-sm">
+              <p className="text-[13px] font-medium text-slate-900">{col.title}</p>
+              <ul className="mt-3 space-y-2 text-sm">
                 {col.links.map((l) => (
                   <li key={l.href + l.label}>
-                    <Link href={l.href} className="text-slate-700 transition-colors hover:text-slate-950">
+                    <Link href={l.href} className="text-slate-500 transition-colors hover:text-slate-900">
                       {l.label}
                     </Link>
                   </li>
@@ -64,11 +64,15 @@ export function PublicFooter() {
             </nav>
           ))}
         </div>
-        <div className="mt-14 flex flex-col gap-2 border-t border-slate-900/5 pt-6 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
-          <p>&copy; 2026 ArgusOps. All rights reserved.</p>
+        <div className="mt-12 flex flex-col gap-2 border-t border-slate-100 py-5 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between">
+          <p>&copy; 2026 ArgusOps</p>
           <p>Bring your own model key. ArgusOps never sees your prompts or code.</p>
         </div>
       </Container>
+      {/* The wordmark, set large and cropped by the page edge. */}
+      <div aria-hidden="true" className="pointer-events-none mx-auto -mb-[3.2vw] max-w-6xl select-none px-4 sm:px-6 lg:px-8">
+        <Wordmark className="h-auto w-full translate-y-0 text-slate-100" />
+      </div>
     </footer>
   );
 }

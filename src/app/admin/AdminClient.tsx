@@ -30,7 +30,7 @@ import { Badge, DashHeader, EmptyState, Panel, buttonClasses, inputClass } from 
 function Dialog({ id, title, description, onClose, children }: { id: string; title: string; description?: React.ReactNode; onClose: () => void; children: React.ReactNode }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4" onKeyDown={(e) => e.key === "Escape" && onClose()}>
-      <div role="dialog" aria-modal="true" aria-labelledby={id} className="max-h-[90dvh] w-full max-w-md space-y-5 overflow-y-auto rounded-3xl bg-white p-6 shadow-lift ring-1 ring-slate-900/10">
+      <div role="dialog" aria-modal="true" aria-labelledby={id} className="max-h-[90dvh] w-full max-w-md space-y-5 overflow-y-auto rounded-lg bg-white p-6 shadow-lift border border-slate-200">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h3 id={id} className="text-lg font-semibold tracking-tight text-slate-900">
@@ -38,7 +38,7 @@ function Dialog({ id, title, description, onClose, children }: { id: string; tit
             </h3>
             {description && <p className="mt-0.5 text-sm text-slate-600">{description}</p>}
           </div>
-          <button type="button" onClick={onClose} aria-label="Close" className="rounded-full p-1.5 text-slate-500 hover:bg-slate-900/5 hover:text-slate-800">
+          <button type="button" onClick={onClose} aria-label="Close" className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-800">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -365,7 +365,7 @@ export function AdminClient({
         <div
           role="status"
           className={cn(
-            "fixed bottom-6 right-4 z-50 flex max-w-[calc(100vw-2rem)] items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium shadow-lift ring-1 sm:right-6",
+            "fixed bottom-6 right-4 z-50 flex max-w-[calc(100vw-2rem)] items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium shadow-lift ring-1 sm:right-6",
             toastMessage.type === "success" && "bg-emerald-50 text-emerald-900 ring-emerald-600/20",
             toastMessage.type === "error" && "bg-red-50 text-red-900 ring-red-600/20",
             toastMessage.type === "info" && "on-dark bg-slate-900 text-white ring-slate-900"
@@ -375,7 +375,7 @@ export function AdminClient({
           {toastMessage.type === "error" && <AlertCircle className="h-5 w-5 shrink-0 text-red-600" aria-hidden="true" />}
           {toastMessage.type === "info" && <Shield className="h-5 w-5 shrink-0 text-amber-400" aria-hidden="true" />}
           <span>{toastMessage.text}</span>
-          <button onClick={() => setToastMessage(null)} aria-label="Dismiss message" className="ml-1 rounded-full p-1 text-inherit hover:opacity-70">
+          <button onClick={() => setToastMessage(null)} aria-label="Dismiss message" className="ml-1 rounded-md p-1 text-inherit hover:opacity-70">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -413,7 +413,7 @@ export function AdminClient({
         <div className="overflow-x-auto">
           <table className="w-full min-w-[44rem] border-collapse text-left text-sm">
             <thead>
-              <tr className="border-b border-slate-900/5 bg-slate-900/[0.02] text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500">
+              <tr className="border-b border-slate-200 bg-slate-50 text-[11px] font-medium text-slate-500">
                 <th scope="col" className="px-4 py-3">Transaction ID</th>
                 <th scope="col" className="px-4 py-3">User Email</th>
                 <th scope="col" className="px-4 py-3">Requested Tier</th>
@@ -422,7 +422,7 @@ export function AdminClient({
                 <th scope="col" className="px-4 py-3 text-right">Admin Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-900/5 text-slate-700">
+            <tbody className="divide-y divide-slate-100 text-slate-700">
               {queue.length === 0 ? (
                 <tr>
                   <td colSpan={6}>
@@ -506,7 +506,7 @@ export function AdminClient({
                   description: "",
                 });
               }}
-              className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-3.5 py-1.5 text-xs font-semibold text-slate-700 ring-1 ring-slate-900/10 hover:bg-slate-50"
+              className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-md px-3.5 py-1.5 text-xs font-semibold text-slate-700 border border-slate-200 hover:bg-slate-50"
             >
               <PlusCircle className="h-3.5 w-3.5" aria-hidden="true" /> Add Tier
             </button>
@@ -516,7 +516,7 @@ export function AdminClient({
           <div className="overflow-x-auto">
             <table className="w-full min-w-[32rem] border-collapse text-left text-sm">
               <thead>
-                <tr className="border-b border-slate-900/5 bg-slate-900/[0.02] text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500">
+                <tr className="border-b border-slate-200 bg-slate-50 text-[11px] font-medium text-slate-500">
                   <th scope="col" className="px-5 py-3">Tier</th>
                   <th scope="col" className="px-5 py-3">Price</th>
                   <th scope="col" className="px-5 py-3">Agent Cap</th>
@@ -524,7 +524,7 @@ export function AdminClient({
                   <th scope="col" className="px-5 py-3 text-right">Edit</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-900/5 text-slate-700">
+              <tbody className="divide-y divide-slate-100 text-slate-700">
                 {plans.map((plan) => {
                   const isFree = plan.price === 0;
 
@@ -552,7 +552,7 @@ export function AdminClient({
                                 plan.requires_admin_approval ? "bg-slate-900" : "bg-slate-300"
                               )}
                             >
-                              <span className={cn("block h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-300 ease-spring", plan.requires_admin_approval && "translate-x-5")} />
+                              <span className={cn("block h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200 ease-spring", plan.requires_admin_approval && "translate-x-5")} />
                             </button>
                           </div>
                         )}
@@ -564,7 +564,7 @@ export function AdminClient({
                             setEditPlanModal(plan);
                           }}
                           aria-label={`Edit ${plan.name}`}
-                          className="rounded-full p-2 text-slate-600 hover:bg-slate-900/5 hover:text-slate-900"
+                          className="rounded-md p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                         >
                           <Edit className="h-4 w-4" />
                         </button>
@@ -575,7 +575,7 @@ export function AdminClient({
               </tbody>
             </table>
           </div>
-          <div className="mt-auto flex items-center justify-between gap-3 border-t border-slate-900/5 bg-slate-900/[0.02] px-5 py-3.5 text-xs text-slate-600">
+          <div className="mt-auto flex items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-5 py-3.5 text-xs text-slate-600">
             <span>Active plan registry synced across US-East cluster</span>
             <span className="font-mono">sync: instant</span>
           </div>
@@ -646,7 +646,7 @@ export function AdminClient({
               })}
             </ul>
           )}
-          <div className="mt-auto flex items-center justify-between gap-3 border-t border-slate-900/5 bg-slate-900/[0.02] px-5 py-3.5 text-xs text-slate-600">
+          <div className="mt-auto flex items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-5 py-3.5 text-xs text-slate-600">
             <span>Token injections bypass billing ledger directly</span>
             <span className="font-mono">zero-trust: verified</span>
           </div>
@@ -675,11 +675,11 @@ export function AdminClient({
                     onClick={() => setInjectFreeAmount(amt)}
                     aria-pressed={injectFreeAmount === amt}
                     className={cn(
-                      "rounded-full px-2 py-2 text-center text-xs font-semibold transition-colors",
-                      injectFreeAmount === amt ? "bg-slate-900 text-white" : "bg-white text-slate-700 ring-1 ring-slate-900/10 hover:bg-slate-50"
+                      "rounded-md px-2 py-2 text-center text-xs font-semibold transition-colors",
+                      injectFreeAmount === amt ? "bg-slate-900 text-white" : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50"
                     )}
                   >
-                    +{(amt / 1000).toLocaleString()}k
+                    +{(amt / 1000).toLocaleString("en-US")}k
                   </button>
                 ))}
               </div>
@@ -694,7 +694,7 @@ export function AdminClient({
               <input id="inject-agents" type="number" value={injectMaxAgents} onChange={(e) => setInjectMaxAgents(Number(e.target.value))} className={cn(inputClass, "font-mono")} />
             </FormField>
 
-            <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-900/5 pt-4">
+            <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-200 pt-4">
               <button type="button" onClick={() => setInjectModalUser(null)} className={buttonClasses("secondary", false)}>
                 Cancel
               </button>
@@ -755,7 +755,7 @@ export function AdminClient({
               />
             </FormField>
 
-            <label className="flex cursor-pointer items-center justify-between gap-4 rounded-xl bg-slate-900/[0.03] p-4 ring-1 ring-slate-900/[0.07]">
+            <label className="flex cursor-pointer items-center justify-between gap-4 rounded-md bg-slate-50 p-4 border border-slate-200">
               <span>
                 <span className="block text-sm font-medium text-slate-900">Require Admin Approval</span>
                 <span className="block text-xs text-slate-600">Gate checkouts through the manual approval queue</span>
@@ -768,7 +768,7 @@ export function AdminClient({
               />
             </label>
 
-            <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-900/5 pt-4">
+            <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-200 pt-4">
               <button type="button" onClick={() => setEditPlanModal(null)} className={buttonClasses("secondary", false)}>
                 Cancel
               </button>
@@ -781,7 +781,7 @@ export function AdminClient({
       )}
 
       {/* Owner strip */}
-      <div className="flex flex-col items-start justify-between gap-2 border-t border-slate-900/5 pt-6 text-xs text-slate-600 sm:flex-row sm:items-center">
+      <div className="flex flex-col items-start justify-between gap-2 border-t border-slate-200 pt-6 text-xs text-slate-600 sm:flex-row sm:items-center">
         <span>Admin console</span>
         <span>
           Owner: <strong className="text-slate-900">{profile.name}</strong>

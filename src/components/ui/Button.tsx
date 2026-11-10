@@ -1,44 +1,34 @@
 import React from "react";
 import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Variant = "primary" | "secondary" | "ghost" | "inverse";
 
 const base =
-  "group relative inline-flex items-center justify-center gap-3 rounded-full text-sm font-semibold " +
-  "transition-[transform,background-color,box-shadow,color] duration-500 ease-spring active:scale-[0.98] select-none";
+  "group relative inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium " +
+  "transition-[background-color,border-color,color,transform] duration-150 ease-out active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50";
 
 const variants: Record<Variant, string> = {
-  primary: "bg-slate-900 text-white shadow-soft hover:bg-slate-800",
-  secondary: "bg-white text-slate-900 ring-1 ring-slate-900/10 shadow-soft hover:bg-slate-50",
-  ghost: "text-slate-700 hover:bg-slate-900/5 hover:text-slate-900",
-  inverse: "bg-white text-slate-900 hover:bg-slate-100",
+  primary: "bg-slate-900 text-white hover:bg-slate-800",
+  secondary: "border border-slate-200 bg-white text-slate-900 hover:border-slate-300 hover:bg-slate-50",
+  ghost: "text-slate-700 hover:bg-slate-100 hover:text-slate-900",
+  inverse: "bg-white text-slate-900 hover:bg-slate-200",
 };
 
-const chip: Record<Variant, string> = {
-  primary: "bg-white/15 text-white",
-  secondary: "bg-slate-900/5 text-slate-900",
-  ghost: "bg-slate-900/5 text-slate-900",
-  inverse: "bg-slate-900/10 text-slate-900",
-};
-
+/** Class string for anything that should look like a button (links, downloads, form submits). */
 export function buttonClasses(variant: Variant = "primary", arrow = true, className?: string) {
-  return cn(base, variants[variant], arrow ? "py-2 pl-6 pr-2" : "px-5 py-2.5", className);
+  // Inside the dashboard (.dash) controls are one step denser than on marketing pages.
+  return cn(base, variants[variant], arrow ? "h-10 pl-4 pr-3.5" : "h-10 px-4", "in-[.dash]:h-9 in-[.dash]:px-3 in-[.dash]:text-[13px]", className);
 }
 
-function Chip({ variant }: { variant: Variant }) {
+/** The trailing arrow: a plain glyph that steps forward on hover, no chip. */
+export function ButtonArrow() {
   return (
-    <span
+    <ArrowRight
       aria-hidden="true"
-      className={cn(
-        "flex h-8 w-8 items-center justify-center rounded-full transition-transform duration-500 ease-spring",
-        "group-hover:-translate-y-px group-hover:translate-x-0.5 group-hover:scale-105",
-        chip[variant]
-      )}
-    >
-      <ArrowUpRight className="h-4 w-4" />
-    </span>
+      className="h-4 w-4 opacity-70 transition-transform duration-200 ease-out group-hover:translate-x-0.5 group-hover:opacity-100"
+    />
   );
 }
 
@@ -52,13 +42,13 @@ interface ButtonLinkProps {
   external?: boolean;
 }
 
-/** Pill link-button with the trailing arrow chip. Internal links use next/link. */
+/** Link styled as a button. Internal links use next/link. */
 export function ButtonLink({ href, variant = "primary", arrow = true, className, children, download, external }: ButtonLinkProps) {
   const cls = buttonClasses(variant, arrow, className);
   const inner = (
     <>
       <span>{children}</span>
-      {arrow && <Chip variant={variant} />}
+      {arrow && <ButtonArrow />}
     </>
   );
   if (download || external || /^https?:/.test(href)) {

@@ -141,7 +141,7 @@ export function NotificationsClient({ initialItems, initialUnread }: { initialIt
         <div
           role="status"
           className={cn(
-            "flex items-start gap-2 rounded-xl px-4 py-3 text-sm ring-1",
+            "flex items-start gap-2 rounded-md px-4 py-3 text-sm ring-1",
             flash.ok ? "bg-emerald-50 text-emerald-900 ring-emerald-600/20" : "bg-red-50 text-red-900 ring-red-600/20"
           )}
         >
@@ -160,7 +160,7 @@ export function NotificationsClient({ initialItems, initialUnread }: { initialIt
             <div className="flex items-center gap-3">
               {unread > 0 && <Badge tone="red">{unread} unread</Badge>}
               {unread > 0 && (
-                <button type="button" onClick={markAll} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-slate-700 ring-1 ring-slate-900/10 hover:bg-slate-50">
+                <button type="button" onClick={markAll} className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold text-slate-700 border border-slate-200 hover:bg-slate-50">
                   <CheckCheck className="h-3.5 w-3.5" aria-hidden="true" /> Mark all read
                 </button>
               )}
@@ -170,7 +170,7 @@ export function NotificationsClient({ initialItems, initialUnread }: { initialIt
         >
           {items.length === 0 ? (
             <EmptyState icon={Bell} title="No notifications yet">
-              Run an agent with <code className="rounded-md bg-slate-900/[0.06] px-1.5 py-0.5 font-mono text-xs">argus run claude</code>. If it gets stuck, you&apos;ll see it here.
+              Run an agent with <code className="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-xs">argus run claude</code>. If it gets stuck, you&apos;ll see it here.
             </EmptyState>
           ) : (
             <ul className="divide-y divide-slate-900/5">
@@ -178,13 +178,13 @@ export function NotificationsClient({ initialItems, initialUnread }: { initialIt
                 const { icon: Icon, tone, label: tag } = LEVEL[n.level] ?? LEVEL.INFO;
                 return (
                   <li key={n.id} className={cn("flex gap-3 px-5 py-4 sm:px-6", !n.read && "bg-slate-900/[0.025]")}>
-                    <span className={cn("mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ring-1", tone)}>
+                    <span className={cn("mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md ring-1", tone)}>
                       <Icon className="h-4 w-4" aria-hidden="true" />
                     </span>
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="text-sm font-semibold text-slate-900">{n.title}</span>
-                        <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-medium ring-1", tone)}>{tag}</span>
+                        <span className={cn("rounded-md px-2 py-0.5 text-[11px] font-medium ring-1", tone)}>{tag}</span>
                         {!n.read && <span className="h-2 w-2 rounded-full bg-red-600" role="img" aria-label="unread" />}
                       </div>
                       <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-slate-600">{n.body}</p>
@@ -204,7 +204,7 @@ export function NotificationsClient({ initialItems, initialUnread }: { initialIt
               <ChannelRow icon={MonitorSmartphone} title="In the dashboard" status="On" ok detail="The bell in the header, plus a pop-up while this site is open." />
               <ChannelRow icon={Laptop} title="Desktop pop-up from the CLI" status="On" ok detail="argus run shows a system notification on your computer. Set ARGUS_NO_DESKTOP_NOTIFY=1 to turn it off." />
               <li className="flex items-start gap-3">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-900/[0.05]">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white">
                   <Globe className="h-4 w-4 text-slate-600" aria-hidden="true" />
                 </span>
                 <div className="min-w-0 flex-1">
@@ -268,10 +268,10 @@ export function NotificationsClient({ initialItems, initialUnread }: { initialIt
 
             <ul className="space-y-2.5">
               {channels.length === 0 && (
-                <li className="rounded-xl border border-dashed border-slate-900/15 px-3 py-5 text-center text-sm text-slate-600">No webhooks yet.</li>
+                <li className="rounded-md border border-dashed border-slate-900/15 px-3 py-5 text-center text-sm text-slate-600">No webhooks yet.</li>
               )}
               {channels.map((c) => (
-                <li key={c.id} className="rounded-xl bg-slate-900/[0.03] p-3.5 ring-1 ring-slate-900/[0.07]">
+                <li key={c.id} className="rounded-md bg-slate-50 p-3.5 border border-slate-200">
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-slate-900">{c.label || "Webhook"}</p>
@@ -296,7 +296,7 @@ export function NotificationsClient({ initialItems, initialUnread }: { initialIt
                         type="button"
                         onClick={() => channelAction({ action: "test", id: c.id }, `test-${c.id}`)}
                         disabled={busy === `test-${c.id}`}
-                        className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 font-semibold text-slate-700 ring-1 ring-slate-900/10 hover:bg-slate-50 disabled:opacity-60"
+                        className="inline-flex items-center gap-1.5 rounded-md bg-white px-3 py-1.5 font-semibold text-slate-700 border border-slate-200 hover:bg-slate-50 disabled:opacity-60"
                       >
                         {busy === `test-${c.id}` ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" /> : <Send className="h-3 w-3" aria-hidden="true" />} Test
                       </button>
@@ -305,7 +305,7 @@ export function NotificationsClient({ initialItems, initialUnread }: { initialIt
                         onClick={() => removeChannel(c.id)}
                         disabled={busy === `del-${c.id}`}
                         aria-label="Remove webhook"
-                        className="rounded-full bg-white px-2.5 py-1.5 text-slate-600 ring-1 ring-slate-900/10 hover:bg-red-50 hover:text-red-700 disabled:opacity-60"
+                        className="rounded-md bg-white px-2.5 py-1.5 text-slate-600 border border-slate-200 hover:bg-red-50 hover:text-red-700 disabled:opacity-60"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -324,7 +324,7 @@ export function NotificationsClient({ initialItems, initialUnread }: { initialIt
 function ChannelRow({ icon: Icon, title, status, detail, ok }: { icon: React.ElementType; title: string; status: string; detail: string; ok?: boolean }) {
   return (
     <li className="flex items-start gap-3">
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-900/[0.05]">
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white">
         <Icon className="h-4 w-4 text-slate-600" aria-hidden="true" />
       </span>
       <div className="min-w-0 flex-1">

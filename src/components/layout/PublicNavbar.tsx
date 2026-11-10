@@ -15,19 +15,24 @@ export const NAV_LINKS = [
   { label: "Download", href: "/download" },
 ];
 
-const EASE = "ease-spring";
-
-/** Floating glass-pill navigation. On small screens it opens a full-screen menu with staggered links. */
+/** Full-width bar. A hairline appears once the page scrolls; on small screens a sheet drops down. */
 export function PublicNavbar() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const [lastPath, setLastPath] = useState(pathname);
 
-  // Close the menu when the route changes (state adjusted during render, no effect needed).
   if (lastPath !== pathname) {
     setLastPath(pathname);
     setOpen(false);
   }
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -45,68 +50,69 @@ export function PublicNavbar() {
     <>
       <a
         href="#main"
-        className="fixed left-4 top-4 z-50 -translate-y-20 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition-transform focus:translate-y-0"
+        className="fixed left-4 top-3 z-50 -translate-y-20 rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white transition-transform focus:translate-y-0"
       >
         Skip to content
       </a>
 
-      <header className="pointer-events-none fixed inset-x-0 top-0 z-40 flex justify-center px-4 pt-4 sm:pt-6">
-        <div className="pointer-events-auto flex w-full max-w-4xl items-center justify-between rounded-full bg-white/80 py-2 pl-4 pr-2 shadow-soft ring-1 ring-slate-900/[0.07] backdrop-blur-xl">
-          <Link href="/" aria-label="ArgusOps home" className="rounded-full">
-            <Logo />
-          </Link>
+      <header
+        className={cn(
+          "fixed inset-x-0 top-0 z-40 border-b bg-slate-50/95 transition-[border-color,background-color] duration-200",
+          scrolled || open ? "border-slate-200 bg-white" : "border-transparent"
+        )}
+      >
+        <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-8">
+            <Link href="/" aria-label="ArgusOps home" className="rounded-md">
+              <Logo />
+            </Link>
+            <nav aria-label="Main" className="hidden items-center md:flex">
+              {NAV_LINKS.map((l) => {
+                const active = pathname === l.href || pathname.startsWith(l.href + "/");
+                return (
+                  <Link
+                    key={l.href}
+                    href={l.href}
+                    aria-current={active ? "page" : undefined}
+                    className={cn(
+                      "relative px-3 py-2 text-sm transition-colors duration-150",
+                      active ? "text-slate-900" : "text-slate-500 hover:text-slate-900"
+                    )}
+                  >
+                    {l.label}
+                    {active && <span aria-hidden="true" className="absolute inset-x-3 -bottom-[11px] h-px bg-slate-900" />}
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
 
-          <nav aria-label="Main" className="hidden items-center gap-0.5 md:flex">
-            {NAV_LINKS.map((l) => {
-              const active = pathname === l.href || pathname.startsWith(l.href + "/");
-              return (
-                <Link
-                  key={l.href}
-                  href={l.href}
-                  aria-current={active ? "page" : undefined}
-                  className={cn(
-                    "rounded-full px-3.5 py-2 text-sm font-medium transition-colors duration-300",
-                    active ? "bg-slate-900/[0.06] text-slate-900" : "text-slate-600 hover:text-slate-900"
-                  )}
-                >
-                  {l.label}
-                </Link>
-              );
-            })}
-          </nav>
-
-          <div className="flex items-center gap-1">
-            <Link
-              href="/login"
-              className="hidden rounded-full px-3.5 py-2 text-sm font-medium text-slate-600 transition-colors hover:text-slate-900 sm:block"
-            >
+          <div className="flex items-center gap-1.5">
+            <Link href="/login" className={cn(buttonClasses("ghost", false), "hidden h-8 px-3 sm:inline-flex")}>
               Log in
             </Link>
-            <Link href="/signup" className={cn(buttonClasses("primary", false), "hidden sm:inline-flex")}>
+            <Link href="/signup" className={cn(buttonClasses("primary", false), "hidden h-8 px-3 sm:inline-flex")}>
               Start free
             </Link>
-
             <button
               type="button"
               onClick={() => setOpen((v) => !v)}
               aria-expanded={open}
               aria-controls="mobile-menu"
               aria-label={open ? "Close menu" : "Open menu"}
-              className="relative z-50 flex h-10 w-10 items-center justify-center rounded-full text-slate-900 hover:bg-slate-900/5 md:hidden"
+              className="flex h-9 w-9 items-center justify-center rounded-md text-slate-900 hover:bg-slate-100 md:hidden"
             >
-              <span className="relative block h-3 w-5" aria-hidden="true">
+              <span className="relative block h-2.5 w-4" aria-hidden="true">
                 <span
                   className={cn(
-                    "absolute left-0 h-[1.5px] w-5 rounded bg-current transition-transform duration-500",
-                    EASE,
-                    open ? "top-1/2 rotate-45" : "top-0"
+                    "absolute left-0 h-[1.5px] w-4 rounded bg-current transition-transform duration-200 ease-out",
+                    open ? "top-1/2 -translate-y-1/2 rotate-45" : "top-0"
                   )}
                 />
                 <span
                   className={cn(
-                    "absolute left-0 h-[1.5px] w-5 rounded bg-current transition-transform duration-500",
-                    EASE,
-                    open ? "top-1/2 -rotate-45" : "bottom-0"
+                    "absolute left-0 h-[1.5px] w-4 rounded bg-current transition-transform duration-200 ease-out",
+                    open ? "top-1/2 -translate-y-1/2 -rotate-45" : "bottom-0"
                   )}
                 />
               </span>
@@ -123,39 +129,22 @@ export function PublicNavbar() {
         aria-hidden={!open}
         inert={!open}
         className={cn(
-          "fixed inset-0 z-[45] flex flex-col bg-white/90 px-6 pb-8 pt-28 backdrop-blur-3xl transition-opacity duration-500 md:hidden",
-          EASE,
-          open ? "opacity-100" : "pointer-events-none opacity-0"
+          "fixed inset-x-0 bottom-0 top-14 z-[45] flex flex-col bg-white px-4 pb-6 transition-[opacity,transform] duration-200 ease-out md:hidden",
+          open ? "translate-y-0 opacity-100" : "pointer-events-none -translate-y-2 opacity-0"
         )}
       >
-        <nav aria-label="Mobile" className="flex flex-col gap-1">
-          {NAV_LINKS.map((l, i) => (
-            <Link
-              key={l.href}
-              href={l.href}
-              style={{ transitionDelay: open ? `${100 + i * 50}ms` : "0ms" }}
-              className={cn(
-                "border-b border-slate-900/5 py-4 text-3xl font-semibold tracking-tight text-slate-900 transition-[transform,opacity] duration-700",
-                EASE,
-                open ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
-              )}
-            >
+        <nav aria-label="Mobile" className="flex flex-col">
+          {NAV_LINKS.map((l) => (
+            <Link key={l.href} href={l.href} className="border-b border-slate-100 py-3.5 text-lg font-medium text-slate-900">
               {l.label}
             </Link>
           ))}
         </nav>
-        <div
-          style={{ transitionDelay: open ? "380ms" : "0ms" }}
-          className={cn(
-            "mt-auto flex flex-col gap-3 transition-[transform,opacity] duration-700",
-            EASE,
-            open ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
-          )}
-        >
-          <Link href="/signup" className={cn(buttonClasses("primary", false), "w-full py-3.5")}>
+        <div className="mt-auto grid gap-2">
+          <Link href="/signup" className={cn(buttonClasses("primary", false), "w-full")}>
             Start free
           </Link>
-          <Link href="/login" className={cn(buttonClasses("secondary", false), "w-full py-3.5")}>
+          <Link href="/login" className={cn(buttonClasses("secondary", false), "w-full")}>
             Log in
           </Link>
         </div>

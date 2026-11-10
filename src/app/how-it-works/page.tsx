@@ -52,9 +52,9 @@ export default function HowItWorksPage() {
       <Container className="py-20 md:py-28">
         <ol className="space-y-6">
           {STEPS.map((s, i) => (
-            <li key={s.title} className="reveal grid gap-6 md:grid-cols-[4rem_1fr] md:gap-10">
-              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-900 font-mono text-sm text-white">{i + 1}</span>
-              <div className="grid gap-6 border-b border-slate-900/5 pb-10 lg:grid-cols-2 lg:gap-10">
+            <li key={s.title} className="grid gap-6 md:grid-cols-[4rem_1fr] md:gap-10">
+              <span className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white font-mono text-xs text-slate-500">{i + 1}</span>
+              <div className="grid gap-6 border-b border-slate-200 pb-10 lg:grid-cols-2 lg:gap-10">
                 <div>
                   <h2 className="text-xl font-semibold tracking-tight text-slate-900 md:text-2xl">{s.title}</h2>
                   <p className="mt-2 text-pretty leading-relaxed text-slate-600">{s.body}</p>
@@ -75,7 +75,7 @@ export default function HowItWorksPage() {
             lead="The split is the product. ArgusOps needs numbers, not content."
           />
           <div className="mt-12 grid gap-4 md:grid-cols-2">
-            <Bezel className="reveal">
+            <Bezel className="">
               <h3 className="text-lg font-semibold tracking-tight text-slate-900">Sent to ArgusOps</h3>
               <ul className="mt-5 space-y-3 text-sm text-slate-700">
                 {SENT.map((t) => (
@@ -86,7 +86,7 @@ export default function HowItWorksPage() {
                 ))}
               </ul>
             </Bezel>
-            <Bezel className="reveal" tone="dark">
+            <Bezel className="" tone="dark">
               <h3 className="text-lg font-semibold tracking-tight text-white">Never sent</h3>
               <ul className="mt-5 space-y-3 text-sm text-slate-300">
                 {NEVER.map((t) => (

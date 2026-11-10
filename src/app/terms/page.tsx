@@ -15,7 +15,7 @@ export default function TermsPage() {
       <PageHeader eyebrow="Terms" title="Terms of service." lead="Last updated October 30, 2026 · Owner: MD.Tamjidul Islam" />
       <Container className="max-w-3xl py-16 md:py-24">
         <div className="space-y-12">
-          <div className="rounded-[1.75rem] bg-white p-6 sm:p-8 space-y-2 shadow-soft ring-1 ring-slate-900/5">
+          <div className="rounded-lg bg-white p-6 sm:p-8 space-y-2 border border-slate-200">
           <div className="flex items-center gap-2 font-bold text-slate-900 text-sm">
             <Shield className="h-4 w-4 text-emerald-600" />
             <span>Fair-Use, Predictable SLA &amp; 14-Day Refund Guarantee</span>

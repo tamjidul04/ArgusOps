@@ -10,16 +10,16 @@ export function CtaBand({
   lead?: string;
 }) {
   return (
-    <section className="pb-20 md:pb-32" aria-label="Get started">
+    <section className="border-t border-slate-200 py-16 md:py-20" aria-label="Get started">
       <Container>
-        <div className="on-dark reveal rounded-[2rem] bg-slate-950 px-6 py-14 text-center shadow-lift ring-1 ring-slate-900/10 sm:px-12 md:py-20">
-          <h2 className="mx-auto max-w-2xl text-balance text-3xl font-semibold leading-[1.1] tracking-tight text-white md:text-5xl">{title}</h2>
-          <p className="mx-auto mt-4 max-w-xl text-pretty text-base text-slate-300 sm:text-lg">{lead}</p>
-          <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <ButtonLink href="/signup" variant="inverse">
-              Start free
-            </ButtonLink>
-            <ButtonLink href="/docs" variant="ghost" className="text-slate-200 hover:bg-white/10 hover:text-white" arrow={false}>
+        <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 className="max-w-xl text-balance text-2xl font-semibold leading-tight tracking-[-0.02em] text-slate-900 md:text-3xl">{title}</h2>
+            <p className="mt-2 text-pretty text-base text-slate-500">{lead}</p>
+          </div>
+          <div className="flex shrink-0 flex-col gap-2.5 sm:flex-row">
+            <ButtonLink href="/signup">Start free</ButtonLink>
+            <ButtonLink href="/docs" variant="secondary" arrow={false}>
               Read the docs
             </ButtonLink>
           </div>

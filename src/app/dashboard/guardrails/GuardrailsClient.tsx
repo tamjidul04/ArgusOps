@@ -49,7 +49,7 @@ function PolicySlider({
         step={step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-slate-900/10 accent-slate-900"
+        className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-slate-200 accent-slate-900"
       />
       <p className="text-xs text-slate-500">{hint}</p>
     </div>
@@ -294,10 +294,10 @@ export function GuardrailsClient({
         <div
           role="status"
           className={cn(
-            "flex items-center justify-between rounded-xl px-4 py-3 text-sm ring-1",
+            "flex items-center justify-between rounded-md px-4 py-3 text-sm ring-1",
             feedback.type === "success" && "bg-emerald-50 text-emerald-900 ring-emerald-600/20",
             feedback.type === "error" && "bg-red-50 text-red-900 ring-red-600/20",
-            feedback.type === "info" && "bg-slate-900/[0.04] text-slate-800 ring-slate-900/10"
+            feedback.type === "info" && "bg-slate-50 text-slate-800 ring-slate-900/10"
           )}
         >
           <div className="flex items-center gap-2">
@@ -319,7 +319,7 @@ export function GuardrailsClient({
           className="lg:col-span-2"
           title="Live Loop Detection Stream Inspector"
           description="Every loop ArgusOps catches, newest first."
-          action={<Badge tone="green"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />Stream active</Badge>}
+          action={<Badge tone="green"><span className="h-1.5 w-1.5 live-dot rounded-full bg-emerald-500" />Stream active</Badge>}
         >
           {events.length === 0 ? (
             <EmptyState icon={Activity} title="No loops caught yet">
@@ -335,7 +335,7 @@ export function GuardrailsClient({
                   <li
                     key={evt.id}
                     className={cn(
-                      "space-y-2 rounded-xl p-4 ring-1",
+                      "space-y-2 rounded-md p-4 ring-1",
                       isExact && "bg-red-50/50 ring-red-600/15",
                       isSemantic && "bg-amber-50/50 ring-amber-600/20",
                       !isExact && !isSemantic && "bg-slate-900/[0.025] ring-slate-900/[0.07]"
@@ -352,11 +352,11 @@ export function GuardrailsClient({
                         <Badge tone="green">{evt.latencyMs}ms Latency</Badge>
                         <span
                           className={cn(
-                            "rounded-full px-2.5 py-0.5 text-[11px] font-medium",
+                            "rounded-md px-2.5 py-0.5 text-[11px] font-medium",
                             evt.actionTaken === "KILLED_LOOP" && "bg-red-700 text-white",
                             evt.actionTaken === "PAUSED_NUDGE" && "bg-amber-600 text-white",
                             evt.actionTaken === "THROTTLED" && "bg-slate-800 text-white",
-                            evt.actionTaken === "FLAGGED" && "bg-slate-900/10 text-slate-800"
+                            evt.actionTaken === "FLAGGED" && "bg-slate-200 text-slate-800"
                           )}
                         >
                           {evt.actionTaken}
@@ -366,7 +366,7 @@ export function GuardrailsClient({
 
                     <p className="text-sm leading-relaxed text-slate-700">{evt.summary}</p>
 
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-slate-900/5 pt-2 text-xs text-slate-600">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-slate-200 pt-2 text-xs text-slate-600">
                       {evt.toolName && (
                         <span>
                           Tool: <code className="font-mono font-semibold text-slate-900">{evt.toolName}</code>
@@ -429,7 +429,7 @@ export function GuardrailsClient({
             onChange={(v) => setPolicy({ ...policy, maxRamPerAgentMb: v })}
           />
 
-          <label className="flex cursor-pointer items-start gap-3 rounded-xl bg-slate-900/[0.03] p-3.5 ring-1 ring-slate-900/[0.07]">
+          <label className="flex cursor-pointer items-start gap-3 rounded-md bg-slate-50 p-3.5 border border-slate-200">
             <input
               type="checkbox"
               checked={policy.autoApplyRewrites}
@@ -444,7 +444,7 @@ export function GuardrailsClient({
             </span>
           </label>
 
-          <button type="button" onClick={handleSavePolicy} className={buttonClasses("primary", false, "w-full py-3")}>
+          <button type="button" onClick={handleSavePolicy} className={buttonClasses("primary", false, "w-full")}>
             Save Guardrail Policy
           </button>
         </Panel>
@@ -466,7 +466,7 @@ export function GuardrailsClient({
           <div className="overflow-x-auto">
             <table className="w-full min-w-[44rem] text-left text-sm">
               <thead>
-                <tr className="border-b border-slate-900/5 bg-slate-900/[0.02] text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500">
+                <tr className="border-b border-slate-200 bg-slate-50 text-[11px] font-medium text-slate-500">
                   <th scope="col" className="px-5 py-3">Agent Node</th>
                   <th scope="col" className="px-5 py-3">Status</th>
                   <th scope="col" className="px-5 py-3">Loop Threat Score</th>
@@ -486,7 +486,7 @@ export function GuardrailsClient({
                         <span className="block font-mono text-[11px] font-normal text-slate-500">{agent.agent_id}</span>
                       </td>
                       <td className="px-5 py-3.5">
-                        <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium", statusStyle.badge)}>
+                        <span className={cn("inline-flex items-center rounded-md px-2.5 py-0.5 text-[11px] font-medium", statusStyle.badge)}>
                           {statusStyle.label}
                         </span>
                       </td>
@@ -505,7 +505,7 @@ export function GuardrailsClient({
                             <button
                               type="button"
                               onClick={() => setNudgeModalAgent(agent)}
-                              className="inline-flex items-center gap-1.5 rounded-full bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-emerald-800"
+                              className="inline-flex items-center gap-1.5 rounded-md bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-emerald-800"
                             >
                               <Send className="h-3 w-3" aria-hidden="true" />
                               <span>Send Hint &amp; Resume</span>
@@ -513,14 +513,14 @@ export function GuardrailsClient({
                             <button
                               type="button"
                               onClick={() => executeGuardrailAction("THROTTLE_DOWNGRADE", { agentId: agent.agent_id })}
-                              className="inline-flex items-center rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 ring-1 ring-slate-900/10 transition-colors hover:bg-slate-50"
+                              className="inline-flex items-center rounded-md bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 border border-slate-200 transition-colors hover:bg-slate-50"
                             >
                               Throttle Model
                             </button>
                             <button
                               type="button"
                               onClick={() => executeGuardrailAction("TRIGGER_KILL_SWITCH", { agentId: agent.agent_id })}
-                              className="inline-flex items-center rounded-full bg-red-700 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-red-800"
+                              className="inline-flex items-center rounded-md bg-red-700 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-red-800"
                             >
                               Kill Switch
                             </button>
@@ -529,7 +529,7 @@ export function GuardrailsClient({
                           <button
                             type="button"
                             onClick={() => setNudgeModalAgent(agent)}
-                            className="rounded-full px-3 py-1.5 text-xs font-semibold text-slate-700 ring-1 ring-slate-900/10 transition-colors hover:bg-slate-50"
+                            className="rounded-md px-3 py-1.5 text-xs font-semibold text-slate-700 border border-slate-200 transition-colors hover:bg-slate-50"
                           >
                             Operator Action
                           </button>
@@ -552,7 +552,7 @@ export function GuardrailsClient({
       >
         {displayedActiveAgents.length === 0 ? (
           <EmptyState icon={Cpu} title="No agents running">
-            Start an agent with <code className="rounded-md bg-slate-900/[0.06] px-1.5 py-0.5 font-mono text-xs">argus run claude</code> and its memory and CPU show up here.
+            Start an agent with <code className="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-xs">argus run claude</code> and its memory and CPU show up here.
           </EmptyState>
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -561,7 +561,7 @@ export function GuardrailsClient({
               const isNearCap = agent.ram_usage > policy.maxRamPerAgentMb * 0.8;
 
               return (
-                <div key={agent.agent_id} className="space-y-3 rounded-xl bg-slate-900/[0.025] p-4 text-sm ring-1 ring-slate-900/[0.07]">
+                <div key={agent.agent_id} className="space-y-3 rounded-md bg-slate-900/[0.025] p-4 text-sm border border-slate-200">
                   <div className="flex items-center justify-between gap-2">
                     <span className="truncate font-semibold text-slate-900">{agent.name}</span>
                     <span className="shrink-0 font-mono text-[11px] text-slate-500">{agent.model_tier}</span>
@@ -574,9 +574,9 @@ export function GuardrailsClient({
                         {agent.ram_usage} MB / {policy.maxRamPerAgentMb} MB
                       </strong>
                     </div>
-                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-900/10">
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
                       <div
-                        className={cn("h-full rounded-full transition-[width] duration-500 ease-spring", isNearCap ? "bg-red-500" : "bg-slate-800")}
+                        className={cn("h-full rounded-full transition-[width] duration-200 ease-spring", isNearCap ? "bg-red-500" : "bg-slate-800")}
                         style={{ width: `${ramPct}%` }}
                       />
                     </div>
@@ -587,9 +587,9 @@ export function GuardrailsClient({
                       <span className="text-slate-600">CPU</span>
                       <span className="font-semibold text-slate-900">{agent.cpu_usage}%</span>
                     </div>
-                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-900/10">
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
                       <div
-                        className="h-full rounded-full bg-emerald-500 transition-[width] duration-500 ease-spring"
+                        className="h-full rounded-full bg-emerald-500 transition-[width] duration-200 ease-spring"
                         style={{ width: `${Math.min(100, agent.cpu_usage * 3)}%` }}
                       />
                     </div>
@@ -611,11 +611,11 @@ export function GuardrailsClient({
             role="dialog"
             aria-modal="true"
             aria-labelledby="nudge-title"
-            className="max-h-[90dvh] w-full max-w-lg space-y-5 overflow-y-auto rounded-3xl bg-white p-6 shadow-lift ring-1 ring-slate-900/10"
+            className="max-h-[90dvh] w-full max-w-lg space-y-5 overflow-y-auto rounded-lg bg-white p-6 shadow-lift border border-slate-200"
           >
-            <div className="flex items-start justify-between gap-3 border-b border-slate-900/5 pb-4">
+            <div className="flex items-start justify-between gap-3 border-b border-slate-200 pb-4">
               <div className="flex items-center gap-3">
-                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/20">
+                <span className="flex h-10 w-10 items-center justify-center rounded-md bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/20">
                   <MessageSquare className="h-4 w-4" aria-hidden="true" />
                 </span>
                 <div>
@@ -631,7 +631,7 @@ export function GuardrailsClient({
                 type="button"
                 onClick={() => setNudgeModalAgent(null)}
                 aria-label="Close"
-                className="rounded-full p-1.5 text-slate-500 hover:bg-slate-900/5 hover:text-slate-800"
+                className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-800"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -639,7 +639,7 @@ export function GuardrailsClient({
 
             {suggestionLoading && <p className="text-sm text-slate-600">Loading suggestion…</p>}
             {suggestion && (
-              <div className="space-y-2 rounded-xl bg-emerald-50/70 p-4 text-sm ring-1 ring-emerald-600/20">
+              <div className="space-y-2 rounded-md bg-emerald-50/70 p-4 text-sm ring-1 ring-emerald-600/20">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="flex items-center gap-1.5 font-semibold text-emerald-900">
                     <Sparkles className="h-3.5 w-3.5" aria-hidden="true" /> Suggested instruction
@@ -651,7 +651,7 @@ export function GuardrailsClient({
                 <p className="text-slate-700">{suggestion.observed}</p>
                 {suggestion.tokensBefore > 0 && (
                   <p className="text-xs text-slate-600">
-                    The loop cost about {suggestion.tokensBefore.toLocaleString()} tokens; this instruction adds about {suggestion.tokensAfter.toLocaleString()}.
+                    The loop cost about {suggestion.tokensBefore.toLocaleString("en-US")} tokens; this instruction adds about {suggestion.tokensAfter.toLocaleString("en-US")}.
                   </p>
                 )}
                 <button type="button" onClick={handleDismissSuggestion} className="text-xs font-medium text-slate-600 underline underline-offset-2 hover:text-slate-900">
@@ -670,13 +670,13 @@ export function GuardrailsClient({
                 value={nudgeHintText}
                 onChange={(e) => setNudgeHintText(e.target.value)}
                 rows={suggestion ? 6 : 3}
-                className="w-full resize-none rounded-xl bg-white p-3.5 text-sm text-slate-900 ring-1 ring-slate-900/10 transition-shadow placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900"
+                className="w-full resize-none rounded-md bg-white p-3.5 text-sm text-slate-900 border border-slate-200 transition-shadow placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900"
                 placeholder="e.g. Stop re-running the tests; read the error and fix the cause first."
               />
               <p className="text-xs text-slate-600">The agent resumes, and this text is added to its next request to the model.</p>
             </div>
 
-            <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-900/5 pt-4">
+            <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-200 pt-4">
               <button type="button" onClick={() => setNudgeModalAgent(null)} className={buttonClasses("secondary", false)}>
                 Cancel
               </button>

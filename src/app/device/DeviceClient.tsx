@@ -48,7 +48,7 @@ export function DeviceClient() {
           : message
       }
       footer={
-        <Link href="/dashboard/local-bridge" className="font-semibold text-slate-900 underline underline-offset-4">
+        <Link href="/dashboard/local-bridge" className="font-medium text-slate-900 underline decoration-slate-300 underline-offset-4 transition-colors hover:decoration-slate-900">
           Manage devices and API keys
         </Link>
       }
@@ -62,13 +62,13 @@ export function DeviceClient() {
           className="space-y-4"
         >
           {error && (
-            <div role="alert" className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">
+            <div role="alert" className="flex items-start gap-2 rounded-md border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
               <span>{error}</span>
             </div>
           )}
 
-          <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 font-mono text-xs text-slate-600">
+          <div className="flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2.5 font-mono text-xs text-slate-600">
             <Terminal className="h-4 w-4 text-slate-400" />
             argus login
           </div>
@@ -114,13 +114,13 @@ export function DeviceClient() {
       )}
 
       {stage === "done" && (
-        <div className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+        <div className="flex items-start gap-3 rounded-md border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
           <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
           <span>You can close this tab and go back to your terminal.</span>
         </div>
       )}
       {stage === "denied" && (
-        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+        <div className="rounded-md border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
           Nothing was connected. If you didn&apos;t start this request, you can ignore it.
         </div>
       )}

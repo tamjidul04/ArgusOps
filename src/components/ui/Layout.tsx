@@ -23,9 +23,9 @@ export function Section({
       id={id}
       aria-labelledby={labelledBy}
       className={cn(
-        "py-20 md:py-32",
+        "border-t border-slate-200 py-20 md:py-28",
         tone === "white" && "bg-white",
-        tone === "dark" && "on-dark bg-slate-950 text-slate-100",
+        tone === "dark" && "on-dark border-slate-800 bg-slate-950 text-slate-100",
         className
       )}
     >
@@ -34,15 +34,11 @@ export function Section({
   );
 }
 
+/** Section label: a short mono caption with a hairline tick, not a pill. */
 export function Eyebrow({ children, tone = "light", className }: { children: React.ReactNode; tone?: "light" | "dark"; className?: string }) {
   return (
-    <span
-      className={cn(
-        "inline-flex items-center rounded-full px-3 py-1 text-[10px] font-medium uppercase tracking-[0.2em] ring-1",
-        tone === "dark" ? "bg-white/5 text-slate-300 ring-white/10" : "bg-slate-900/[0.04] text-slate-600 ring-slate-900/5",
-        className
-      )}
-    >
+    <span className={cn("inline-flex items-center gap-2 font-mono text-xs", tone === "dark" ? "text-slate-400" : "text-slate-500", className)}>
+      <span aria-hidden="true" className={cn("h-px w-4", tone === "dark" ? "bg-slate-600" : "bg-slate-300")} />
       {children}
     </span>
   );
@@ -64,21 +60,19 @@ export function SectionHeading({
   tone?: "light" | "dark";
 }) {
   return (
-    <div className={cn("reveal max-w-2xl space-y-4", align === "center" && "mx-auto text-center")}>
+    <div className={cn("max-w-2xl space-y-3", align === "center" && "mx-auto text-center")}>
       {eyebrow && <Eyebrow tone={tone}>{eyebrow}</Eyebrow>}
       <h2
         id={id}
         className={cn(
-          "text-balance text-3xl font-semibold leading-[1.1] tracking-tight sm:text-4xl md:text-5xl",
+          "text-balance text-3xl font-semibold leading-[1.1] tracking-[-0.025em] sm:text-4xl",
           tone === "dark" ? "text-white" : "text-slate-900"
         )}
       >
         {title}
       </h2>
       {lead && (
-        <p className={cn("text-pretty text-base leading-relaxed sm:text-lg", tone === "dark" ? "text-slate-300" : "text-slate-600")}>
-          {lead}
-        </p>
+        <p className={cn("text-pretty text-base leading-relaxed sm:text-[17px]", tone === "dark" ? "text-slate-400" : "text-slate-500")}>{lead}</p>
       )}
     </div>
   );
@@ -97,14 +91,12 @@ export function PageHeader({
   children?: React.ReactNode;
 }) {
   return (
-    <header className="border-b border-slate-900/5 bg-white pb-16 pt-36 md:pb-24 md:pt-44">
+    <header className="dot-grid border-b border-slate-200 pb-14 pt-32 md:pb-20 md:pt-40">
       <Container>
-        <div className="max-w-3xl space-y-5">
+        <div className="max-w-3xl space-y-4">
           <Eyebrow>{eyebrow}</Eyebrow>
-          <h1 className="text-balance text-4xl font-semibold leading-[1.05] tracking-tight text-slate-900 sm:text-5xl md:text-6xl">
-            {title}
-          </h1>
-          {lead && <p className="text-pretty text-lg leading-relaxed text-slate-600">{lead}</p>}
+          <h1 className="text-balance text-4xl font-semibold leading-[1.05] tracking-[-0.03em] text-slate-900 sm:text-5xl">{title}</h1>
+          {lead && <p className="max-w-2xl text-pretty text-lg leading-relaxed text-slate-500">{lead}</p>}
           {children}
         </div>
       </Container>

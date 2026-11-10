@@ -36,15 +36,15 @@ function CopyField({ label, value, copied, onCopy, actionLabel, badge }: {
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-medium uppercase tracking-[0.12em] text-slate-500">{label}</span>
+        <span className="text-xs font-medium text-slate-500">{label}</span>
         {badge}
       </div>
-      <div className="flex items-center justify-between gap-2 rounded-xl bg-slate-900/[0.03] py-2 pl-3.5 pr-2 ring-1 ring-slate-900/[0.08]">
+      <div className="flex items-center justify-between gap-2 rounded-md bg-slate-50 py-2 pl-3.5 pr-2 border border-slate-200">
         <code className="min-w-0 select-all truncate font-mono text-xs font-medium text-slate-900">{value}</code>
         <button
           type="button"
           onClick={onCopy}
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 ring-1 ring-slate-900/10 transition-colors hover:bg-slate-50"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 border border-slate-200 transition-colors hover:bg-slate-50"
         >
           {copied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : actionLabel ? <Terminal className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
           <span aria-live="polite">{copied ? "Copied" : actionLabel ?? "Copy"}</span>
@@ -72,7 +72,7 @@ function AgentCard({ name, pid, path, running, statusLabel, memory, cache, lock 
           {statusLabel}
         </Badge>
       </div>
-      <dl className="space-y-2.5 border-t border-slate-900/5 pt-4 text-sm">
+      <dl className="space-y-2.5 border-t border-slate-200 pt-4 text-sm">
         <div className="flex items-center justify-between gap-3">
           <dt className="text-slate-600">Memory</dt>
           <dd className="font-mono text-xs font-semibold text-slate-900">{memory}</dd>
@@ -83,7 +83,7 @@ function AgentCard({ name, pid, path, running, statusLabel, memory, cache, lock 
         </div>
         <div>
           <dt className="text-xs text-slate-500">Active Lock</dt>
-          <dd className="mt-1 truncate rounded-lg bg-slate-900/[0.04] px-2.5 py-1.5 font-mono text-xs font-medium text-slate-800">{lock}</dd>
+          <dd className="mt-1 truncate rounded-lg bg-slate-50 px-2.5 py-1.5 font-mono text-xs font-medium text-slate-800">{lock}</dd>
         </div>
       </dl>
     </Panel>
@@ -95,7 +95,7 @@ function ToggleRow({ title, description, checked, onToggle, tone = "dark" }: {
   title: string; description: string; checked: boolean; onToggle: () => void; tone?: "dark" | "green";
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 rounded-xl bg-slate-900/[0.03] p-4 ring-1 ring-slate-900/[0.07]">
+    <div className="flex items-center justify-between gap-4 rounded-md bg-slate-50 p-4 border border-slate-200">
       <div className="min-w-0 space-y-0.5">
         <span className="block text-sm font-medium text-slate-900">{title}</span>
         <p className="text-xs leading-relaxed text-slate-600">{description}</p>
@@ -111,7 +111,7 @@ function ToggleRow({ title, description, checked, onToggle, tone = "dark" }: {
           checked ? (tone === "green" ? "bg-emerald-600" : "bg-slate-900") : "bg-slate-300"
         )}
       >
-        <span className={cn("block h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-300 ease-spring", checked && "translate-x-5")} />
+        <span className={cn("block h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200 ease-spring", checked && "translate-x-5")} />
       </button>
     </div>
   );
@@ -321,11 +321,11 @@ export function LocalBridgeClient({
         <div
           role="status"
           className={cn(
-            "flex items-center justify-between rounded-xl px-4 py-3 text-sm ring-1",
+            "flex items-center justify-between rounded-md px-4 py-3 text-sm ring-1",
             feedback.type === "success" && "bg-emerald-50 text-emerald-900 ring-emerald-600/20",
             feedback.type === "warning" && "bg-amber-50 text-amber-900 ring-amber-600/25",
             feedback.type === "error" && "bg-red-50 text-red-900 ring-red-600/20",
-            feedback.type === "info" && "bg-slate-900/[0.04] text-slate-800 ring-slate-900/10"
+            feedback.type === "info" && "bg-slate-50 text-slate-800 ring-slate-900/10"
           )}
         >
           <div className="flex items-center gap-2">
@@ -403,7 +403,7 @@ export function LocalBridgeClient({
           <div className="overflow-x-auto">
             <table className="w-full min-w-[40rem] text-left text-sm">
               <thead>
-                <tr className="border-b border-slate-900/5 bg-slate-900/[0.02] text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500">
+                <tr className="border-b border-slate-200 bg-slate-50 text-[11px] font-medium text-slate-500">
                   <th scope="col" className="px-5 py-3">Workspace File Path</th>
                   <th scope="col" className="px-5 py-3">Locked By</th>
                   <th scope="col" className="px-5 py-3">Queued Agent (Overwrite Prevented)</th>
@@ -436,7 +436,7 @@ export function LocalBridgeClient({
                       <button
                         type="button"
                         onClick={() => handleReleaseLock(lock.id)}
-                        className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 ring-1 ring-slate-900/10 transition-colors hover:bg-slate-50"
+                        className="rounded-md bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 border border-slate-200 transition-colors hover:bg-slate-50"
                       >
                         Release Lock
                       </button>
@@ -497,7 +497,7 @@ export function LocalBridgeClient({
           ) : (
             <ul className="space-y-2.5">
               {keys.map((k) => (
-                <li key={k.id} className="flex items-center justify-between gap-3 rounded-xl bg-slate-900/[0.03] p-3.5 ring-1 ring-slate-900/[0.07]">
+                <li key={k.id} className="flex items-center justify-between gap-3 rounded-md bg-slate-50 p-3.5 border border-slate-200">
                   <div className="min-w-0 space-y-0.5">
                     <div className="truncate text-sm font-semibold text-slate-900">{k.label}</div>
                     <div className="select-all truncate font-mono text-xs text-slate-600">{k.masked_key}</div>
@@ -506,7 +506,7 @@ export function LocalBridgeClient({
                     <button
                       type="button"
                       onClick={() => handleCopyKey(k.masked_key)}
-                      className="rounded-full p-2 text-slate-600 hover:bg-slate-900/5 hover:text-slate-900"
+                      className="rounded-md p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                       title="Copy key"
                       aria-label={`Copy key ${k.label}`}
                     >
@@ -515,7 +515,7 @@ export function LocalBridgeClient({
                     <button
                       type="button"
                       onClick={() => handleRevokeKey(k.id)}
-                      className="rounded-full p-2 text-red-600 hover:bg-red-50 hover:text-red-800"
+                      className="rounded-md p-2 text-red-600 hover:bg-red-50 hover:text-red-800"
                       title="Revoke key"
                       aria-label={`Revoke key ${k.label}`}
                     >
@@ -527,11 +527,11 @@ export function LocalBridgeClient({
             </ul>
           )}
 
-          <div className="border-t border-slate-900/5 pt-4">
+          <div className="border-t border-slate-200 pt-4">
             <span className="mb-2 block text-xs font-medium text-slate-600">One-line Daemon Handshake:</span>
-            <div className="on-dark flex items-center justify-between gap-2 rounded-xl bg-slate-950 py-2 pl-3.5 pr-2 font-mono text-xs text-slate-200">
+            <div className="on-dark flex items-center justify-between gap-2 rounded-md bg-slate-950 py-2 pl-3.5 pr-2 font-mono text-xs text-slate-200">
               <span className="select-all truncate">export ARGUSOPS_API_KEY=&quot;argus_live_...&quot; &amp;&amp; npx argusops-daemon</span>
-              <button type="button" onClick={handleCopyCmd} aria-label="Copy handshake command" className="shrink-0 rounded-full p-2 text-slate-400 hover:bg-white/10 hover:text-white">
+              <button type="button" onClick={handleCopyCmd} aria-label="Copy handshake command" className="shrink-0 rounded-md p-2 text-slate-400 hover:bg-white/10 hover:text-white">
                 <Copy className="h-3.5 w-3.5" />
               </button>
             </div>
@@ -554,9 +554,9 @@ export function LocalBridgeClient({
             role="dialog"
             aria-modal="true"
             aria-labelledby="newkey-title"
-            className="max-h-[90dvh] w-full max-w-md space-y-5 overflow-y-auto rounded-3xl bg-white p-6 shadow-lift ring-1 ring-slate-900/10"
+            className="max-h-[90dvh] w-full max-w-md space-y-5 overflow-y-auto rounded-lg bg-white p-6 shadow-lift border border-slate-200"
           >
-            <div className="flex items-center justify-between gap-3 border-b border-slate-900/5 pb-4">
+            <div className="flex items-center justify-between gap-3 border-b border-slate-200 pb-4">
               <h3 id="newkey-title" className="text-base font-semibold tracking-tight text-slate-900">
                 Generate New API Key
               </h3>
@@ -567,7 +567,7 @@ export function LocalBridgeClient({
                   setCreatedKeyRaw(null);
                 }}
                 aria-label="Close"
-                className="rounded-full p-1.5 text-slate-500 hover:bg-slate-900/5 hover:text-slate-800"
+                className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-800"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -575,13 +575,13 @@ export function LocalBridgeClient({
 
             {createdKeyRaw ? (
               <div className="space-y-4">
-                <div className="space-y-1 rounded-xl bg-emerald-50 p-4 text-sm text-emerald-900 ring-1 ring-emerald-600/20">
+                <div className="space-y-1 rounded-md bg-emerald-50 p-4 text-sm text-emerald-900 ring-1 ring-emerald-600/20">
                   <span className="block font-semibold">Key Generated Successfully!</span>
                   <p className="text-xs">Copy this key now. For your security, it will not be displayed again.</p>
                 </div>
-                <div className="on-dark flex items-center justify-between gap-2 break-all rounded-xl bg-slate-950 p-3.5 font-mono text-xs text-white">
+                <div className="on-dark flex items-center justify-between gap-2 break-all rounded-md bg-slate-950 p-3.5 font-mono text-xs text-white">
                   <span className="select-all">{createdKeyRaw}</span>
-                  <button type="button" onClick={() => handleCopyKey(createdKeyRaw)} aria-label="Copy new key" className="shrink-0 rounded-full p-2 hover:bg-white/10 hover:text-emerald-300">
+                  <button type="button" onClick={() => handleCopyKey(createdKeyRaw)} aria-label="Copy new key" className="shrink-0 rounded-md p-2 hover:bg-white/10 hover:text-emerald-300">
                     <Copy className="h-4 w-4" />
                   </button>
                 </div>

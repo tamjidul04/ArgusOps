@@ -36,7 +36,7 @@ async function NotificationsLoader() {
 export default function NotificationsPage() {
   return (
     <DashboardShell>
-      <Suspense fallback={<div className="h-64 animate-pulse rounded-xl bg-slate-100" />}>
+      <Suspense fallback={<div className="h-64 animate-pulse rounded-md bg-slate-100" />}>
         <NotificationsLoader />
       </Suspense>
     </DashboardShell>

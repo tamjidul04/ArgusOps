@@ -53,7 +53,7 @@ export default function SignupPage() {
       footer={
         <>
           Already have an account?{" "}
-          <Link href="/login" className="font-semibold text-slate-900 underline underline-offset-4">
+          <Link href="/login" className="font-medium text-slate-900 underline decoration-slate-300 underline-offset-4 transition-colors hover:decoration-slate-900">
             Sign in
           </Link>
         </>
@@ -64,7 +64,7 @@ export default function SignupPage() {
 
       <form onSubmit={onSubmit} className="space-y-4">
         {error && (
-          <div role="alert" className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">
+          <div role="alert" className="flex items-start gap-2 rounded-md border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
             <span>{error}</span>
           </div>
@@ -94,7 +94,7 @@ export default function SignupPage() {
           {loading ? "Creating account…" : "Create free account"}
         </button>
 
-        <ul className="space-y-1.5 rounded-xl border border-slate-200 bg-white p-3.5">
+        <ul className="space-y-1.5 rounded-md border border-slate-200 bg-white p-3.5">
           {INCLUDED.map((line) => (
             <li key={line} className="flex items-start gap-2 text-xs text-slate-600">
               <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" />

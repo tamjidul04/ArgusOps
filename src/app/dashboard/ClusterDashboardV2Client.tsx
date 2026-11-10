@@ -28,50 +28,27 @@ import {
 import { cn, formatTokens, formatCurrency } from "@/lib/utils";
 import { useDashboard } from "@/components/layout";
 import { useBrain } from "@/context/BrainContext";
-import { Badge, DashHeader, EmptyState, Panel, buttonClasses } from "@/components/ui";
+import { Badge, DashHeader, EmptyState, Panel, Segmented, buttonClasses } from "@/components/ui";
 
 /** Small headline metric inside a card. */
 function Metric({ label, value, sub, extra, badge }: { label: string; value: React.ReactNode; sub?: React.ReactNode; extra?: React.ReactNode; badge?: React.ReactNode }) {
   return (
-    <div className="flex h-full min-w-0 flex-col justify-between rounded-2xl bg-white p-5 shadow-soft ring-1 ring-slate-900/5">
+    <div className="flex h-full min-w-0 flex-col justify-between rounded-lg border border-slate-200 bg-white p-4">
       <div>
-        <div className="mb-2 flex items-start justify-between gap-2">
-          <span className="text-xs font-medium text-slate-600">{label}</span>
+        <div className="mb-1.5 flex items-start justify-between gap-2">
+          <span className="text-xs text-slate-500">{label}</span>
           {badge}
         </div>
-        <div className="truncate text-3xl font-semibold tabular-nums tracking-tight text-slate-900">{value}</div>
-        {sub && <div className="mt-1 text-sm text-slate-600">{sub}</div>}
+        <div className="tabular truncate text-2xl font-semibold tracking-[-0.02em] text-slate-900">{value}</div>
+        {sub && <div className="mt-1 text-[13px] text-slate-500">{sub}</div>}
       </div>
       {extra}
     </div>
   );
 }
 
-/** Pill-shaped segmented control. */
-function Segmented<T extends string>({ label, value, options, onChange }: { label: string; value: T; options: { value: T; label: string }[]; onChange: (v: T) => void }) {
-  return (
-    <div role="tablist" aria-label={label} className="flex w-fit flex-wrap items-center gap-1 rounded-full bg-slate-900/[0.05] p-1">
-      {options.map((o) => (
-        <button
-          key={o.value}
-          type="button"
-          role="tab"
-          aria-selected={value === o.value}
-          onClick={() => onChange(o.value)}
-          className={cn(
-            "rounded-full px-3.5 py-1.5 text-xs font-medium transition-[background-color,box-shadow] duration-300",
-            value === o.value ? "bg-white font-semibold text-slate-900 shadow-soft" : "text-slate-600 hover:text-slate-900"
-          )}
-        >
-          {o.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-const rowBtn = "rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 ring-1 ring-slate-900/10 transition-colors hover:bg-slate-50";
-const rowBtnDark = "rounded-full bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-slate-800";
+const rowBtn = "inline-flex h-7 items-center rounded-md border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 active:scale-[0.98]";
+const rowBtnDark = "inline-flex h-7 items-center rounded-md bg-slate-900 px-2.5 text-xs font-medium text-white transition-colors hover:bg-slate-800 active:scale-[0.98]";
 
 export interface AgentRecord {
   agent_id: string;
@@ -325,7 +302,7 @@ export function ClusterDashboardV2Client({
         <div
           role="status"
           className={cn(
-            "fixed bottom-6 right-4 z-50 flex max-w-[calc(100vw-2rem)] items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium shadow-lift ring-1 sm:right-6",
+            "fixed bottom-6 right-4 z-50 flex max-w-[calc(100vw-2rem)] items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium shadow-lift ring-1 sm:right-6",
             toastMessage.type === "success" && "bg-emerald-50 text-emerald-900 ring-emerald-600/20",
             toastMessage.type === "error" && "bg-red-50 text-red-900 ring-red-600/20",
             toastMessage.type === "info" && "on-dark bg-slate-900 text-white ring-slate-900"
@@ -335,7 +312,7 @@ export function ClusterDashboardV2Client({
           {toastMessage.type === "error" && <AlertCircle className="h-5 w-5 shrink-0 text-red-600" aria-hidden="true" />}
           {toastMessage.type === "info" && <Zap className="h-5 w-5 shrink-0 text-amber-400" aria-hidden="true" />}
           <span>{toastMessage.text}</span>
-          <button onClick={() => setToastMessage(null)} aria-label="Dismiss message" className="ml-1 rounded-full p-1 text-inherit hover:opacity-70">
+          <button onClick={() => setToastMessage(null)} aria-label="Dismiss message" className="ml-1 rounded-md p-1 text-inherit hover:opacity-70">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -356,7 +333,7 @@ export function ClusterDashboardV2Client({
               }}
               className={buttonClasses("secondary", false)}
             >
-              <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
+              <span className="live-dot h-1.5 w-1.5 rounded-full bg-emerald-500" />
               Sync Live
             </button>
             <button onClick={() => handleClusterAction("AUTO_RIGHT_SIZE")} className={buttonClasses("primary", false)}>
@@ -376,7 +353,7 @@ export function ClusterDashboardV2Client({
               value="33%"
               sub="(2 Active / 4 Hibernated — 0 tok/s idle)"
               extra={
-                <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-slate-900/10" role="meter" aria-label="Active share of pool" aria-valuemin={0} aria-valuemax={100} aria-valuenow={33}>
+                <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-slate-200" role="meter" aria-label="Active share of pool" aria-valuemin={0} aria-valuemax={100} aria-valuenow={33}>
                   <div className="h-full rounded-full bg-slate-900" style={{ width: "33%" }} />
                 </div>
               }
@@ -399,10 +376,10 @@ export function ClusterDashboardV2Client({
             <Metric
               label="Free Token Balance"
               badge={<Badge>{profile.planName}</Badge>}
-              value={freeTokens.toLocaleString()}
+              value={freeTokens.toLocaleString("en-US")}
               extra={
-                <div className="mt-4 flex items-center justify-between border-t border-slate-900/5 pt-3 text-xs text-slate-600">
-                  <span>Paid: {profile.paidTokens.toLocaleString()}</span>
+                <div className="mt-4 flex items-center justify-between border-t border-slate-200 pt-3 text-xs text-slate-600">
+                  <span>Paid: {profile.paidTokens.toLocaleString("en-US")}</span>
                   <span>
                     {profile.activeAgents}/{profile.maxAgents} agents
                   </span>
@@ -413,7 +390,7 @@ export function ClusterDashboardV2Client({
               label="Cost Saved"
               value={`$${costSaved.toFixed(2)}`}
               extra={
-                <div className="mt-4 border-t border-slate-900/5 pt-3 text-xs text-slate-600">
+                <div className="mt-4 border-t border-slate-200 pt-3 text-xs text-slate-600">
                   <div>from cached context</div>
                   <div>Estimate at list price</div>
                 </div>
@@ -423,7 +400,7 @@ export function ClusterDashboardV2Client({
               label="Memory"
               value="1.42 GB"
               extra={
-                <div className="mt-4 border-t border-slate-900/5 pt-3 text-xs text-slate-600">
+                <div className="mt-4 border-t border-slate-200 pt-3 text-xs text-slate-600">
                   <div>&lt;8.00 GB limit</div>
                   <div>Pool headroom</div>
                 </div>
@@ -439,7 +416,7 @@ export function ClusterDashboardV2Client({
           bodyClassName="flex flex-col justify-between gap-5"
         >
           <div className="space-y-4">
-            <div className="rounded-xl bg-slate-900/[0.03] p-3.5 font-mono text-xs leading-relaxed text-slate-700 ring-1 ring-slate-900/[0.07]">
+            <div className="rounded-md bg-slate-50 p-3.5 font-mono text-xs leading-relaxed text-slate-700 border border-slate-200">
               <span className="font-semibold text-slate-900">fetch_vector_chunks</span> repeated 14x in 8.2ms. AST circuit breaker tripped.
             </div>
             <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-slate-600">
@@ -450,7 +427,7 @@ export function ClusterDashboardV2Client({
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 border-t border-slate-900/5 pt-4">
+          <div className="flex flex-wrap items-center gap-2 border-t border-slate-200 pt-4">
             <button onClick={handleNudgeAndPause} className={buttonClasses("secondary", false, "flex-1")}>
               Nudge &amp; Pause
             </button>
@@ -483,7 +460,7 @@ export function ClusterDashboardV2Client({
             <div className="overflow-x-auto">
               <table className="w-full min-w-[30rem] border-collapse text-left text-sm">
                 <thead>
-                  <tr className="border-b border-slate-900/5 bg-slate-900/[0.02] text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500">
+                  <tr className="border-b border-slate-200 bg-slate-50 text-[11px] font-medium text-slate-500">
                     <th scope="col" className="px-4 py-3">Agent</th>
                     <th scope="col" className="hidden px-4 py-3 2xl:table-cell">Process Path</th>
                     <th scope="col" className="px-4 py-3">Status</th>
@@ -492,7 +469,7 @@ export function ClusterDashboardV2Client({
                     <th scope="col" className="px-4 py-3 text-right">Control</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-900/5 text-slate-700">
+                <tbody className="divide-y divide-slate-100 text-slate-700">
                   <tr className="transition-colors hover:bg-slate-900/[0.02]">
                     <td className="px-4 py-3.5">
                       <div className="flex items-center gap-2">
@@ -581,7 +558,7 @@ export function ClusterDashboardV2Client({
           ) : (
             /* All 100 Cluster Nodes View */
             <div className="space-y-3 p-5">
-              <div className="flex flex-col gap-3 border-b border-slate-900/5 pb-3 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-3 border-b border-slate-200 pb-3 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between">
                 <span>Displaying 100-Agent Cloud Cluster Swarm</span>
                 <div className="flex flex-wrap items-center gap-1.5">
                   {["ALL", "ACTIVE", "HIBERNATED", "PAUSED_NUDGE", "KILLED_LOOP"].map((st) => (
@@ -590,8 +567,8 @@ export function ClusterDashboardV2Client({
                       onClick={() => setStatusFilter(st)}
                       aria-pressed={statusFilter === st}
                       className={cn(
-                        "rounded-full px-3 py-1 text-[11px] font-medium transition-colors",
-                        statusFilter === st ? "bg-slate-900 text-white" : "bg-slate-900/[0.05] text-slate-700 hover:bg-slate-900/10"
+                        "rounded-md px-3 py-1 text-[11px] font-medium transition-colors",
+                        statusFilter === st ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-900/10"
                       )}
                     >
                       {st}
@@ -602,7 +579,7 @@ export function ClusterDashboardV2Client({
 
               {filteredAgents.length === 0 ? (
                 <EmptyState icon={Layers} title="No agents match this filter">
-                  Run an agent with <code className="rounded-md bg-slate-900/[0.06] px-1.5 py-0.5 font-mono text-xs">argus run claude</code> and it appears here.
+                  Run an agent with <code className="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-xs">argus run claude</code> and it appears here.
                 </EmptyState>
               ) : (
                 <ul className="max-h-72 divide-y divide-slate-900/5 overflow-y-auto">
@@ -625,7 +602,7 @@ export function ClusterDashboardV2Client({
                         </span>
                         <span className="flex shrink-0 items-center gap-3 font-mono text-xs text-slate-700">
                           <span className="hidden sm:inline">{ag.ram_usage} MB</span>
-                          <span className="hidden sm:inline">{ag.tokens_used.toLocaleString()} tok</span>
+                          <span className="hidden sm:inline">{ag.tokens_used.toLocaleString("en-US")} tok</span>
                           <Badge tone={ag.status === "ACTIVE" ? "green" : ag.status === "PAUSED_NUDGE" ? "amber" : ag.status === "KILLED_LOOP" ? "red" : "neutral"}>{ag.status}</Badge>
                         </span>
                       </button>
@@ -639,7 +616,7 @@ export function ClusterDashboardV2Client({
 
         <Panel title="Hibernated & Bridge Overview" action={<Badge>Subsystems</Badge>} bodyClassName="flex flex-col p-0 sm:p-0">
           <div className="space-y-4 p-5">
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-slate-900/[0.03] p-4 ring-1 ring-slate-900/[0.07]">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-md bg-slate-50 p-4 border border-slate-200">
               <div className="min-w-0">
                 <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
                   <span className="h-2 w-2 rounded-full bg-slate-400" />
@@ -658,7 +635,7 @@ export function ClusterDashboardV2Client({
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-slate-900/[0.03] p-4 ring-1 ring-slate-900/[0.07]">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-md bg-slate-50 p-4 border border-slate-200">
               <div className="min-w-0">
                 <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
                   <span className="h-2 w-2 rounded-full bg-emerald-500" />
@@ -666,13 +643,13 @@ export function ClusterDashboardV2Client({
                 </div>
                 <div className="mt-0.5 font-mono text-xs text-slate-600">ipc:socket0 &bull; &lt;150MB RAM</div>
               </div>
-              <Link href="/dashboard/local-bridge" className="rounded-full bg-emerald-50 px-3.5 py-1.5 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-600/20 transition-colors hover:bg-emerald-100">
+              <Link href="/dashboard/local-bridge" className="rounded-md bg-emerald-50 px-3.5 py-1.5 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-600/20 transition-colors hover:bg-emerald-100">
                 Direct Sync
               </Link>
             </div>
           </div>
 
-          <div className="mt-auto flex items-center justify-between gap-3 border-t border-slate-900/5 bg-slate-900/[0.02] px-5 py-3.5 text-xs">
+          <div className="mt-auto flex items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-5 py-3.5 text-xs">
             <span className="text-slate-600">Zero-Token Standby</span>
             <span className="font-semibold text-emerald-700">Auto-wake Ready</span>
           </div>
@@ -694,8 +671,8 @@ export function ClusterDashboardV2Client({
                 <div
                   key={lock.id}
                   className={cn(
-                    "flex items-center justify-between gap-3 rounded-xl p-3.5 text-sm ring-1",
-                    isPausedLoop ? "bg-amber-50/50 ring-amber-600/20" : "bg-slate-900/[0.03] ring-slate-900/[0.07]"
+                    "flex items-center justify-between gap-3 rounded-md p-3.5 text-sm ring-1",
+                    isPausedLoop ? "bg-amber-50/50 ring-amber-600/20" : "bg-slate-50 ring-slate-900/[0.07]"
                   )}
                 >
                   <div className="min-w-0">
@@ -725,7 +702,7 @@ export function ClusterDashboardV2Client({
             </div>
             <p className="mt-0.5 text-xs text-slate-600">Zero duplicated tokens across concurrent agent sessions</p>
           </div>
-          <div className="border-t border-slate-900/5 pt-4">
+          <div className="border-t border-slate-200 pt-4">
             <div className="flex items-center justify-between gap-2 text-sm">
               <span className="font-semibold text-slate-900">Smart Model Downgrading</span>
               <span className="font-mono text-xs font-semibold text-slate-900">64% routed</span>
@@ -735,11 +712,11 @@ export function ClusterDashboardV2Client({
         </Panel>
 
         <Panel title="Hardware & Quota Guardrails" action={<Badge tone="green">Enforced</Badge>} bodyClassName="space-y-3 text-sm">
-          <div className="flex items-center justify-between gap-3 border-b border-slate-900/5 pb-3">
+          <div className="flex items-center justify-between gap-3 border-b border-slate-200 pb-3">
             <span className="text-slate-600">PC Daemon Ceiling</span>
             <span className="font-mono text-xs font-semibold text-slate-900">68 MB / 150 MB Max</span>
           </div>
-          <div className="flex items-center justify-between gap-3 border-b border-slate-900/5 pb-3">
+          <div className="flex items-center justify-between gap-3 border-b border-slate-200 pb-3">
             <span className="text-slate-600">Loop Kill Threshold</span>
             <span className="font-mono text-xs font-semibold text-red-700">&lt; 100ms / 14 retries</span>
           </div>
@@ -753,7 +730,7 @@ export function ClusterDashboardV2Client({
       {/* Agent Detail Modal (if clicked) */}
       {selectedAgent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4" onKeyDown={(e) => e.key === "Escape" && setSelectedAgent(null)}>
-          <div role="dialog" aria-modal="true" aria-labelledby="agent-title" className="max-h-[90dvh] w-full max-w-md space-y-5 overflow-y-auto rounded-3xl bg-white p-6 shadow-lift ring-1 ring-slate-900/10">
+          <div role="dialog" aria-modal="true" aria-labelledby="agent-title" className="max-h-[90dvh] w-full max-w-md space-y-5 overflow-y-auto rounded-lg bg-white p-6 shadow-lift border border-slate-200">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h3 id="agent-title" className="text-lg font-semibold tracking-tight text-slate-900">
@@ -761,12 +738,12 @@ export function ClusterDashboardV2Client({
                 </h3>
                 <p className="mt-0.5 font-mono text-xs text-slate-600">ID: {selectedAgent.agent_id}</p>
               </div>
-              <button onClick={() => setSelectedAgent(null)} aria-label="Close" className="rounded-full p-1.5 text-slate-500 hover:bg-slate-900/5 hover:text-slate-800">
+              <button onClick={() => setSelectedAgent(null)} aria-label="Close" className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-800">
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <dl className="space-y-3 rounded-xl bg-slate-900/[0.03] p-4 text-sm ring-1 ring-slate-900/[0.07]">
+            <dl className="space-y-3 rounded-md bg-slate-50 p-4 text-sm border border-slate-200">
               <div className="flex justify-between gap-3">
                 <dt className="text-slate-600">Status:</dt>
                 <dd className="font-semibold text-slate-900">{selectedAgent.status}</dd>
@@ -781,7 +758,7 @@ export function ClusterDashboardV2Client({
               </div>
               <div className="flex justify-between gap-3">
                 <dt className="text-slate-600">Tokens Used:</dt>
-                <dd className="font-mono text-xs font-semibold text-slate-900">{selectedAgent.tokens_used.toLocaleString()}</dd>
+                <dd className="font-mono text-xs font-semibold text-slate-900">{selectedAgent.tokens_used.toLocaleString("en-US")}</dd>
               </div>
               <div className="flex justify-between gap-3">
                 <dt className="text-slate-600">Current Task:</dt>
@@ -808,7 +785,7 @@ export function ClusterDashboardV2Client({
       )}
 
       {/* Footer info strip */}
-      <div className="flex flex-col items-start justify-between gap-2 border-t border-slate-900/5 pt-6 text-xs text-slate-600 sm:flex-row sm:items-center">
+      <div className="flex flex-col items-start justify-between gap-2 border-t border-slate-200 pt-6 text-xs text-slate-600 sm:flex-row sm:items-center">
         <span>
           Plan: <span className="font-mono text-slate-800">{profile.planName}</span>
         </span>

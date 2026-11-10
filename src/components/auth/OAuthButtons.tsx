@@ -19,7 +19,7 @@ export function oauthErrorMessage(code: string | null | undefined): string | nul
 }
 
 const button =
-  "flex w-full items-center justify-center gap-2.5 rounded-full bg-white py-3 text-sm font-semibold text-slate-800 ring-1 ring-slate-900/10 shadow-soft transition-[transform,background-color] duration-500 ease-spring hover:bg-slate-50 active:scale-[0.98]";
+  "flex w-full items-center justify-center gap-2.5 rounded-md bg-white h-10 text-sm font-medium text-slate-800 border border-slate-200 transition-[transform,background-color] duration-200 ease-spring hover:bg-slate-50 active:scale-[0.98]";
 
 /** Plain links (full navigation) so the OAuth redirect and cookies work without JavaScript. */
 export function OAuthButtons({ next }: { next?: string | null }) {
@@ -49,7 +49,7 @@ export function OrDivider() {
   return (
     <div className="relative my-5">
       <div className="absolute inset-0 flex items-center">
-        <div className="w-full border-t border-slate-900/10" />
+        <div className="w-full border-t border-slate-200" />
       </div>
       <div className="relative flex justify-center text-xs text-slate-400">
         <span className="bg-slate-50 px-3">or with email</span>

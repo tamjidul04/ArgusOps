@@ -116,7 +116,7 @@ export function OrchestratorClient({
       />
 
       {statusMsg && (
-        <div role="status" className="flex items-center justify-between gap-3 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-900 ring-1 ring-emerald-600/20">
+        <div role="status" className="flex items-center justify-between gap-3 rounded-md bg-emerald-50 px-4 py-3 text-sm text-emerald-900 ring-1 ring-emerald-600/20">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" aria-hidden="true" />
             <span className="font-medium">{statusMsg}</span>
@@ -140,17 +140,17 @@ export function OrchestratorClient({
           </div>
 
           <div
-            className="h-2.5 w-full overflow-hidden rounded-full bg-slate-900/10"
+            className="h-2.5 w-full overflow-hidden rounded-full bg-slate-200"
             role="meter"
             aria-label="Active agents"
             aria-valuemin={0}
             aria-valuemax={clusterSize}
             aria-valuenow={activeAgents}
           >
-            <div className="h-full rounded-full bg-slate-900 transition-[width] duration-500 ease-spring" style={{ width: `${Math.round((activeAgents / clusterSize) * 100)}%` }} />
+            <div className="h-full rounded-full bg-slate-900 transition-[width] duration-200 ease-spring" style={{ width: `${Math.round((activeAgents / clusterSize) * 100)}%` }} />
           </div>
 
-          <div className="flex items-center justify-between gap-3 border-t border-slate-900/5 pt-4 text-sm text-slate-600">
+          <div className="flex items-center justify-between gap-3 border-t border-slate-200 pt-4 text-sm text-slate-600">
             <span className="font-medium">Zero-Token Hibernation Pool:</span>
             <span className="font-mono text-xs font-semibold text-slate-900">{hibernatedAgents} Nodes (0 tok/s)</span>
           </div>
@@ -165,11 +165,11 @@ export function OrchestratorClient({
             value={promptText}
             onChange={(e) => setPromptText(e.target.value)}
             rows={3}
-            className="w-full resize-none rounded-xl bg-white p-3.5 font-mono text-xs leading-relaxed text-slate-900 ring-1 ring-slate-900/10 transition-shadow placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900"
+            className="w-full resize-none rounded-md bg-white p-3.5 font-mono text-xs leading-relaxed text-slate-900 border border-slate-200 transition-shadow placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900"
             placeholder="Enter complex multi-agent prompt or repository task..."
           />
 
-          <div className="flex flex-col gap-4 border-t border-slate-900/5 pt-4 text-sm sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-4 border-t border-slate-200 pt-4 text-sm sm:flex-row sm:items-center sm:justify-between">
             <div className="flex gap-6">
               <div>
                 <span className="block text-xs text-slate-600">Est. Run Cost:</span>
@@ -202,7 +202,7 @@ export function OrchestratorClient({
             <p className="text-3xl font-semibold tracking-tight text-slate-900">64% Downgraded</p>
             <p className="mt-1.5 text-sm text-slate-600">Simple JSON, regex, and tests routed to fast/local models.</p>
           </div>
-          <div className="flex items-center justify-between border-t border-slate-900/5 pt-3 font-mono text-xs text-slate-600">
+          <div className="flex items-center justify-between border-t border-slate-200 pt-3 font-mono text-xs text-slate-600">
             <span>Frontier: 36%</span>
             <span>Downgraded: 64%</span>
           </div>
@@ -213,7 +213,7 @@ export function OrchestratorClient({
             <p className="text-3xl font-semibold tracking-tight text-slate-900">1.80M Cached</p>
             <p className="mt-1.5 text-sm text-slate-600">Single codebase read shared across swarm without redundant tokens.</p>
           </div>
-          <div className="truncate border-t border-slate-900/5 pt-3 font-mono text-xs text-slate-600">
+          <div className="truncate border-t border-slate-200 pt-3 font-mono text-xs text-slate-600">
             <span className="truncate">Hash: {contextHash}</span>
           </div>
         </Panel>
@@ -221,7 +221,7 @@ export function OrchestratorClient({
         <Panel
           title="Quarantined Idle Swarm"
           action={
-            <button type="button" onClick={handleWakePool} className="rounded-full px-3 py-1.5 text-xs font-semibold text-slate-700 ring-1 ring-slate-900/10 hover:bg-slate-50">
+            <button type="button" onClick={handleWakePool} className="rounded-md px-3 py-1.5 text-xs font-semibold text-slate-700 border border-slate-200 hover:bg-slate-50">
               Wake Pool
             </button>
           }
@@ -233,7 +233,7 @@ export function OrchestratorClient({
               {hibernatedAgents} Nodes in hibernation • Target: <code className="font-mono text-xs text-slate-800">--hibernated (0 Tok)</code>
             </p>
           </div>
-          <div className="flex items-center justify-between gap-2 border-t border-slate-900/5 pt-3 text-xs text-slate-600">
+          <div className="flex items-center justify-between gap-2 border-t border-slate-200 pt-3 text-xs text-slate-600">
             <span>
               RAM Saved: <strong className="font-mono text-slate-900">5.60 GB Dormant</strong>
             </span>
@@ -261,7 +261,7 @@ export function OrchestratorClient({
           <div className="overflow-x-auto">
             <table className="w-full min-w-[46rem] text-left text-sm">
               <thead>
-                <tr className="border-b border-slate-900/5 bg-slate-900/[0.02] text-[11px] font-medium uppercase tracking-[0.12em] text-slate-500">
+                <tr className="border-b border-slate-200 bg-slate-50 text-[11px] font-medium text-slate-500">
                   <th scope="col" className="px-5 py-3">Step</th>
                   <th scope="col" className="px-5 py-3">Sub-Task</th>
                   <th scope="col" className="px-5 py-3">Assigned Agent</th>
@@ -286,7 +286,7 @@ export function OrchestratorClient({
                       {task.state === "Done" && <Badge>Done</Badge>}
                       {task.state === "Run" && (
                         <Badge tone="green">
-                          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+                          <span className="h-1.5 w-1.5 live-dot rounded-full bg-emerald-500" />
                           Run
                         </Badge>
                       )}
@@ -308,7 +308,7 @@ export function OrchestratorClient({
             ["Tier 2: Haiku Router", "10 Antigravity Nodes • 12.1k tok"],
             ["Tier 3: Local LLM", "10 Hermes Nodes • 4.2k tok"],
           ].map(([tier, detail]) => (
-            <div key={tier} className="flex flex-col gap-0.5 border-b border-slate-900/5 py-3 last:border-0 sm:flex-row sm:items-center sm:justify-between">
+            <div key={tier} className="flex flex-col gap-0.5 border-b border-slate-200 py-3 last:border-0 sm:flex-row sm:items-center sm:justify-between">
               <span className="text-sm font-semibold text-slate-900">{tier}</span>
               <span className="font-mono text-xs text-slate-600">{detail}</span>
             </div>
@@ -320,7 +320,7 @@ export function OrchestratorClient({
             ["db/migrations/schema.sql", "Read 1x • Shared 10x"],
             ["src/rag/index.ts", "Read 1x • Shared 20x"],
           ].map(([file, note]) => (
-            <div key={file} className="flex flex-col gap-0.5 rounded-xl bg-slate-900/[0.03] p-3.5 ring-1 ring-slate-900/[0.07] sm:flex-row sm:items-center sm:justify-between">
+            <div key={file} className="flex flex-col gap-0.5 rounded-md bg-slate-50 p-3.5 border border-slate-200 sm:flex-row sm:items-center sm:justify-between">
               <span className="truncate font-mono text-xs text-slate-800">{file}</span>
               <span className="font-mono text-xs font-semibold text-emerald-700">{note}</span>
             </div>
@@ -328,7 +328,7 @@ export function OrchestratorClient({
         </Panel>
 
         <Panel title="Triage Guardrails" bodyClassName="space-y-1">
-          <div className="flex items-center justify-between gap-3 border-b border-slate-900/5 py-3 text-sm">
+          <div className="flex items-center justify-between gap-3 border-b border-slate-200 py-3 text-sm">
             <span className="text-slate-600">Concurrency Ceiling</span>
             <span className="font-mono text-xs font-semibold text-slate-900">30 / 100 Max</span>
           </div>
