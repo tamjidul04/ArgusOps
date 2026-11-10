@@ -17,6 +17,8 @@ const server = {
   calls: [] as Array<{ method: string; path: string; key: string | undefined; body: Record<string, unknown> }>,
   down: false,
   polls: 0,
+  usage: null as unknown,
+  notes: null as unknown,
 };
 
 function agent(id: string, name: string, status: string, extra: Partial<AgentView> = {}): AgentView {
@@ -30,6 +32,8 @@ beforeEach(async () => {
   server.calls = [];
   server.down = false;
   server.polls = 0;
+  server.usage = null;
+  server.notes = null;
   server.http = http.createServer((req, res) => {
     const parts: Buffer[] = [];
     req.on("data", (c) => parts.push(c));
@@ -60,6 +64,8 @@ beforeEach(async () => {
       if (path === "/api/agents") {
         return json(200, { user: { name: "Dev", email: "dev@example.com" }, plan: { name: "Free", maxAgents: 2, tokensRemaining: 180_000 }, unreadNotifications: 0, agents: server.agents });
       }
+      if (path.startsWith("/api/usage")) return server.usage ? json(200, server.usage) : json(404, { error: "not found" });
+      if (path.startsWith("/api/notifications")) return server.notes ? json(200, server.notes) : json(404, { error: "not found" });
       if (path === "/api/guardrails") return json(200, { success: true, message: body.action === "TRIGGER_KILL_SWITCH" ? "Agent was marked stopped." : "Agent will resume." });
       if (path === "/api/rewrites") return json(200, { success: true, message: body.action === "apply" ? "Agent will resume with this instruction." : "Dismissed." });
       return json(404, { error: "not found" });
@@ -466,5 +472,142 @@ describe("credential safety", () => {
     await boot();
     await mock.commands.get("argusops.openDashboard")!();
     expect(mock.opened).toEqual(["http://localhost:3000/dashboard/guardrails"]);
+  });
+});
+
+/* ----------------------------- the dashboard panel ----------------------------- */
+
+/** A stand-in for the webview VS Code hands us; records what we set and post, and lets a test "click". */
+function openPanel() {
+  const posted: Array<Record<string, unknown>> = [];
+  let handler: (m: unknown) => void = () => {};
+  const view = {
+    visible: true,
+    webview: {
+      options: {} as Record<string, unknown>,
+      html: "",
+      cspSource: "vscode-webview:",
+      postMessage: async (m: Record<string, unknown>) => {
+        posted.push(m);
+        return true;
+      },
+      onDidReceiveMessage: (fn: (m: unknown) => void) => {
+        handler = fn;
+        return { dispose() {} };
+      },
+    },
+    onDidChangeVisibility: () => ({ dispose() {} }),
+    onDidDispose: () => ({ dispose() {} }),
+  };
+  mock.webviewProviders.get("argusops.overview")!.resolveWebviewView(view);
+  return { view, posted, send: async (m: unknown) => { handler(m); await sleep(120); } };
+}
+
+const USAGE = {
+  range: "7d",
+  totals: { inputTokens: 410_000, outputTokens: 190_000, calls: 233, costUsd: 3.42, loopsCaught: 4 },
+  buckets: [1, 2, 3, 4, 5, 6, 7].map((i) => ({ bucket: "2026-11-0" + i, inputTokens: i * 1000, outputTokens: i * 500 })),
+};
+const NOTES = { unread: 1, notifications: [{ id: "n1", title: "shop-api was paused", body: "x", level: "WARN", read: false, createdAt: new Date().toISOString() }] };
+
+describe("dashboard panel", () => {
+  it("is registered as the Overview view", async () => {
+    await boot({ signedIn: true });
+    expect(mock.webviewProviders.has("argusops.overview")).toBe(true);
+  });
+
+  it("shows what needs you, the key numbers, usage and alerts", async () => {
+    server.agents = [agent("a1", "shop-api", "PAUSED_NUDGE", { currentTask: "ran npm test 3 times", suggestion: withSuggestion() }), agent("a2", "docs", "ACTIVE")];
+    server.usage = USAGE;
+    server.notes = NOTES;
+    await boot({ signedIn: true });
+    const { view } = openPanel();
+    const html = view.webview.html;
+    expect(view.webview.options).toMatchObject({ enableScripts: true });
+    expect(html).toContain("Needs you");
+    expect(html).toContain("shop-api");
+    expect(html).toContain("Approve &amp; resume");
+    expect(html).toContain("180K"); // tokens left, from the plan
+    expect(html).toContain("1 / 2"); // one running of two allowed
+    expect(html).toContain("600K"); // 7-day tokens
+    expect(html).toContain("shop-api was paused"); // an alert
+    expect(html).toContain("Open dashboard");
+  });
+
+  it("has a strict content-security-policy and no inline styles or handlers", async () => {
+    server.agents = [agent("a1", "x", "PAUSED_NUDGE")];
+    await boot({ signedIn: true });
+    const html = openPanel().view.webview.html;
+    const nonce = /script-src 'nonce-([^']+)'/.exec(html)?.[1];
+    expect(nonce).toBeTruthy();
+    expect(html).toContain("default-src 'none'");
+    expect(html).not.toMatch(/\sstyle=/);
+    expect(html).not.toMatch(/\son[a-z]+=/i);
+    expect((html.match(/<script/g) ?? []).length).toBe(1);
+  });
+
+  it("shows a dash, not invented numbers, when usage or alerts cannot be loaded", async () => {
+    server.agents = [agent("a1", "docs", "ACTIVE")];
+    await boot({ signedIn: true }); // server.usage and server.notes are null: the fake server answers 404
+    const html = openPanel().view.webview.html;
+    expect(html).toContain("—");
+    expect(html).not.toContain("Tokens per day");
+  });
+
+  it("sends updates into the open panel instead of reloading it", async () => {
+    server.agents = [agent("a1", "first-agent", "ACTIVE")];
+    await boot({ signedIn: true });
+    const panel = openPanel();
+    const shell = panel.view.webview.html;
+    server.agents = [agent("a1", "first-agent", "ACTIVE"), agent("a2", "second-agent", "ACTIVE")];
+    await refresh();
+    expect(panel.view.webview.html).toBe(shell); // the page itself is untouched
+    const render = panel.posted.find((m) => m.type === "render");
+    expect(String(render?.html)).toContain("2 / 2");
+  });
+
+  it("Approve & resume applies the suggestion", async () => {
+    server.agents = [agent("a1", "shop-api", "PAUSED_NUDGE", { suggestion: withSuggestion("rw9") })];
+    await boot({ signedIn: true });
+    const panel = openPanel();
+    await panel.send({ type: "approve", id: "a1" });
+    const call = server.calls.find((c) => c.path === "/api/rewrites");
+    expect(call?.body).toMatchObject({ action: "apply", id: "rw9" });
+    expect(call?.key).toBe("argus_live_testkey");
+  });
+
+  it("Stop asks for confirmation before stopping", async () => {
+    server.agents = [agent("a1", "shop-api", "PAUSED_NUDGE")];
+    await boot({ signedIn: true });
+    mock.respond = () => undefined; // the user dismisses the confirmation
+    await openPanel().send({ type: "stop", id: "a1" });
+    expect(server.calls.some((c) => c.path === "/api/guardrails")).toBe(false);
+    mock.respond = (_t, items) => (items.includes("Stop agent") ? "Stop agent" : undefined);
+    await openPanel().send({ type: "stop", id: "a1" });
+    expect(server.calls.find((c) => c.path === "/api/guardrails")?.body).toMatchObject({ action: "TRIGGER_KILL_SWITCH", agentId: "a1" });
+  });
+
+  it("ignores unknown messages, unknown agents and anything malformed", async () => {
+    server.agents = [agent("a1", "shop-api", "PAUSED_NUDGE", { suggestion: withSuggestion() })];
+    await boot({ signedIn: true });
+    const panel = openPanel();
+    const before = server.calls.length;
+    for (const m of [null, "approve", 42, {}, { type: 1 }, { type: "delete-everything", id: "a1" }, { type: "approve", id: "not-mine" }, { type: "approve" }, { type: "approve", id: { x: 1 } }]) await panel.send(m);
+    const writes = server.calls.slice(before).filter((c) => c.method === "POST");
+    expect(writes).toEqual([]);
+  });
+
+  it("escapes everything that came from the server", async () => {
+    const evil = '<img src=x onerror="alert(1)">';
+    server.agents = [agent("a1", evil, "PAUSED_NUDGE", { currentTask: "<script>alert(2)</script>", suggestion: withSuggestion("rw1", "</blockquote><script>alert(3)</script>") })];
+    server.notes = { unread: 1, notifications: [{ id: "n1", title: evil, body: evil, level: "WARN", read: false, createdAt: new Date().toISOString() }] };
+    server.usage = USAGE;
+    await boot({ signedIn: true });
+    const html = openPanel().view.webview.html;
+    expect(html).not.toContain("<img");
+    expect(html).not.toContain("alert(2)</script>");
+    expect(html).not.toContain("</blockquote><script>");
+    expect(html).toContain("&lt;img");
+    expect((html.match(/<script/g) ?? []).length).toBe(1); // only our own
   });
 });
