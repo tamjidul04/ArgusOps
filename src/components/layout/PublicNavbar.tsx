@@ -61,12 +61,11 @@ export function PublicNavbar() {
           scrolled || open ? "border-slate-200 bg-white" : "border-transparent"
         )}
       >
-        <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-8">
-            <Link href="/" aria-label="ArgusOps home" className="rounded-md">
-              <Logo />
-            </Link>
-            <nav aria-label="Main" className="hidden items-center md:flex">
+        <div className="mx-auto grid h-14 w-full max-w-6xl grid-cols-[1fr_auto] items-center px-4 sm:px-6 md:grid-cols-[1fr_auto_1fr] lg:px-8">
+          <Link href="/" aria-label="ArgusOps home" className="w-fit rounded-md">
+            <Logo />
+          </Link>
+          <nav aria-label="Main" className="hidden items-center justify-center md:flex">
               {NAV_LINKS.map((l) => {
                 const active = pathname === l.href || pathname.startsWith(l.href + "/");
                 return (
@@ -84,10 +83,9 @@ export function PublicNavbar() {
                   </Link>
                 );
               })}
-            </nav>
-          </div>
+          </nav>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center justify-end gap-1.5">
             <Link href="/login" className={cn(buttonClasses("ghost", false), "hidden h-8 px-3 sm:inline-flex")}>
               Log in
             </Link>
