@@ -49,6 +49,16 @@ body {
   line-height: 1.5;
 }
 
+/* Touch screens: compact controls get a finger-sized hit area; mouse users keep the dense sizes. */
+@media (pointer: coarse) {
+  :where([role="tab"], .dash td button, .dash td a, .dash header button, footer a, main a.text-xs) {
+    min-height: 2.25rem;
+  }
+  :where([role="tab"]) {
+    padding-inline: 0.75rem;
+  }
+}
+
 /* Figures line up in tables and counters. */
 .tabular {
   font-variant-numeric: tabular-nums;

@@ -70,7 +70,7 @@ export function PublicFooter() {
         </div>
       </Container>
       {/* The wordmark, set large and cropped by the page edge. */}
-      <div aria-hidden="true" className="pointer-events-none mx-auto -mb-[3.2vw] max-w-6xl select-none px-4 sm:px-6 lg:px-8">
+      <div aria-hidden="true" className="pointer-events-none mx-auto -mb-[3.2vw] max-w-6xl xl:max-w-7xl 2xl:max-w-[96rem] select-none px-4 sm:px-6 lg:px-8 2xl:px-12">
         <Wordmark className="h-auto w-full translate-y-0 text-slate-100" />
       </div>
     </footer>

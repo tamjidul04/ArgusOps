@@ -71,10 +71,10 @@ export default function LandingPage() {
           <div className="grid items-start gap-12 lg:grid-cols-[1.1fr_1fr] lg:gap-14">
             <div className="pt-2 lg:pt-8">
               <Eyebrow>Early access · v0.2</Eyebrow>
-              <h1 className="mt-5 text-balance text-[2.6rem] font-semibold leading-[1.02] tracking-[-0.035em] text-slate-900 sm:text-6xl">
+              <h1 className="mt-5 text-balance text-[2.6rem] font-semibold leading-[1.02] tracking-[-0.035em] text-slate-900 sm:text-6xl 2xl:text-7xl">
                 <Rise text="Stop your AI agent before it burns your tokens." />
               </h1>
-              <p className="fade-in mt-6 max-w-lg text-pretty text-lg leading-relaxed text-slate-500" style={{ animationDelay: "450ms" }}>
+              <p className="fade-in mt-6 max-w-lg text-pretty text-lg leading-relaxed text-slate-500 2xl:max-w-xl 2xl:text-xl" style={{ animationDelay: "450ms" }}>
                 ArgusOps supervises the coding agents you already run. When one starts looping, it pauses the agent, writes a corrective
                 instruction and tells you. You bring your own model key.
               </p>
