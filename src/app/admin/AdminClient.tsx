@@ -686,7 +686,7 @@ export function AdminClient({
               <input id="inject-free" type="number" value={injectFreeAmount} onChange={(e) => setInjectFreeAmount(Number(e.target.value))} className={cn(inputClass, "font-mono")} />
             </FormField>
 
-            <FormField id="inject-paid" label="Inject Paid Unmetered Tokens (+Amount):">
+            <FormField id="inject-paid" label="Add paid tokens (+amount):">
               <input id="inject-paid" type="number" value={injectPaidAmount} onChange={(e) => setInjectPaidAmount(Number(e.target.value))} placeholder="0" className={cn(inputClass, "font-mono")} />
             </FormField>
 
