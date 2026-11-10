@@ -434,11 +434,11 @@ export function AdminClient({
               ) : (
                 queue.map((tx) => (
                   <tr key={tx.tx_id} className="transition-colors hover:bg-slate-900/[0.02]">
-                    <td className="max-w-[9rem] truncate px-4 py-4 font-mono text-xs font-semibold text-slate-900" title={tx.tx_id}>{tx.tx_id}</td>
-                    <td className="px-4 py-4 font-semibold text-slate-900">{tx.user_email}</td>
-                    <td className="px-4 py-4 text-slate-900">{tx.requested_plan}</td>
-                    <td className="px-4 py-4 font-mono text-xs font-semibold text-slate-900">${tx.amount.toFixed(2)}</td>
-                    <td className="px-4 py-4">
+                    <td className="max-w-[9rem] truncate px-4 py-2.5 font-mono text-xs font-medium text-slate-900" title={tx.tx_id}>{tx.tx_id}</td>
+                    <td className="px-4 py-2.5 font-medium text-slate-900">{tx.user_email}</td>
+                    <td className="px-4 py-2.5 text-slate-900">{tx.requested_plan}</td>
+                    <td className="px-4 py-2.5 font-mono text-xs font-medium text-slate-900">${tx.amount.toFixed(2)}</td>
+                    <td className="px-4 py-2.5">
                       {tx.admin_status === "PENDING" ? (
                         <Badge tone="amber">
                           <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
@@ -456,7 +456,7 @@ export function AdminClient({
                         </Badge>
                       )}
                     </td>
-                    <td className="px-4 py-4 text-right">
+                    <td className="px-4 py-2.5 text-right">
                       {tx.admin_status === "PENDING" ? (
                         <div className="flex items-center justify-end gap-2">
                           <button onClick={() => handleApprove(tx.tx_id)} disabled={submitting} className={buttonClasses("primary", false, "px-4 py-1.5 text-xs disabled:opacity-60")}>
@@ -530,12 +530,12 @@ export function AdminClient({
 
                   return (
                     <tr key={plan.plan_id} className="transition-colors hover:bg-slate-900/[0.02]">
-                      <td className="px-5 py-4 font-semibold text-slate-900">{plan.name}</td>
-                      <td className="px-5 py-4 font-semibold text-slate-900">
+                      <td className="px-5 py-2.5 font-medium text-slate-900">{plan.name}</td>
+                      <td className="px-5 py-2.5 font-medium text-slate-900">
                         {isFree ? "$0" : plan.name.toLowerCase().includes("enterprise") ? "Custom" : `$${plan.price}`}
                       </td>
-                      <td className="whitespace-nowrap px-5 py-4 text-slate-800">{plan.agent_limit} Agents</td>
-                      <td className="px-5 py-4">
+                      <td className="whitespace-nowrap px-5 py-2.5 text-slate-800">{plan.agent_limit} Agents</td>
+                      <td className="px-5 py-2.5">
                         {isFree ? (
                           <span className="text-slate-600">Auto-Provisioned (100k Tokens)</span>
                         ) : (
@@ -557,7 +557,7 @@ export function AdminClient({
                           </div>
                         )}
                       </td>
-                      <td className="px-5 py-4 text-right">
+                      <td className="px-5 py-2.5 text-right">
                         <button
                           onClick={() => {
                             setPlanForm(plan);
@@ -626,7 +626,7 @@ export function AdminClient({
                           setInjectPaidAmount(0);
                           setInjectMaxAgents(user.max_agents);
                         }}
-                        className={buttonClasses("primary", false, "px-4 py-2 text-xs")}
+                        className={buttonClasses("secondary", false, "in-[.dash]:h-8 in-[.dash]:px-2.5 in-[.dash]:text-xs")}
                       >
                         Inject Free Tokens
                       </button>
@@ -634,8 +634,8 @@ export function AdminClient({
                       <button
                         onClick={() => handleToggleBan(user)}
                         className={cn(
-                          buttonClasses("secondary", false, "px-4 py-2 text-xs"),
-                          isBanned && "bg-red-50 text-red-800 ring-red-600/25 hover:bg-red-100"
+                          buttonClasses("ghost", false, "in-[.dash]:h-8 in-[.dash]:px-2.5 in-[.dash]:text-xs"),
+                          isBanned && "border border-red-200 bg-red-50 text-red-800 hover:bg-red-100"
                         )}
                       >
                         {isBanned ? "Unban User" : "Restrict / Ban"}
