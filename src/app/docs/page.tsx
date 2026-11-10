@@ -17,7 +17,7 @@ export default function DocsPage() {
         title="From install to your first caught loop."
         lead="Everything you need to supervise an agent: setup, the CLI, the editor extension and how pausing works."
       />
-      <Container className="py-16 md:py-24">
+      <Container className="py-10 md:py-14">
         <DocsClient />
       </Container>
     </PublicShell>
