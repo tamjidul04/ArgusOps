@@ -4,6 +4,7 @@ import { parseProxyArgs, parseRunArgs } from "./args";
 import { CloudClient, CloudError } from "./api";
 import { clearToken, loadConfig, saveConfig } from "./config";
 import { runAgent } from "./run";
+import { pointWorkspaceAtProxy, snippet } from "./ide-settings";
 
 export const VERSION = "0.2.0";
 
@@ -13,6 +14,8 @@ Usage:
   argus login [--api-url <url>] [--no-browser]   connect this machine to your ArgusOps account
   argus run [options] claude [claude args...]    run Claude Code under supervision
   argus run [options] -- <command> [args...]     run any agent that talks to the Anthropic API
+  argus ide                                       one step for the Claude Code panel in VS Code: signs you in if needed,
+                                                  points this folder's panel at Argus, and undoes it on Ctrl+C
   argus proxy [options]                           supervise an agent you start yourself, e.g. the Claude Code
                                                   panel in VS Code (see "Use it from VS Code" in the docs)
   argus whoami                                    show who you're signed in as
@@ -149,6 +152,35 @@ async function run(argv: string[]): Promise<number> {
   });
 }
 
+async function ide(argv: string[]): Promise<number> {
+  const parsed = parseProxyArgs(argv);
+  if (!parsed.ok) {
+    err(parsed.error);
+    return 1;
+  }
+  const { spec } = parsed;
+  if (!spec.offline && !loadConfig().token) {
+    const code = await login([]);
+    if (code !== 0) return code;
+  }
+  const baseUrl = `http://127.0.0.1:${spec.port}`;
+  const r = pointWorkspaceAtProxy(process.cwd(), baseUrl);
+  if ("error" in r) {
+    console.log(`${r.error} Add this to it yourself:
+
+${snippet(baseUrl)}
+`);
+  } else {
+    console.log("Set up this folder for Argus. In VS Code, run \"Developer: Reload Window\" once, then use Claude as normal.");
+    console.log("Ctrl+C here stops Argus and undoes the setting (reload the window again afterwards).");
+  }
+  try {
+    return await proxy(argv);
+  } finally {
+    if (!("error" in r)) r.undo();
+  }
+}
+
 async function proxy(argv: string[]): Promise<number> {
   const parsed = parseProxyArgs(argv);
   if (!parsed.ok) {
@@ -194,6 +226,8 @@ export async function main(argv: string[]): Promise<number> {
       return whoami();
     case "run":
       return run(rest);
+    case "ide":
+      return ide(rest);
     case "proxy":
       return proxy(rest);
     case "-v":

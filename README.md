@@ -86,13 +86,7 @@ To poke at it by hand: `node packages/cli/e2e/fake-anthropic.mjs 8787 --loop`, t
 
 ## Supervising the Claude Code panel in VS Code
 
-`argus run claude` starts Claude Code for you. The Claude Code panel in VS Code starts it itself, so run `argus proxy` (after `argus login`) and point the panel at it in the **workspace** settings of the project you want supervised:
-
-```json
-{ "claudeCode.environmentVariables": [{ "name": "ANTHROPIC_BASE_URL", "value": "http://127.0.0.1:47821" }] }
-```
-
-Usage and loop detection work the same; sessions share one agent named "Claude Code (IDE)". Stop makes the proxy refuse requests with a 403. Keep it out of user settings: if the proxy is not running, the panel cannot connect. Options: `--port`, `--name`, `--offline`.
+In your project folder run `argus ide`. It signs you in if needed, points that folder's Claude Code panel at Argus, and undoes it on Ctrl+C. Run **Developer: Reload Window** once in VS Code, then use Claude as normal. Sessions share one agent named "Claude Code (IDE)"; Stop makes the proxy refuse requests with a 403. Advanced: `argus proxy` runs only the proxy (options `--port`, `--name`, `--offline`) if you want to set `claudeCode.environmentVariables` yourself.
 
 ## The VS Code extension
 
