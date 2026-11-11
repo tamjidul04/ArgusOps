@@ -10,9 +10,9 @@ import { prisma } from "@/lib/prisma";
 import { requirePageUser } from "@/lib/auth";
 
 export const metadata: Metadata = {
-  title: "Agent Cluster Telemetry & Loop Interception",
+  title: "Overview",
   description:
-    "Real-time supervisor orchestrating autonomous nodes, AST recursion traps, and memory bus quota.",
+    "Your agents, token balance and what needs you.",
 };
 
 async function DashboardDataLoader() {

@@ -1,31 +1,16 @@
 "use client";
 
-import React, { useState, useTransition } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import {
-  Activity,
   Layers,
-  Shield,
   Zap,
   CheckCircle2,
   AlertCircle,
-  Play,
-  Pause,
-  RotateCcw,
-  Sparkles,
-  Lock,
   Unlock,
-  Check,
   X,
-  FileCode,
-  ArrowRight,
-  RefreshCw,
-  Clock,
-  Laptop,
-  Cloud,
-  ChevronDown,
 } from "lucide-react";
-import { cn, formatTokens, formatCurrency } from "@/lib/utils";
+import { cn, formatTokens } from "@/lib/utils";
 import { useDashboard } from "@/components/layout";
 import { useBrain } from "@/context/BrainContext";
 import { Badge, DashHeader, EmptyState, Panel, Segmented, buttonClasses } from "@/components/ui";
@@ -48,6 +33,24 @@ function Cell({ label, value, sub, badge, className, children }: { label: string
 
 const rowBtn = "inline-flex h-7 items-center rounded-md border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 active:scale-[0.98]";
 const rowBtnDark = "inline-flex h-7 items-center rounded-md bg-slate-900 px-2.5 text-xs font-medium text-white transition-colors hover:bg-slate-800 active:scale-[0.98]";
+
+const STATUS: Record<string, { label: string; tone: "green" | "amber" | "red" | "neutral"; dot: string }> = {
+  ACTIVE: { label: "Running", tone: "green", dot: "bg-emerald-500" },
+  PAUSED_NUDGE: { label: "Paused", tone: "amber", dot: "bg-amber-500" },
+  KILLED_LOOP: { label: "Stopped", tone: "red", dot: "bg-red-500" },
+  HIBERNATED: { label: "Hibernated", tone: "neutral", dot: "bg-slate-400" },
+};
+const statusOf = (status: string) => STATUS[status] ?? { label: status, tone: "neutral" as const, dot: "bg-slate-400" };
+
+function ago(iso: string): string {
+  const sec = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
+  if (sec < 10) return "just now";
+  if (sec < 60) return `${sec}s ago`;
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min}m ago`;
+  const h = Math.floor(min / 60);
+  return h < 48 ? `${h}h ago` : `${Math.floor(h / 24)}d ago`;
+}
 
 export interface AgentRecord {
   agent_id: string;
@@ -85,7 +88,7 @@ export function ClusterDashboardV2Client({
   initialCloudCluster,
   initialLocalCluster,
 }: ClusterDashboardV2ClientProps) {
-  const { environment, setEnvironment, profile } = useDashboard();
+  const { environment, profile } = useDashboard();
   const {
     hardware,
     cloudCluster: brainCloudCluster,
@@ -94,28 +97,13 @@ export function ClusterDashboardV2Client({
     executeBrainAction,
     refreshBrain,
   } = useBrain();
-  const [isPending, startTransition] = useTransition();
 
   // State
-  const [cloudCluster, setCloudCluster] =
-    useState<ClusterTelemetryData | null>(initialCloudCluster);
-  const [localCluster, setLocalCluster] =
-    useState<ClusterTelemetryData | null>(initialLocalCluster);
+  // Live data from the dashboard context, falling back to what the server rendered first.
+  const cloudCluster = (brainCloudCluster as unknown as ClusterTelemetryData | null) ?? initialCloudCluster;
+  const localCluster = (brainLocalCluster as unknown as ClusterTelemetryData | null) ?? initialLocalCluster;
   const [selectedAgent, setSelectedAgent] = useState<AgentRecord | null>(null);
-  const [activeTab, setActiveTab] = useState<
-    "matrix" | "all_nodes" | "incidents"
-  >("matrix");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
-
-  // Sync state from BrainContext background polling
-  React.useEffect(() => {
-    if (brainCloudCluster) {
-      setCloudCluster(brainCloudCluster as unknown as ClusterTelemetryData);
-    }
-    if (brainLocalCluster) {
-      setLocalCluster(brainLocalCluster as unknown as ClusterTelemetryData);
-    }
-  }, [brainCloudCluster, brainLocalCluster]);
 
   // File locks held by this account's agents (from the database)
   interface LockRow {
@@ -164,7 +152,6 @@ export function ClusterDashboardV2Client({
   const activeCount = agents.filter((a) => a.status === "ACTIVE").length;
   const hibernatedCount = agents.filter((a) => a.status === "HIBERNATED").length;
   const pausedCount = agents.filter((a) => a.status === "PAUSED_NUDGE").length;
-  const killedCount = agents.filter((a) => a.status === "KILLED_LOOP").length;
   const totalCount = agents.length;
   const allocationPct = totalCount > 0 ? Math.round((activeCount / totalCount) * 100) : 0;
 
@@ -173,10 +160,6 @@ export function ClusterDashboardV2Client({
   // Estimate at a $3 per million input-token list price; real per-request savings arrive with usage tracking.
   const costSaved = +((tokensSaved / 1_000_000) * 3).toFixed(2);
   const totalRamMb = agents.reduce((acc, a) => acc + (a.ram_usage || 0), 0);
-  const totalRamGb = hardware
-    ? hardware.usedRamGb.toFixed(2)
-    : (Math.max(1420, totalRamMb) / 1024).toFixed(2);
-
   // 1. Interactive action caller wired to BrainContext
   const handleClusterAction = async (
     action: string,
@@ -258,16 +241,6 @@ export function ClusterDashboardV2Client({
     }
   };
 
-  // 2. Nudge & Pause action
-  const handleNudgeAndPause = () => {
-    handleClusterAction("APPROVE_NUDGE");
-  };
-
-  // 3. Kill Switch action
-  const handleKillSwitch = () => {
-    handleClusterAction("SIMULATE_ROGUE_LOOP");
-  };
-
   // 4. Release a file lock (server-side, owner only)
   const handleReleaseLock = async (id: string) => {
     try {
@@ -287,6 +260,8 @@ export function ClusterDashboardV2Client({
       setToastMessage({ type: "error", text: "Network error releasing the lock." });
     }
   };
+
+  const pausedAgents = agents.filter((a) => a.status === "PAUSED_NUDGE");
 
   // Filtered agents for table
   const filteredAgents =
@@ -318,26 +293,22 @@ export function ClusterDashboardV2Client({
       )}
 
       <DashHeader
-        title="Agent cluster telemetry and loop interception"
-        description="Real-time supervisor orchestrating autonomous nodes, AST recursion traps, and memory bus quota."
+        title="Overview"
+        description="Your agents, token balance and what needs you."
         actions={
           <>
             <button
               onClick={async () => {
                 await refreshBrain();
-                setToastMessage({
-                  type: "success",
-                  text: "Live telemetry stream synchronized across cluster.",
-                });
+                setToastMessage({ type: "success", text: "Refreshed." });
               }}
               className={buttonClasses("secondary", false)}
             >
-              <span className="live-dot h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              Sync Live
+              Refresh
             </button>
-            <button onClick={() => handleClusterAction("AUTO_RIGHT_SIZE")} className={buttonClasses("primary", false)}>
-              Deploy Agent
-            </button>
+            <Link href="/docs#getting-started" className={buttonClasses("primary", false)}>
+              How to start an agent
+            </Link>
           </>
         }
       />
@@ -378,265 +349,156 @@ export function ClusterDashboardV2Client({
             <WeekUsage />
           </div>
         </div>
-        <Cell label="Tokens saved" value="1.24M" sub="Cache traps and dedup" badge={<Badge tone="green">+9.4x</Badge>} />
-        <Cell label="Cost saved" value={`$${costSaved.toFixed(2)}`} sub="Cached context, list price" />
-        <Cell label="Active vs. hibernated" value="33%" sub="2 active · 4 hibernated">
-          <div className="mt-2.5 h-1 w-full overflow-hidden rounded-full bg-slate-100" role="meter" aria-label="Active share of pool" aria-valuemin={0} aria-valuemax={100} aria-valuenow={33}>
-            <div className="h-full rounded-full bg-slate-900" style={{ width: "33%" }} />
-          </div>
+        <Cell label="Tokens saved" value={formatTokens(tokensSaved)} sub="served from the context cache" />
+        <Cell label="Cost saved" value={`$${costSaved.toFixed(2)}`} sub="Estimate at list prices" />
+        <Cell label="Agents" value={`${activeCount} active`} sub={`${hibernatedCount} hibernated · ${pausedCount} paused`}>
+          {totalCount > 0 && (
+            <div className="mt-2.5 h-1 w-full overflow-hidden rounded-full bg-slate-100" role="meter" aria-label="Share of agents that are active" aria-valuemin={0} aria-valuemax={100} aria-valuenow={allocationPct}>
+              <div className="h-full rounded-full bg-slate-900" style={{ width: `${allocationPct}%` }} />
+            </div>
+          )}
         </Cell>
-        <Cell label="Memory" value="1.42 GB" sub="of 8.00 GB limit" />
+        <Cell label="Agent memory" value={totalRamMb > 0 ? `${Math.round(totalRamMb).toLocaleString("en-US")} MB` : "—"} sub="reported by your agents" />
       </dl>
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
         <Panel
           className="xl:col-span-2"
-          title="Active Swarm Process Matrix"
+          title="Agents"
           action={
             <Segmented
-              label="Matrix view"
-              value={activeTab}
-              onChange={setActiveTab}
+              label="Filter agents by status"
+              value={statusFilter}
+              onChange={setStatusFilter}
               options={[
-                { value: "matrix", label: "Active Swarm" },
-                { value: "all_nodes", label: "All Cluster Nodes (100)" },
+                { value: "ALL", label: "All" },
+                { value: "ACTIVE", label: "Running" },
+                { value: "PAUSED_NUDGE", label: "Paused" },
+                { value: "HIBERNATED", label: "Hibernated" },
+                { value: "KILLED_LOOP", label: "Stopped" },
               ]}
             />
           }
           bodyClassName="p-0 sm:p-0"
         >
-          {activeTab === "matrix" ? (
+          {filteredAgents.length === 0 ? (
+            <EmptyState icon={Layers} title={agents.length === 0 ? "No agents yet" : "No agents match this filter"}>
+              {agents.length === 0 ? (
+                <>
+                  Run an agent with <code className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs text-slate-800">argus run claude</code> and it appears here.
+                </>
+              ) : (
+                "Try another status."
+              )}
+            </EmptyState>
+          ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[30rem] border-collapse text-left text-sm">
+              <table className="w-full min-w-[34rem] border-collapse text-left text-sm">
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50 text-[11px] font-medium text-slate-500">
                     <th scope="col" className="px-4 py-2">Agent</th>
-                    <th scope="col" className="hidden px-4 py-3 2xl:table-cell">Process Path</th>
                     <th scope="col" className="px-4 py-2">Status</th>
                     <th scope="col" className="px-4 py-2">Memory</th>
-                    <th scope="col" className="px-4 py-2">Tokens Used</th>
-                    <th scope="col" className="px-4 py-2 text-right">Control</th>
+                    <th scope="col" className="px-4 py-2">Tokens used</th>
+                    <th scope="col" className="px-4 py-2">Last seen</th>
+                    <th scope="col" className="px-4 py-2 text-right"><span className="sr-only">Actions</span></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-700">
-                  <tr className="transition-colors hover:bg-slate-50">
-                    <td className="px-4 py-2.5">
-                      <div className="flex items-center gap-2">
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                        <span className="whitespace-nowrap font-medium text-slate-900">Agent #01</span>
-                        <span className="whitespace-nowrap text-slate-600">(Claude)</span>
-                      </div>
-                    </td>
-                    <td className="hidden px-4 py-3.5 font-mono text-xs text-slate-600 2xl:table-cell">
-                      <div>pid:81204</div>
-                      <div>/usr/bin/claude</div>
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <Badge tone="green">Running</Badge>
-                    </td>
-                    <td className="px-4 py-2.5 font-mono text-xs text-slate-900">320 MB</td>
-                    <td className="px-4 py-2.5 font-mono text-xs text-slate-900">14,200</td>
-                    <td className="px-4 py-2.5 text-right">
-                      <button
-                        onClick={() => handleClusterAction("TOGGLE_AGENT_STATUS", { agentId: "agent_local_claude", targetStatus: "HIBERNATED" })}
-                        className={rowBtn}
-                      >
-                        Pause
-                      </button>
-                    </td>
-                  </tr>
-
-                  <tr className="bg-amber-50/40 transition-colors hover:bg-amber-50/70">
-                    <td className="px-4 py-2.5">
-                      <div className="flex items-center gap-2">
-                        <span className="h-2 w-2 animate-pulse rounded-full bg-amber-500" />
-                        <span className="whitespace-nowrap font-medium text-slate-900">Agent #02</span>
-                        <span className="whitespace-nowrap text-slate-600">(Antigravity)</span>
-                      </div>
-                    </td>
-                    <td className="hidden px-4 py-3.5 font-mono text-xs text-slate-600 2xl:table-cell">
-                      <div>pid:84920</div>
-                      <div>/opt/antigravity</div>
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <Badge tone="amber">Paused Loop</Badge>
-                    </td>
-                    <td className="px-4 py-2.5 font-mono text-xs font-semibold text-amber-900">680 MB</td>
-                    <td className="px-4 py-2.5 font-mono text-xs text-slate-900">42,100</td>
-                    <td className="px-4 py-2.5 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button onClick={handleNudgeAndPause} className={rowBtn}>
-                          Nudge
-                        </button>
-                        <button onClick={handleKillSwitch} className={rowBtnDark}>
-                          Terminate
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-
-                  <tr className="transition-colors hover:bg-slate-50">
-                    <td className="px-4 py-2.5">
-                      <div className="flex items-center gap-2">
-                        <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
-                        <span className="whitespace-nowrap font-medium text-slate-900">Agent #03</span>
-                        <span className="whitespace-nowrap text-slate-600">(Hermes)</span>
-                      </div>
-                    </td>
-                    <td className="hidden px-4 py-3.5 font-mono text-xs text-slate-600 2xl:table-cell">
-                      <div>pid:89011</div>
-                      <div>/usr/local/hermes</div>
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <Badge>Standby</Badge>
-                    </td>
-                    <td className="px-4 py-2.5 font-mono text-xs text-slate-900">45 MB</td>
-                    <td className="px-4 py-2.5 font-mono text-xs text-slate-900">2,800</td>
-                    <td className="px-4 py-2.5 text-right">
-                      <button
-                        onClick={() => handleClusterAction("TOGGLE_AGENT_STATUS", { agentId: "agent_local_hermes", targetStatus: "ACTIVE" })}
-                        className={rowBtn}
-                      >
-                        Wake / Inspect
-                      </button>
-                    </td>
-                  </tr>
+                  {filteredAgents.map((a) => {
+                    const st = statusOf(a.status);
+                    return (
+                      <tr key={a.agent_id} className={cn("transition-colors hover:bg-slate-50", a.status === "PAUSED_NUDGE" && "bg-amber-50/40")}>
+                        <td className="px-4 py-2.5">
+                          <button type="button" onClick={() => setSelectedAgent(a)} className="flex items-center gap-2 text-left" aria-label={`Inspect ${a.name}`}>
+                            <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", st.dot)} />
+                            <span className="whitespace-nowrap font-medium text-slate-900">{a.name}</span>
+                            <span className="font-mono text-xs text-slate-500">{a.agent_type}</span>
+                          </button>
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <Badge tone={st.tone}>{st.label}</Badge>
+                        </td>
+                        <td className="px-4 py-2.5 font-mono text-xs text-slate-900">{a.ram_usage > 0 ? `${Math.round(a.ram_usage)} MB` : "—"}</td>
+                        <td className="px-4 py-2.5 font-mono text-xs text-slate-900">{a.tokens_used.toLocaleString("en-US")}</td>
+                        <td className="px-4 py-2.5 text-slate-600" suppressHydrationWarning>{ago(a.last_heartbeat_at)}</td>
+                        <td className="px-4 py-2.5 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            {a.status === "PAUSED_NUDGE" && (
+                              <>
+                                <button onClick={() => handleClusterAction("APPROVE_NUDGE", { agentId: a.agent_id })} className={rowBtn}>Resume</button>
+                                <button onClick={() => handleClusterAction("KILL_AGENT", { agentId: a.agent_id })} className={rowBtnDark}>Stop</button>
+                              </>
+                            )}
+                            {a.status === "ACTIVE" && (
+                              <button onClick={() => handleClusterAction("KILL_AGENT", { agentId: a.agent_id })} className={rowBtn}>Stop</button>
+                            )}
+                            {a.status === "HIBERNATED" && (
+                              <button onClick={() => handleClusterAction("TOGGLE_AGENT_STATUS", { agentId: a.agent_id, targetStatus: "ACTIVE" })} className={rowBtn}>Wake</button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
-            </div>
-          ) : (
-            /* All 100 Cluster Nodes View */
-            <div className="space-y-3 p-5">
-              <div className="flex flex-col gap-3 border-b border-slate-200 pb-3 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between">
-                <span>Displaying 100-Agent Cloud Cluster Swarm</span>
-                <div className="flex flex-wrap items-center gap-1.5">
-                  {["ALL", "ACTIVE", "HIBERNATED", "PAUSED_NUDGE", "KILLED_LOOP"].map((st) => (
-                    <button
-                      key={st}
-                      onClick={() => setStatusFilter(st)}
-                      aria-pressed={statusFilter === st}
-                      className={cn(
-                        "rounded-md px-3 py-1 text-[11px] font-medium transition-colors",
-                        statusFilter === st ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-900/10"
-                      )}
-                    >
-                      {st}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {filteredAgents.length === 0 ? (
-                <EmptyState icon={Layers} title="No agents match this filter">
-                  Run an agent with <code className="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-xs">argus run claude</code> and it appears here.
-                </EmptyState>
-              ) : (
-                <ul className="max-h-72 divide-y divide-slate-100 overflow-y-auto">
-                  {filteredAgents.slice(0, 100).map((ag) => (
-                    <li key={ag.agent_id}>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedAgent(ag)}
-                        className="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors hover:bg-slate-50"
-                      >
-                        <span className="flex min-w-0 items-center gap-2.5">
-                          <span
-                            className={cn(
-                              "h-2 w-2 shrink-0 rounded-full",
-                              ag.status === "ACTIVE" ? "bg-emerald-500" : ag.status === "PAUSED_NUDGE" ? "bg-amber-500" : ag.status === "KILLED_LOOP" ? "bg-red-500" : "bg-slate-300"
-                            )}
-                          />
-                          <span className="truncate font-semibold text-slate-900">{ag.name}</span>
-                          <span className="hidden font-mono text-xs text-slate-600 sm:inline">{ag.agent_type}</span>
-                        </span>
-                        <span className="flex shrink-0 items-center gap-3 font-mono text-xs text-slate-700">
-                          <span className="hidden sm:inline">{ag.ram_usage} MB</span>
-                          <span className="hidden sm:inline">{ag.tokens_used.toLocaleString("en-US")} tok</span>
-                          <Badge tone={ag.status === "ACTIVE" ? "green" : ag.status === "PAUSED_NUDGE" ? "amber" : ag.status === "KILLED_LOOP" ? "red" : "neutral"}>{ag.status}</Badge>
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
             </div>
           )}
         </Panel>
 
         <Panel
-          title="Loop Intercepted: Agent #02"
-          action={<Badge tone="amber">94% SIMILARITY</Badge>}
-          className="h-full xl:col-span-1"
-          bodyClassName="flex flex-col justify-between gap-5"
+          title="Needs you"
+          action={pausedAgents.length > 0 ? <Badge tone="amber">{pausedAgents.length} paused</Badge> : undefined}
+          className="h-full"
+          bodyClassName="flex flex-col gap-3"
         >
-          <div className="space-y-4">
-            <div className="rounded-md bg-slate-50 p-3.5 font-mono text-xs leading-relaxed text-slate-700 border border-slate-200">
-              <span className="font-semibold text-slate-900">fetch_vector_chunks</span> repeated 14x in 8.2ms. AST circuit breaker tripped.
-            </div>
-            <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-slate-600">
-              <span>
-                Intercept Latency: <strong className="text-slate-900">&lt; 8.2ms</strong>
-              </span>
-              <span className="text-xs font-medium text-emerald-700">(0 overruns &bull; Healthy)</span>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 border-t border-slate-200 pt-4">
-            <button onClick={handleNudgeAndPause} className={buttonClasses("secondary", false, "flex-1")}>
-              Nudge &amp; Pause
-            </button>
-            <button onClick={handleKillSwitch} className={buttonClasses("primary", false, "flex-1 bg-red-700 hover:bg-red-800")}>
-              Kill Switch (Terminate)
-            </button>
-          </div>
+          {pausedAgents.length === 0 ? (
+            <EmptyState icon={CheckCircle2} title="Nothing needs you" className="py-8">
+              {interceptionLatencyMs > 0
+                ? `Loops are checked in about ${Math.round(interceptionLatencyMs)} ms.`
+                : "No loops caught yet. If an agent gets stuck, it shows up here."}
+            </EmptyState>
+          ) : (
+            pausedAgents.slice(0, 3).map((a) => (
+              <div key={a.agent_id} className="rounded-md border border-slate-200 bg-slate-50/60 p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-medium text-slate-900">{a.name}</span>
+                  {a.loop_score > 0 && a.loop_score <= 1 && <Badge tone="amber">{Math.round(a.loop_score * 100)}% similar</Badge>}
+                </div>
+                <p className="mt-1 text-[13px] leading-relaxed text-slate-600">
+                  {a.current_task ? (a.current_task.length > 140 ? `${a.current_task.slice(0, 139)}…` : a.current_task) : "Paused because it looked stuck."}
+                </p>
+                <div className="mt-3 flex gap-2">
+                  <button onClick={() => handleClusterAction("APPROVE_NUDGE", { agentId: a.agent_id })} className={rowBtn}>Resume</button>
+                  <button onClick={() => handleClusterAction("KILL_AGENT", { agentId: a.agent_id })} className={rowBtnDark}>Stop</button>
+                </div>
+              </div>
+            ))
+          )}
         </Panel>
       </div>
 
-
-      {/* Subsystems */}
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2 2xl:grid-cols-4">
-        <Panel title="Hibernated & Bridge Overview" action={<Badge>Subsystems</Badge>} bodyClassName="flex flex-col p-0 sm:p-0">
-          <div className="space-y-4 p-5">
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-slate-200 bg-slate-50/60 p-3">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-                  <span className="h-1.5 w-1.5 rounded-full bg-slate-400" />
-                  Hermes Pool (4 Workers)
+        <Panel title="Hibernated agents" action={<Badge>{hibernatedCount}</Badge>} bodyClassName="space-y-2">
+          {hibernatedCount === 0 ? (
+            <EmptyState icon={Layers} title="None hibernated" className="py-6">
+              Agents you put to sleep are listed here, and can be woken in one click.
+            </EmptyState>
+          ) : (
+            agents
+              .filter((a) => a.status === "HIBERNATED")
+              .slice(0, 6)
+              .map((a) => (
+                <div key={a.agent_id} className="flex items-center justify-between gap-3 rounded-md border border-slate-200 bg-slate-50/60 p-2.5">
+                  <span className="min-w-0 truncate text-sm font-medium text-slate-900">{a.name}</span>
+                  <button onClick={() => handleClusterAction("TOGGLE_AGENT_STATUS", { agentId: a.agent_id, targetStatus: "ACTIVE" })} className={rowBtn}>Wake</button>
                 </div>
-                <div className="mt-0.5 font-mono text-xs text-slate-600">pid:89011..14 &bull; 0 MB &bull; 0 tok/s</div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Badge>Hibernated</Badge>
-                <button
-                  onClick={() => handleClusterAction("TOGGLE_AGENT_STATUS", { agentId: "agent_local_hermes", targetStatus: "ACTIVE" })}
-                  className={rowBtn}
-                >
-                  Wake
-                </button>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-slate-200 bg-slate-50/60 p-3">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                  Local PC Bridge
-                </div>
-                <div className="mt-0.5 font-mono text-xs text-slate-600">ipc:socket0 &bull; &lt;150MB RAM</div>
-              </div>
-              <Link href="/dashboard/local-bridge" className="inline-flex h-7 items-center rounded-md border border-emerald-200 bg-emerald-50 px-2.5 text-xs font-medium text-emerald-800 transition-colors hover:bg-emerald-100">
-                Direct Sync
-              </Link>
-            </div>
-          </div>
-
-          <div className="mt-auto flex items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-5 py-3.5 text-xs">
-            <span className="text-slate-600">Zero-Token Standby</span>
-            <span className="font-semibold text-emerald-700">Auto-wake Ready</span>
-          </div>
+              ))
+          )}
         </Panel>
 
-        <Panel title="Local PC File-Locking Mutex" action={<span className="whitespace-nowrap font-mono text-xs text-slate-600">{mutexLocks.length} Active Locks</span>} bodyClassName="space-y-3">
+        <Panel title="File locks" action={<span className="whitespace-nowrap font-mono text-xs text-slate-600">{mutexLocks.length} {mutexLocks.length === 1 ? "lock" : "locks"}</span>} bodyClassName="space-y-3">
           {mutexLocks.length === 0 ? (
             <EmptyState icon={Unlock} title="No files are locked" className="py-6">
               Files agents are editing are locked here so none overwrite another.
@@ -672,36 +534,37 @@ export function ClusterDashboardV2Client({
           )}
         </Panel>
 
-        <Panel title="Model Router & Shared Context Cache" action={<Badge tone="green">98.4% Hit</Badge>} bodyClassName="space-y-4">
-          <div>
-            <div className="flex items-center justify-between gap-2 text-sm">
-              <span className="font-semibold text-slate-900">Shared AST Context Graph</span>
-              <span className="font-mono text-xs font-semibold text-slate-900">1.80M tokens</span>
-            </div>
-            <p className="mt-0.5 text-xs text-slate-600">Zero duplicated tokens across concurrent agent sessions</p>
+        <Panel title="Context cache" bodyClassName="space-y-3 text-sm">
+          <div className="flex items-center justify-between gap-3 border-b border-slate-200 pb-3">
+            <span className="text-slate-600">Tokens saved</span>
+            <span className="tabular font-mono text-xs font-medium text-slate-900">{formatTokens(tokensSaved)}</span>
           </div>
-          <div className="border-t border-slate-200 pt-4">
-            <div className="flex items-center justify-between gap-2 text-sm">
-              <span className="font-semibold text-slate-900">Smart Model Downgrading</span>
-              <span className="font-mono text-xs font-semibold text-slate-900">64% routed</span>
-            </div>
-            <p className="mt-0.5 text-xs text-slate-600">Fast/local models assigned for repetitive leaf executions</p>
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-slate-600">Cached context</span>
+            <span className="font-mono text-xs font-medium text-slate-900">{activeCluster?.cached_context_hash ? activeCluster.cached_context_hash.slice(0, 12) : "none yet"}</span>
           </div>
         </Panel>
 
-        <Panel title="Hardware & Quota Guardrails" action={<Badge tone="green">Enforced</Badge>} bodyClassName="space-y-3 text-sm">
+        <Panel title="Limits" bodyClassName="space-y-3 text-sm">
           <div className="flex items-center justify-between gap-3 border-b border-slate-200 pb-3">
-            <span className="text-slate-600">PC Daemon Ceiling</span>
-            <span className="font-mono text-xs font-semibold text-slate-900">68 MB / 150 MB Max</span>
+            <span className="text-slate-600">Agent slots in use</span>
+            <span className="tabular font-mono text-xs font-medium text-slate-900">
+              {profile.activeAgents} of {profile.maxAgents}
+            </span>
           </div>
           <div className="flex items-center justify-between gap-3 border-b border-slate-200 pb-3">
-            <span className="text-slate-600">Loop Kill Threshold</span>
-            <span className="font-mono text-xs font-semibold text-red-700">&lt; 100ms / 14 retries</span>
+            <span className="text-slate-600">Loop check time</span>
+            <span className="tabular font-mono text-xs font-medium text-slate-900">{interceptionLatencyMs > 0 ? `${Math.round(interceptionLatencyMs)} ms` : "—"}</span>
           </div>
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-slate-600">Free Tier Agent Cap</span>
-            <span className="font-mono text-xs font-semibold text-slate-900">2 / 3 Active Slots</span>
-          </div>
+          {hardware && (
+            <div className="flex items-center justify-between gap-3 border-b border-slate-200 pb-3">
+              <span className="text-slate-600">Daemon memory</span>
+              <span className="tabular font-mono text-xs font-medium text-slate-900">{Math.round(hardware.daemonMemoryMb)} MB</span>
+            </div>
+          )}
+          <Link href="/dashboard/guardrails" className="inline-block font-medium text-slate-900 underline decoration-slate-300 underline-offset-4 transition-colors hover:decoration-slate-900">
+            Edit loop thresholds
+          </Link>
         </Panel>
       </div>
 
