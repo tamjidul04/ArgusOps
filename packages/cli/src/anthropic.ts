@@ -54,6 +54,17 @@ function textOf(content: unknown): string {
   return "";
 }
 
+/**
+ * Fields that describe a call rather than change what it does. Agents reword them on every retry (Claude Code's Bash
+ * tool writes a fresh "description" each time), which would make an identical retry look new.
+ */
+const COSMETIC_FIELDS = new Set(["description", "timeout"]);
+
+function withoutCosmetics(input: unknown): unknown {
+  if (!input || typeof input !== "object" || Array.isArray(input)) return input ?? {};
+  return Object.fromEntries(Object.entries(input as Record<string, unknown>).filter(([k]) => !COSMETIC_FIELDS.has(k)));
+}
+
 export interface ToolTrace {
   /** Every tool call the agent has made, oldest first: `Name({sorted input})`. */
   calls: string[];
@@ -73,7 +84,7 @@ export function extractToolTrace(body: unknown): ToolTrace {
   for (const msg of messagesOf(body)) {
     for (const block of blocksOf(msg)) {
       if (msg.role === "assistant" && block.type === "tool_use" && typeof block.name === "string") {
-        const sig = `${block.name}(${stableStringify(block.input ?? {})})`.slice(0, 400);
+        const sig = `${block.name}(${stableStringify(withoutCosmetics(block.input))})`.slice(0, 400);
         items.push({ sig, callNo: calls.length });
         calls.push(sig);
       } else if (msg.role === "user" && block.type === "tool_result" && block.is_error === true) {

@@ -20,6 +20,13 @@ describe("stableStringify", () => {
 });
 
 describe("extractToolTrace", () => {
+  it("treats retries that only reword the description as the same call", () => {
+    const call = (d: string) => ({ role: "assistant", content: [{ type: "tool_use", id: d, name: "Bash", input: { command: "npm test", description: d, timeout: 120000 } }] });
+    const t = extractToolTrace({ messages: [call("Run the tests"), call("Try the tests again"), call("Retry tests")] });
+    expect(new Set(t.calls).size).toBe(1);
+    expect(t.calls[0]).toBe('Bash({"command":"npm test"})');
+  });
+
   const body = {
     messages: [
       { role: "user", content: "fix the tests" },
