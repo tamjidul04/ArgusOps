@@ -53,7 +53,7 @@ export default function ChangelogPage() {
       <Container className="py-20 md:py-28">
         <ol className="relative mx-auto max-w-3xl space-y-14 border-l border-slate-200 pl-8 md:pl-12">
           {ENTRIES.map((e) => (
-            <li data-reveal key={e.title} className="relative">
+            <li data-reveal suppressHydrationWarning key={e.title} className="relative">
               <span aria-hidden="true" className="absolute -left-[2.45rem] top-2 h-3 w-3 rounded-full bg-slate-900 ring-4 ring-slate-50 md:-left-[3.45rem]" />
               <div className="flex flex-wrap items-center gap-3">
                 <time dateTime={e.date} className="font-mono text-xs text-slate-500">

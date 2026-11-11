@@ -35,7 +35,7 @@ export function Section({
     >
       {background}
       <Container className={background ? "relative" : undefined}>
-        <div data-reveal>{children}</div>
+        <div data-reveal suppressHydrationWarning>{children}</div>
       </Container>
     </section>
   );
