@@ -58,6 +58,26 @@ const SECTIONS: DocSection[] = [
           That starts a proxy on <code className={code}>127.0.0.1</code> and launches Claude Code through it. Everything after{" "}
           <code className={code}>claude</code> is passed to Claude Code, for example <code className={code}>argus run claude --resume</code>.
         </p>
+
+        <h3 className={h3}>Using the Claude Code panel in VS Code</h3>
+        <p className={p}>
+          The panel starts Claude Code itself, so point it at ArgusOps instead. Run the proxy in a terminal and leave it open:
+        </p>
+        <CodeBlock className="mt-4" title="terminal" code={"argus proxy"} />
+        <p className={p}>
+          Then, in the <strong>workspace</strong> settings of the project you want supervised (<code className={code}>.vscode/settings.json</code>),
+          add the setting below and reload the panel. Keep it out of your user settings: if the proxy is not running, Claude Code in that
+          window cannot connect.
+        </p>
+        <CodeBlock
+          className="mt-4"
+          title=".vscode/settings.json"
+          code={JSON.stringify({ "claudeCode.environmentVariables": [{ name: "ANTHROPIC_BASE_URL", value: "http://127.0.0.1:47821" }] }, null, 2)}
+        />
+        <p className={p}>
+          Your Claude login is passed through untouched. Every session that uses the proxy shows up as one agent, <em>Claude Code (IDE)</em>. Stop
+          refuses further requests with a clear error rather than closing a process.
+        </p>
       </>
     ),
   },
@@ -84,6 +104,7 @@ const SECTIONS: DocSection[] = [
                 ["argus login", "Pairs this machine with your account through the browser."],
                 ["argus run claude [args]", "Runs Claude Code under supervision. Arguments go to Claude Code."],
                 ["argus run --offline claude", "Supervises locally and reports nothing to ArgusOps."],
+                ["argus proxy [--port 47821]", "Supervises an agent you start yourself, such as the Claude Code panel in VS Code."],
                 ["--upstream <url>", "Forwards to a different provider endpoint, for testing."],
               ].map(([c, d]) => (
                 <tr key={c}>

@@ -1,6 +1,6 @@
 import os from "node:os";
 import { spawn } from "node:child_process";
-import { parseRunArgs } from "./args";
+import { parseProxyArgs, parseRunArgs } from "./args";
 import { CloudClient, CloudError } from "./api";
 import { clearToken, loadConfig, saveConfig } from "./config";
 import { runAgent } from "./run";
@@ -13,6 +13,8 @@ Usage:
   argus login [--api-url <url>] [--no-browser]   connect this machine to your ArgusOps account
   argus run [options] claude [claude args...]    run Claude Code under supervision
   argus run [options] -- <command> [args...]     run any agent that talks to the Anthropic API
+  argus proxy [options]                           supervise an agent you start yourself, e.g. the Claude Code
+                                                  panel in VS Code (see "Use it from VS Code" in the docs)
   argus whoami                                    show who you're signed in as
   argus logout                                    forget this machine's key
   argus status                                    check the connection
@@ -21,6 +23,10 @@ Run options (before the agent):
   --offline            supervise locally and report nothing to the cloud
   --name <label>       the name shown in the dashboard
   --upstream <url>     send model calls somewhere other than api.anthropic.com
+
+Proxy options (argus proxy):
+  --port <n>           listen on this port (default 47821)
+  --offline, --name <label>, --upstream <url>   as above
 
 Environment:
   ARGUS_API_URL        ArgusOps server (default http://localhost:3000)
@@ -143,6 +149,37 @@ async function run(argv: string[]): Promise<number> {
   });
 }
 
+async function proxy(argv: string[]): Promise<number> {
+  const parsed = parseProxyArgs(argv);
+  if (!parsed.ok) {
+    err(parsed.error);
+    return 1;
+  }
+  const { spec } = parsed;
+  const cfg = loadConfig();
+
+  let cloud: CloudClient | null = null;
+  if (!spec.offline) {
+    if (!cfg.token) {
+      err("You're not signed in. Run `argus login` first, or use --offline to supervise locally.");
+      return 1;
+    }
+    cloud = new CloudClient(cfg.apiUrl, cfg.token);
+  }
+
+  return runAgent({
+    label: spec.label,
+    type: spec.type,
+    args: [],
+    provider: spec.provider,
+    upstream: spec.upstream,
+    baseUrlEnv: spec.baseUrlEnv,
+    cwd: process.cwd(),
+    cloud,
+    port: spec.port,
+  });
+}
+
 export async function main(argv: string[]): Promise<number> {
   const [cmd, ...rest] = argv;
   switch (cmd) {
@@ -157,6 +194,8 @@ export async function main(argv: string[]): Promise<number> {
       return whoami();
     case "run":
       return run(rest);
+    case "proxy":
+      return proxy(rest);
     case "-v":
     case "--version":
     case "version":

@@ -232,19 +232,19 @@ describe("pause, resume and stop", () => {
     expect(up.seen[1].body).not.toContain("Use pnpm");
   });
 
-  it("answers 503 to a held request when the agent is stopped, and never calls the provider", async () => {
+  it("answers a final 403 (never a retryable 503) to a held request when the agent is stopped, and never calls the provider", async () => {
     const up = await fakeUpstream((_r, res) => sse(res));
     const p = await setup(up.url);
     const pending = post(`${p.base}/v1/messages`, stuckConversation());
     await sleep(100);
     p.state.apply({ desired: "KILL", reason: "Stopped by operator." });
     const r = await pending;
-    expect(r.status).toBe(503);
+    expect(r.status).toBe(403);
     expect(up.seen).toHaveLength(0);
 
     // and every later request is refused too
-    expect((await post(`${p.base}/v1/messages`, healthyConversation)).status).toBe(503);
-    expect((await fetch(`${p.base}/v1/models`)).status).toBe(503);
+    expect((await post(`${p.base}/v1/messages`, healthyConversation)).status).toBe(403);
+    expect((await fetch(`${p.base}/v1/models`)).status).toBe(403);
   });
 
   it("a client that gives up while held causes no upstream call and no crash", async () => {
@@ -294,5 +294,32 @@ describe("ControlState", () => {
     s.pauseLocally("loop");
     s.apply({ desired: "KILL" }, sent);
     expect(s.desired).toBe("KILL");
+  });
+});
+
+describe("fixed port", () => {
+  const freePort = () =>
+    new Promise<number>((resolve) => {
+      const probe = http.createServer();
+      probe.listen(0, "127.0.0.1", () => {
+        const port = (probe.address() as { port: number }).port;
+        probe.close(() => resolve(port));
+      });
+    });
+  const start = (port?: number) =>
+    startProxy({ provider: "anthropic", upstream: "http://127.0.0.1:1", state: new ControlState(), detector: new LoopDetector(), onUsage: () => undefined, onIncident: () => undefined, port });
+
+  it("listens on exactly the port it was given", async () => {
+    const port = await freePort();
+    const p = await start(port);
+    closers.push(() => p.close());
+    expect(p.port).toBe(port);
+  });
+
+  it("says so plainly when the port is already taken", async () => {
+    const port = await freePort();
+    const first = await start(port);
+    closers.push(() => first.close());
+    await expect(start(port)).rejects.toThrow(/already in use/);
   });
 });

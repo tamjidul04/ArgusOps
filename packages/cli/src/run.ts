@@ -10,7 +10,8 @@ import { desktopNotify } from "./notify";
 export interface RunOptions {
   label: string; // "Claude Code"
   type: string; // "CLAUDE"
-  command: string;
+  /** The agent to launch. Leave out to just run the proxy for an agent that is already running (`argus proxy`). */
+  command?: string;
   args: string[];
   provider: string; // "anthropic"
   upstream: string; // https://api.anthropic.com
@@ -19,6 +20,10 @@ export interface RunOptions {
   cloud: CloudClient | null; // null = offline: supervise locally, report nothing
   syncIntervalMs?: number;
   write?: (text: string) => void;
+  /** Fixed port for the proxy (serve mode). */
+  port?: number;
+  /** Resolves when serve mode should stop (tests); Ctrl+C always stops it. */
+  stopSignal?: AbortSignal;
 }
 
 const MAX_QUEUED_EVENTS = 1000;
@@ -48,7 +53,7 @@ export async function runAgent(opts: RunOptions): Promise<number> {
   const interval = opts.syncIntervalMs ?? 2000;
 
   const runId = crypto.randomUUID();
-  const agentName = `${opts.label} · ${path.basename(opts.cwd) || "project"}`;
+  const agentName = opts.command ? `${opts.label} · ${path.basename(opts.cwd) || "project"}` : opts.label;
   const state = new ControlState();
   const detector = new LoopDetector();
   const queue: unknown[] = [];
@@ -115,7 +120,9 @@ export async function runAgent(opts: RunOptions): Promise<number> {
     }
   }
 
-  const proxy = await startProxy({
+  let proxy: Awaited<ReturnType<typeof startProxy>>;
+  try {
+    proxy = await startProxy({
     provider: opts.provider,
     upstream: opts.upstream,
     state,
@@ -127,27 +134,48 @@ export async function runAgent(opts: RunOptions): Promise<number> {
       desktopNotify(`${agentName} paused`, `${i.detail}. Resume or stop it from the ArgusOps dashboard.`);
     },
     onNotice: say,
+    port: opts.port,
   });
+  } catch (e) {
+    say(e instanceof Error ? e.message : "Couldn't start the local proxy.");
+    return 2;
+  }
+  const baseUrl = `http://127.0.0.1:${proxy.port}`;
 
   // ---- start the agent, pointed at the local proxy -----------------------------------------------------------------
-  const env = { ...process.env, [opts.baseUrlEnv]: `http://127.0.0.1:${proxy.port}` };
-  const win = process.platform === "win32";
-  const child = win
-    ? spawn([opts.command, ...opts.args.map(quoteWindowsArg)].join(" "), [], { stdio: "inherit", env, cwd: opts.cwd, shell: true })
-    : spawn(opts.command, opts.args, { stdio: "inherit", env, cwd: opts.cwd });
+  const serve = !opts.command;
+  let child: ChildProcess | null = null;
+  let exit: Promise<number>;
+  let ignore: () => void = () => undefined;
 
-  const exit = new Promise<number>((resolve) => {
-    child.once("error", (err: NodeJS.ErrnoException) => {
-      say(err.code === "ENOENT" ? `Couldn't find "${opts.command}". Is it installed and on your PATH?` : `Couldn't start "${opts.command}": ${err.message}`);
-      resolve(127);
+  if (serve) {
+    // No child to start: the agent (for example the Claude Code panel in VS Code) is launched by something else and
+    // pointed at this proxy with ANTHROPIC_BASE_URL. It runs until Ctrl+C.
+    say(`Supervising anything that uses ${opts.baseUrlEnv}=${baseUrl}. Press Ctrl+C to stop.`);
+    exit = new Promise<number>((resolve) => {
+      const done = () => resolve(0);
+      process.once("SIGINT", done);
+      process.once("SIGTERM", done);
+      opts.stopSignal?.addEventListener("abort", done, { once: true });
     });
-    child.once("exit", (code, signal) => resolve(code ?? (signal ? 1 : 0)));
-  });
-
-  // Ctrl+C reaches the agent directly; ArgusOps stays up until it exits so the final report is sent.
-  const ignore = () => undefined;
-  process.on("SIGINT", ignore);
-  process.on("SIGTERM", ignore);
+  } else {
+    const env = { ...process.env, [opts.baseUrlEnv]: baseUrl };
+    const win = process.platform === "win32";
+    child = win
+      ? spawn([opts.command!, ...opts.args.map(quoteWindowsArg)].join(" "), [], { stdio: "inherit", env, cwd: opts.cwd, shell: true })
+      : spawn(opts.command!, opts.args, { stdio: "inherit", env, cwd: opts.cwd });
+    const c = child;
+    exit = new Promise<number>((resolve) => {
+      c.once("error", (err: NodeJS.ErrnoException) => {
+        say(err.code === "ENOENT" ? `Couldn't find "${opts.command}". Is it installed and on your PATH?` : `Couldn't start "${opts.command}": ${err.message}`);
+        resolve(127);
+      });
+      c.once("exit", (code, signal) => resolve(code ?? (signal ? 1 : 0)));
+    });
+    // Ctrl+C reaches the agent directly; ArgusOps stays up until it exits so the final report is sent.
+    process.on("SIGINT", ignore);
+    process.on("SIGTERM", ignore);
+  }
 
   let stopped = false;
   let syncing = false;
@@ -156,12 +184,12 @@ export async function runAgent(opts: RunOptions): Promise<number> {
     syncing = true;
     try {
       await sync();
-      if (state.isKilled()) killTree(child);
+      if (state.isKilled() && child) killTree(child);
     } catch (e) {
       if (e instanceof CloudError && e.status === 401) {
         say("This device's key was revoked. Stopping the agent.");
         state.apply({ desired: "KILL", reason: "key revoked" });
-        killTree(child);
+        if (child) killTree(child);
       }
     } finally {
       syncing = false;
@@ -171,8 +199,10 @@ export async function runAgent(opts: RunOptions): Promise<number> {
   const code = await exit;
   stopped = true;
   clearInterval(timer);
-  process.off("SIGINT", ignore);
-  process.off("SIGTERM", ignore);
+  if (!serve) {
+    process.off("SIGINT", ignore);
+    process.off("SIGTERM", ignore);
+  }
   await proxy.close();
   await sync({ end: true }).catch(() => undefined);
   return code;

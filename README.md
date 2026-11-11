@@ -84,6 +84,16 @@ npm run test:claude                 # in another: real Claude Code is made to lo
 
 To poke at it by hand: `node packages/cli/e2e/fake-anthropic.mjs 8787 --loop`, then run `ANTHROPIC_API_KEY=sk-ant-fake argus run --upstream http://127.0.0.1:8787 claude`. Without `--loop` the fake provider just answers every message with a canned reply.
 
+## Supervising the Claude Code panel in VS Code
+
+`argus run claude` starts Claude Code for you. The Claude Code panel in VS Code starts it itself, so run `argus proxy` (after `argus login`) and point the panel at it in the **workspace** settings of the project you want supervised:
+
+```json
+{ "claudeCode.environmentVariables": [{ "name": "ANTHROPIC_BASE_URL", "value": "http://127.0.0.1:47821" }] }
+```
+
+Usage and loop detection work the same; sessions share one agent named "Claude Code (IDE)". Stop makes the proxy refuse requests with a 403. Keep it out of user settings: if the proxy is not running, the panel cannot connect. Options: `--port`, `--name`, `--offline`.
+
 ## The VS Code extension
 
 `packages/vscode` is the editor companion to the CLI. It shows the agents you run with `argus run`, alerts you when one is paused, and lets you approve ArgusOps' suggested instruction (or edit it), resume, or stop the agent without leaving VS Code.
