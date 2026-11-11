@@ -12,7 +12,7 @@ export function CtaBand({
   return (
     <section className="border-t border-slate-200 py-16 md:py-20" aria-label="Get started">
       <Container>
-        <div data-reveal className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+        <div data-reveal suppressHydrationWarning className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div>
             <h2 className="max-w-xl text-balance text-2xl font-semibold leading-tight tracking-[-0.02em] text-slate-900 md:text-3xl">{title}</h2>
             <p className="mt-2 text-pretty text-base text-slate-500">{lead}</p>

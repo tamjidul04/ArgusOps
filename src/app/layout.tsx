@@ -23,8 +23,9 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // The cursor and reveal scripts add classes to <html> after load, on purpose, so React must not warn about it.
   return (
-    <html lang="en" className={`${figtree.variable} h-full antialiased`}>
+    <html lang="en" className={`${figtree.variable} h-full antialiased`} suppressHydrationWarning>
       <body className="flex min-h-full flex-col bg-slate-50 font-sans text-slate-900">
         {children}
         <Cursor />
