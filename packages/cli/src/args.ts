@@ -13,7 +13,7 @@ export interface RunSpec {
 
 export type ParsedRun = { ok: true; spec: RunSpec } | { ok: false; error: string };
 
-const ANTHROPIC_UPSTREAM = "https://api.anthropic.com";
+export const ANTHROPIC_UPSTREAM = "https://api.anthropic.com";
 
 const PRESETS: Record<string, Omit<RunSpec, "offline" | "args">> = {
   claude: {

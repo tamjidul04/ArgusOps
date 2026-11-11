@@ -154,8 +154,11 @@ export async function runAgent(opts: RunOptions): Promise<number> {
     say(`Supervising anything that uses ${opts.baseUrlEnv}=${baseUrl}. Press Ctrl+C to stop.`);
     exit = new Promise<number>((resolve) => {
       const done = () => resolve(0);
-      process.once("SIGINT", done);
-      process.once("SIGTERM", done);
+      // embedded in an editor (a stopSignal is given): don't touch the host process's signals
+      if (!opts.stopSignal) {
+        process.once("SIGINT", done);
+        process.once("SIGTERM", done);
+      }
       opts.stopSignal?.addEventListener("abort", done, { once: true });
     });
   } else {

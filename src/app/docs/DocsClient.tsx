@@ -60,7 +60,10 @@ const SECTIONS: DocSection[] = [
         </p>
 
         <h3 className={h3}>Using the Claude Code panel in VS Code</h3>
-        <p className={p}>In your project folder, run one command and leave it open:</p>
+        <p className={p}>
+          With the VS Code extension there is nothing to run: sign in and click <strong>Allow</strong> when it asks to watch Claude Code. Without the
+          extension, run one command in your project folder and leave it open:
+        </p>
         <CodeBlock className="mt-4" title="terminal" code={"argus ide"} />
         <p className={p}>
           It signs you in if needed and points that folder&apos;s panel at ArgusOps. Run <strong>Developer: Reload Window</strong> once in VS Code,

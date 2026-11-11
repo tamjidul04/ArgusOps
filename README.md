@@ -86,7 +86,7 @@ To poke at it by hand: `node packages/cli/e2e/fake-anthropic.mjs 8787 --loop`, t
 
 ## Supervising the Claude Code panel in VS Code
 
-In your project folder run `argus ide`. It signs you in if needed, points that folder's Claude Code panel at Argus, and undoes it on Ctrl+C. Run **Developer: Reload Window** once in VS Code, then use Claude as normal. Sessions share one agent named "Claude Code (IDE)"; Stop makes the proxy refuse requests with a 403. Advanced: `argus proxy` runs only the proxy (options `--port`, `--name`, `--offline`) if you want to set `claudeCode.environmentVariables` yourself.
+**With the extension:** sign in and click **Allow** when it asks to watch Claude Code. That's all: the extension runs the proxy and points the Claude Code panel at it, and undoes it when VS Code closes or you run **ArgusOps: Stop watching Claude Code**. **With the CLI only:** in your project folder run `argus ide`. It signs you in if needed, points that folder's Claude Code panel at Argus, and undoes it on Ctrl+C. Run **Developer: Reload Window** once in VS Code, then use Claude as normal. Sessions share one agent named "Claude Code (IDE)"; Stop makes the proxy refuse requests with a 403. Advanced: `argus proxy` runs only the proxy (options `--port`, `--name`, `--offline`) if you want to set `claudeCode.environmentVariables` yourself.
 
 ## The VS Code extension
 

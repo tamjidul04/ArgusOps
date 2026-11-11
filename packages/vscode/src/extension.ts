@@ -1,11 +1,13 @@
 import * as vscode from "vscode";
 import { randomBytes } from "node:crypto";
 import { ApiError, ArgusClient, type AgentsResponse, type NotificationBrief, type UsageBrief } from "./api";
+import { Supervisor } from "./supervise";
 import { overviewBody, overviewHtml, type OverviewState } from "./overview";
 import { clip, diffForAlerts, formatTokens, kindOf, KIND_LABEL, normalizeServerUrl, statusBar, summarize, timeAgo, type AgentView, type Kind } from "./model";
 
 const SECRET = "argusops.credentials";
 const DEFAULT_SERVER = "http://localhost:3000";
+const SUPERVISE_KEY = "argusops.supervise"; // "yes" | "no" | unset (never asked)
 
 interface Credentials {
   url: string;
@@ -75,6 +77,58 @@ export class ArgusController implements vscode.TreeDataProvider<Node>, vscode.We
     await this.refresh();
     this.schedule();
     this.welcome();
+    await this.syncSupervision(false);
+  }
+
+  /* --------------------- supervising the Claude Code panel --------------------- */
+
+  private supervisor: Supervisor | null = null;
+
+  private getSupervisor(): Supervisor {
+    if (!this.supervisor) {
+      const out = vscode.window.createOutputChannel("ArgusOps");
+      this.context.subscriptions.push(out);
+      this.supervisor = new Supervisor({
+        readEnv: () => vscode.workspace.getConfiguration("claudeCode").inspect("environmentVariables")?.globalValue,
+        writeEnv: async (list) => {
+          try {
+            await vscode.workspace.getConfiguration("claudeCode").update("environmentVariables", list, vscode.ConfigurationTarget.Global);
+          } catch {
+            // the Claude Code extension isn't installed, so there is nothing to point
+          }
+        },
+        log: (t) => out.append(t),
+      });
+    }
+    return this.supervisor;
+  }
+
+  /** Starts or stops supervision to match the saved choice. The first time after sign-in it asks, once. */
+  async syncSupervision(offer: boolean): Promise<void> {
+    const state = this.context.globalState;
+    const choice = state?.get<string>(SUPERVISE_KEY);
+    if (!this.creds || choice === "no") return this.supervisor?.set(null);
+    if (choice === "yes") return this.getSupervisor().set(this.creds);
+    if (!offer) return;
+    const pick = await vscode.window.showInformationMessage(
+      "Let ArgusOps watch Claude Code in VS Code? It catches loops, pauses the spend and tells you. Your Claude login is not touched, and you can turn this off any time.",
+      "Allow",
+      "Not now"
+    );
+    if (pick === "Allow") await this.setSupervision(true);
+  }
+
+  async setSupervision(on: boolean): Promise<void> {
+    await this.context.globalState?.update(SUPERVISE_KEY, on ? "yes" : "no");
+    if (on && !this.creds) return void this.signIn();
+    await this.syncSupervision(false);
+    void vscode.window.showInformationMessage(
+      on ? "ArgusOps is watching Claude Code. Reload the window once if a Claude panel is already open." : "ArgusOps stopped watching Claude Code. Reload the window if a Claude panel is open."
+    );
+  }
+
+  async stopSupervisor(): Promise<void> {
+    await this.supervisor?.stop();
   }
 
   /** Once, right after install: say the extension is running and offer to sign in (so it can't go unnoticed). */
@@ -160,6 +214,7 @@ export class ArgusController implements vscode.TreeDataProvider<Node>, vscode.We
         this.data = null;
         this.previous = null;
         this.extras = { usage: null, notifications: null, unread: 0, at: 0 };
+        void this.syncSupervision(false);
         void vscode.window.showWarningMessage("ArgusOps: this key is no longer valid (it may have been revoked). Sign in again.", "Sign in").then((c) => {
           if (c) void vscode.commands.executeCommand("argusops.signIn");
         });
@@ -431,6 +486,7 @@ export class ArgusController implements vscode.TreeDataProvider<Node>, vscode.We
     this.data = null;
     this.previous = null;
     this.extras = { usage: null, notifications: null, unread: 0, at: 0 };
+    await this.syncSupervision(false);
     this.render();
     void vscode.window.showInformationMessage("Signed out of ArgusOps.");
   }
@@ -453,6 +509,7 @@ export class ArgusController implements vscode.TreeDataProvider<Node>, vscode.We
     this.previous = null;
     await this.refresh();
     void vscode.window.showInformationMessage(who ? `Signed in to ArgusOps as ${who}.` : "Signed in to ArgusOps.");
+    await this.syncSupervision(true);
   }
 
   private async signInWithKey() {
@@ -522,8 +579,16 @@ export function activate(context: vscode.ExtensionContext) {
   reg("argusops.stopAgent", (arg) => c.stop(arg));
   reg("argusops.openDashboard", () => c.openDashboard());
   reg("argusops.showAgents", () => c.showAgents());
+  reg("argusops.superviseClaude", () => c.setSupervision(true));
+  reg("argusops.stopSupervising", () => c.setSupervision(false));
+  context.subscriptions.push({ dispose: () => void c.stopSupervisor() });
+  active = c;
   void c.start();
   return c;
 }
 
-export function deactivate() {}
+let active: ArgusController | null = null;
+export function deactivate() {
+  // put the Claude Code setting back so it never points at a proxy that is gone
+  return active?.stopSupervisor();
+}
