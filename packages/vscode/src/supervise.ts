@@ -69,7 +69,7 @@ export class Supervisor {
       upstream: ANTHROPIC_UPSTREAM,
       baseUrlEnv: VAR,
       cwd: "ide",
-      cloud: new CloudClient(creds.url, creds.key),
+      hub: new CloudClient(creds.url, creds.key),
       port: this.port,
       stopSignal: abort.signal,
       write: (t) => {

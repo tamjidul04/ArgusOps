@@ -1,7 +1,8 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import crypto from "node:crypto";
 import path from "node:path";
-import { CloudClient, CloudError, type SyncPayload } from "./api";
+import type { SyncPayload } from "./api";
+import type { SyncTransport } from "./hub";
 import { LoopDetector } from "./detect";
 import { startProxy, type IncidentOut, type UsageOut } from "./proxy";
 import { ControlState } from "./state";
@@ -17,7 +18,8 @@ export interface RunOptions {
   upstream: string; // https://api.anthropic.com
   baseUrlEnv: string; // ANTHROPIC_BASE_URL
   cwd: string;
-  cloud: CloudClient | null; // null = offline: supervise locally, report nothing
+  /** Where usage and loops are recorded and where pause, resume and stop come from. null = record nothing, no outside control. */
+  hub: SyncTransport | null;
   syncIntervalMs?: number;
   write?: (text: string) => void;
   /** Fixed port for the proxy (serve mode). */
@@ -57,10 +59,10 @@ export async function runAgent(opts: RunOptions): Promise<number> {
   const state = new ControlState();
   const detector = new LoopDetector();
   const queue: unknown[] = [];
-  let online = opts.cloud !== null;
+  let online = opts.hub !== null;
 
   const enqueue = (e: unknown) => {
-    if (!opts.cloud) return;
+    if (!opts.hub) return;
     queue.push(e);
     if (queue.length > MAX_QUEUED_EVENTS) queue.shift();
   };
@@ -72,51 +74,42 @@ export async function runAgent(opts: RunOptions): Promise<number> {
 
   /** Sends queued events; on failure the events are kept for the next attempt. */
   async function sync(flags: { start?: boolean; end?: boolean } = {}): Promise<void> {
-    if (!opts.cloud) return;
+    if (!opts.hub) return;
     const batch = queue.splice(0, queue.length);
     const epoch = state.epoch;
     try {
-      const reply = await opts.cloud.sync(payload(flags, batch));
-      if (!online) say("Reconnected to ArgusOps.");
+      const reply = await opts.hub.sync(payload(flags, batch));
+      if (!online) say("Recording works again.");
       online = true;
       detector.setPolicy(reply.policy);
       const before = state.desired;
       state.apply(reply, epoch);
       if (state.desired !== before) {
         if (state.desired === "PAUSE") {
-          say(`Paused: ${state.reason || "paused from the dashboard"}`);
-          desktopNotify(`${agentName} paused`, state.reason || "Paused from the dashboard.");
+          say(`Paused: ${state.reason || "paused"}. Resume it with: argus resume`);
+          desktopNotify(`${agentName} paused`, state.reason || "Paused.");
         } else if (state.desired === "KILL") {
-          say(`Stopping: ${state.reason || "stopped from the dashboard"}`);
-          desktopNotify(`${agentName} stopped`, state.reason || "Stopped from the dashboard.");
+          say(`Stopping: ${state.reason || "stopped"}`);
+          desktopNotify(`${agentName} stopped`, state.reason || "Stopped.");
         }
       }
     } catch (e) {
       queue.unshift(...batch);
       if (queue.length > MAX_QUEUED_EVENTS) queue.splice(0, queue.length - MAX_QUEUED_EVENTS);
-      if (e instanceof CloudError && e.status === 401) throw e;
-      if (online) say("Can't reach ArgusOps: carrying on with local supervision and retrying.");
+      if (online) say("Couldn't save to the ArgusOps folder: carrying on with supervision and retrying.");
       online = false;
     }
   }
 
-  // ---- register with the cloud first, so plan limits apply before the agent starts ---------------------------------
-  if (opts.cloud) {
+  // ---- register first, so the agent exists in the store before it starts -----------------------------------------------
+  if (opts.hub) {
     try {
-      const first = await opts.cloud.sync(payload({ start: true }, []));
+      const first = await opts.hub.sync(payload({ start: true }, []));
       detector.setPolicy(first.policy);
       state.apply(first);
-    } catch (e) {
-      if (e instanceof CloudError && e.status === 403) {
-        say(e.message);
-        return 2;
-      }
-      if (e instanceof CloudError && e.status === 401) {
-        say("You're not signed in (or this key was revoked). Run: argus login");
-        return 2;
-      }
+    } catch {
       online = false;
-      say("Can't reach ArgusOps: starting with local supervision only. Usage won't be reported until it reconnects.");
+      say("Couldn't save to the ArgusOps folder: supervising without recording until it works again.");
     }
   }
 
@@ -130,8 +123,8 @@ export async function runAgent(opts: RunOptions): Promise<number> {
     onUsage: (u: UsageOut) => enqueue({ type: "usage", ...u }),
     onIncident: (i: IncidentOut) => {
       enqueue({ type: "incident", ...i });
-      // the moment it happens, even if the cloud is unreachable
-      desktopNotify(`${agentName} paused`, `${i.detail}. Resume or stop it from the ArgusOps dashboard.`);
+      // the moment it happens, without waiting for the next save
+      desktopNotify(`${agentName} paused`, `${i.detail}. Run "argus resume" or "argus stop".`);
     },
     onNotice: say,
     port: opts.port,
@@ -188,12 +181,8 @@ export async function runAgent(opts: RunOptions): Promise<number> {
     try {
       await sync();
       if (state.isKilled() && child) killTree(child);
-    } catch (e) {
-      if (e instanceof CloudError && e.status === 401) {
-        say("This device's key was revoked. Stopping the agent.");
-        state.apply({ desired: "KILL", reason: "key revoked" });
-        if (child) killTree(child);
-      }
+    } catch {
+      // a save that fails is retried on the next tick
     } finally {
       syncing = false;
     }

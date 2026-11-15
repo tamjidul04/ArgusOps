@@ -1,6 +1,13 @@
 import { afterEach, describe, expect, it } from "vitest";
+import fs from "node:fs";
 import http from "node:http";
+import os from "node:os";
+import path from "node:path";
+import { Controls } from "./control";
+import { LocalHub } from "./hub";
+import { DEFAULT_PRICES } from "./prices";
 import { runAgent } from "./run";
+import { Store } from "./store";
 
 const closers: Array<() => Promise<void>> = [];
 afterEach(async () => {
@@ -49,7 +56,7 @@ describe("argus proxy (run without launching an agent)", () => {
       upstream: upstream.url,
       baseUrlEnv: "ANTHROPIC_BASE_URL",
       cwd: process.cwd(),
-      cloud: null,
+      hub: null,
       port,
       stopSignal: stop.signal,
       write: (t) => output.push(t),
@@ -83,8 +90,89 @@ describe("argus proxy (run without launching an agent)", () => {
     await new Promise<void>((r) => squatter.listen(port, "127.0.0.1", () => r()));
     closers.push(() => new Promise<void>((r) => { squatter.close(() => r()); }));
     const output: string[] = [];
-    const code = await runAgent({ label: "x", type: "CLAUDE", args: [], provider: "anthropic", upstream: "http://127.0.0.1:1", baseUrlEnv: "ANTHROPIC_BASE_URL", cwd: process.cwd(), cloud: null, port, write: (t) => output.push(t) });
+    const code = await runAgent({ label: "x", type: "CLAUDE", args: [], provider: "anthropic", upstream: "http://127.0.0.1:1", baseUrlEnv: "ANTHROPIC_BASE_URL", cwd: process.cwd(), hub: null, port, write: (t) => output.push(t) });
     expect(code).toBe(2);
     expect(output.join("")).toMatch(/already in use/);
+  });
+});
+
+describe("a whole supervised run with the local store (no website, no cloud)", () => {
+  const call = (id: string, name: string, input: unknown) => ({ role: "assistant", content: [{ type: "tool_use", id, name, input }] });
+  const failed = (id: string, text: string) => ({ role: "user", content: [{ type: "tool_result", tool_use_id: id, is_error: true, content: text }] });
+  const stuck = () => {
+    const m: unknown[] = [{ role: "user", content: "fix the tests" }];
+    for (let i = 0; i < 4; i++) m.push(call(`c${i}`, "Bash", { command: "npm test", description: `try ${i}` }), failed(`c${i}`, "FAIL src/a.test.ts"));
+    return { model: "claude-sonnet-4-5", max_tokens: 100, messages: m };
+  };
+  const until = async <T,>(fn: () => T | undefined | false | null, ms = 8000): Promise<T> => {
+    const end = Date.now() + ms;
+    while (Date.now() < end) {
+      const v = fn();
+      if (v) return v;
+      await new Promise((r) => setTimeout(r, 25));
+    }
+    throw new Error("timed out");
+  };
+  const send = (port: number, body: unknown) =>
+    fetch(`http://127.0.0.1:${port}/v1/messages`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+
+  it("meters usage, pauses on a loop with a suggestion, resumes with a hint, then stops", async () => {
+    const upstream = await fakeAnthropic();
+    const port = await freePort();
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), "argus-run-"));
+    closers.push(async () => fs.rmSync(home, { recursive: true, force: true }));
+    const store = new Store(home);
+    const controls = new Controls(store);
+    const stop = new AbortController();
+
+    const running = runAgent({
+      label: "Claude Code (IDE)",
+      type: "CLAUDE",
+      args: [],
+      provider: "anthropic",
+      upstream: upstream.url,
+      baseUrlEnv: "ANTHROPIC_BASE_URL",
+      cwd: process.cwd(),
+      hub: new LocalHub(store, DEFAULT_PRICES),
+      port,
+      stopSignal: stop.signal,
+      syncIntervalMs: 40,
+      write: () => undefined,
+    });
+
+    // 1. a normal request is forwarded and metered into the local store
+    let ok: Response | undefined;
+    for (let i = 0; i < 80 && !ok; i++) ok = await send(port, { model: "claude-sonnet-4-5", max_tokens: 10, messages: [{ role: "user", content: "hello" }] }).catch(() => undefined);
+    expect(ok?.status).toBe(200);
+    const agent = await until(() => store.agents()[0]);
+    await until(() => store.usage().length > 0);
+    expect(store.usage()[0]).toMatchObject({ provider: "anthropic", input_tokens: 10, output_tokens: 2 });
+
+    // 2. a loop holds the next request and is recorded with a suggestion
+    const held = send(port, stuck());
+    const paused = await until(() => store.agent(agent.id)?.status === "PAUSED" && store.agent(agent.id));
+    expect(paused.suggestion?.text).toMatch(/npm test/);
+    expect(store.incidents().some((i) => i.action === "PAUSED")).toBe(true);
+    expect(upstream.seen).toHaveLength(1); // the held request has not been forwarded
+
+    // 3. approving the suggestion releases the request, and the agent receives the instruction
+    expect((await controls.applySuggestion(agent.id)).ok).toBe(true);
+    const released = await held;
+    expect(released.status).toBe(200);
+    await until(() => upstream.seen.length === 2);
+    expect(upstream.seen[1].body).toContain("Stop re-running");
+
+    // 4. stop: the next request is refused with a final 403 (not a retryable 5xx)
+    await controls.stop(agent.id);
+    await until(() => store.agent(agent.id)?.status === "STOPPED");
+    let status = 0;
+    for (let i = 0; i < 100 && status !== 403; i++) {
+      status = (await send(port, { model: "claude-sonnet-4-5", max_tokens: 10, messages: [{ role: "user", content: "again" }] })).status;
+      if (status !== 403) await new Promise((r) => setTimeout(r, 30));
+    }
+    expect(status).toBe(403);
+
+    stop.abort();
+    expect(await running).toBe(0);
   });
 });
