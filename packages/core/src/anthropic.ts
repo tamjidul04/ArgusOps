@@ -60,7 +60,7 @@ function textOf(content: unknown): string {
  */
 const COSMETIC_FIELDS = new Set(["description", "timeout"]);
 
-function withoutCosmetics(input: unknown): unknown {
+export function withoutCosmetics(input: unknown): unknown {
   if (!input || typeof input !== "object" || Array.isArray(input)) return input ?? {};
   return Object.fromEntries(Object.entries(input as Record<string, unknown>).filter(([k]) => !COSMETIC_FIELDS.has(k)));
 }

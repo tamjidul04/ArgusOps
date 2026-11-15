@@ -46,11 +46,37 @@ describe("argus run", () => {
     expect(bad([])).toContain("Say what to run");
     expect(bad(["--offline"])).toContain("Say what to run");
     expect(bad(["--"])).toContain("Nothing to run");
-    expect(bad(["codex"])).toContain('Unknown agent "codex"');
+    expect(bad(["gemini"])).toContain('Unknown agent "gemini"');
     expect(bad(["--bogus", "claude"])).toContain("Unknown option --bogus");
     expect(bad(["--name"])).toContain("needs a value");
     expect(bad(["--name", "--offline", "claude"])).toContain("needs a value");
-    expect(bad(["--provider", "openai", "--", "x"])).toContain("isn't supported yet");
+    expect(bad(["--provider", "gemini", "--", "x"])).toContain("isn't supported yet");
+  });
+
+  it("knows Codex and the OpenAI provider, with the right base-URL variable and upstream", () => {
+    const codex = parseRunArgs(["codex", "exec", "fix it"], {});
+    if (!codex.ok) throw new Error("expected ok");
+    expect(codex.spec).toMatchObject({ command: "codex", args: ["exec", "fix it"], provider: "openai", upstream: "https://api.openai.com", baseUrlEnv: "OPENAI_BASE_URL", type: "CODEX" });
+    const custom = parseRunArgs(["--provider", "openai", "--", "my-agent"], {});
+    if (!custom.ok) throw new Error("expected ok");
+    expect(custom.spec).toMatchObject({ provider: "openai", baseUrlEnv: "OPENAI_BASE_URL", upstream: "https://api.openai.com" });
+    const overridden = parseRunArgs(["codex"], { ARGUS_UPSTREAM_OPENAI: "https://llm.example.com/" });
+    if (!overridden.ok) throw new Error("expected ok");
+    expect(overridden.spec.upstream).toBe("https://llm.example.com");
+    // the Anthropic override must not leak into an OpenAI run
+    const mixed = parseRunArgs(["codex"], { ARGUS_UPSTREAM_ANTHROPIC: "https://anthropic-gateway.example.com" });
+    if (!mixed.ok) throw new Error("expected ok");
+    expect(mixed.spec.upstream).toBe("https://api.openai.com");
+  });
+});
+
+describe("argus proxy providers", () => {
+  it("serves OpenAI-format agents with --provider openai", () => {
+    const r = parseProxyArgs(["--provider", "openai", "--port", "47830"], {});
+    if (!r.ok) throw new Error("expected ok");
+    expect(r.spec).toMatchObject({ provider: "openai", baseUrlEnv: "OPENAI_BASE_URL", upstream: "https://api.openai.com", port: 47830, type: "OPENAI" });
+    expect(r.spec.label).toContain("OpenAI");
+    expect(parseProxyArgs(["--provider", "nope"], {}).ok).toBe(false);
   });
 });
 

@@ -1,6 +1,7 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import crypto from "node:crypto";
 import path from "node:path";
+import { adapterFor } from "./adapters";
 import { agentIdFor, type SyncPayload, type SyncTransport } from "./hub";
 import type { NotificationRow, Store } from "./store";
 import { TurnSupervisor } from "./supervisor";
@@ -60,7 +61,12 @@ export async function runAgent(opts: RunOptions): Promise<number> {
   const runId = crypto.randomUUID();
   const agentName = opts.command ? `${opts.label} · ${path.basename(opts.cwd) || "project"}` : opts.label;
   const state = new ControlState();
-  const detector = new LoopDetector();
+  const adapter = adapterFor(opts.provider);
+  if (!adapter) {
+    say(`Provider "${opts.provider}" isn't supported yet.`);
+    return 2;
+  }
+  const detector = new LoopDetector(adapter);
   const queue: unknown[] = [];
   let online = opts.hub !== null;
 
@@ -129,6 +135,7 @@ export async function runAgent(opts: RunOptions): Promise<number> {
   try {
     proxy = await startProxy({
     provider: opts.provider,
+    adapter,
     upstream: opts.upstream,
     state,
     detector,
@@ -167,7 +174,7 @@ export async function runAgent(opts: RunOptions): Promise<number> {
     say(e instanceof Error ? e.message : "Couldn't start the local proxy.");
     return 2;
   }
-  const baseUrl = `http://127.0.0.1:${proxy.port}`;
+  const baseUrl = `http://127.0.0.1:${proxy.port}${adapter.baseUrlSuffix}`;
 
   // ---- start the agent, pointed at the local proxy -----------------------------------------------------------------
   const serve = !opts.command;

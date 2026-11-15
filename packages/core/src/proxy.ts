@@ -1,6 +1,7 @@
 import http from "node:http";
 import https from "node:https";
-import { applyHint, isMainRequest, SseUsageTap, turnStartOf, turnToolCalls, usageFromJson, type UsageResult } from "./anthropic";
+import { anthropicAdapter, type Adapter } from "./adapters";
+import type { UsageResult } from "./anthropic";
 import type { LoopDetector } from "./detect";
 import type { ControlState } from "./state";
 
@@ -39,6 +40,8 @@ export interface IncidentOut {
 
 export interface ProxyOptions {
   provider: string;
+  /** The provider's API format. Defaults to Anthropic. */
+  adapter?: Adapter;
   upstream: string;
   state: ControlState;
   detector: LoopDetector;
@@ -64,13 +67,13 @@ export interface RunningProxy {
 }
 
 const HOP_BY_HOP = new Set(["connection", "keep-alive", "proxy-connection", "transfer-encoding", "upgrade", "te", "trailer", "host", "content-length"]);
-const MESSAGES_PATH = /^\/v1\/messages(?:\?|$)/;
 
 function errorBody(type: string, message: string) {
   return JSON.stringify({ type: "error", error: { type, message } });
 }
 
 export function startProxy(opts: ProxyOptions): Promise<RunningProxy> {
+  const ad = opts.adapter ?? anthropicAdapter;
   const target = new URL(opts.upstream);
   const lib = target.protocol === "https:" ? https : http;
   const basePath = target.pathname.replace(/\/$/, "");
@@ -110,7 +113,7 @@ export function startProxy(opts: ProxyOptions): Promise<RunningProxy> {
         res.writeHead(upRes.statusCode ?? 502, outHeaders);
 
         const type = String(upRes.headers["content-type"] ?? "");
-        const sse = type.includes("text/event-stream") ? new SseUsageTap() : null;
+        const sse = type.includes("text/event-stream") ? ad.newTap() : null;
         const jsonParts: Buffer[] = [];
         let jsonSize = 0;
         const readJson = type.includes("application/json") && !sse;
@@ -126,7 +129,7 @@ export function startProxy(opts: ProxyOptions): Promise<RunningProxy> {
           const ok = (upRes.statusCode ?? 0) >= 200 && (upRes.statusCode ?? 0) < 300;
           let usage: UsageResult | null = null;
           if (ok && sse) usage = sse.result();
-          else if (ok && readJson) usage = usageFromJson(Buffer.concat(jsonParts).toString("utf8"));
+          else if (ok && readJson) usage = ad.usageFromJson(Buffer.concat(jsonParts).toString("utf8"));
           if (usage && (usage.inputTokens > 0 || usage.outputTokens > 0 || usage.cacheReadTokens > 0)) {
             opts.onUsage({
               provider: opts.provider,
@@ -155,7 +158,7 @@ export function startProxy(opts: ProxyOptions): Promise<RunningProxy> {
   async function handle(req: http.IncomingMessage, res: http.ServerResponse) {
     if (opts.state.isKilled()) return send(res, 403, "permission_error", STOPPED_MESSAGE);
 
-    const isMessages = req.method === "POST" && MESSAGES_PATH.test(req.url ?? "");
+    const isMessages = ad.isModelRequest(req.method ?? "", req.url ?? "");
     if (!isMessages) return forward(req, res, null, "");
 
     // read the whole request so the conversation can be inspected
@@ -216,23 +219,29 @@ export function startProxy(opts: ProxyOptions): Promise<RunningProxy> {
     const model = typeof body?.model === "string" ? (body.model as string) : "";
     const hint = opts.state.takeHint();
     if (hint && body) {
-      out = Buffer.from(JSON.stringify(applyHint(body, hint)), "utf8");
+      out = Buffer.from(JSON.stringify(ad.applyHint(body, hint)), "utf8");
       opts.onNotice?.("Delivered your hint to the agent.");
     }
+    // 3b. a change the adapter needs to be able to read usage (never changes what the model is asked)
+    if (body && out === raw) {
+      const prepared = ad.prepare(body);
+      if (prepared) out = Buffer.from(JSON.stringify(prepared), "utf8");
+    }
+
     // 4. turns: a snapshot before the agent can touch anything, a check once it hands back
     let onDone: ((u: UsageResult | null) => void) | undefined;
     if (opts.onRequest && body) {
       const msgs = Array.isArray(body.messages) ? (body.messages as unknown[]) : [];
-      opts.onRequest(`request: main=${isMainRequest(body)} messages=${msgs.length} turnStart=${turnStartOf(body)?.key ?? "no"} last=${JSON.stringify(msgs[msgs.length - 1] ?? null).slice(0, 160)}`);
+      opts.onRequest(`request: main=${ad.isMainRequest(body)} messages=${msgs.length} turnStart=${ad.turnStartOf(body)?.key ?? "no"} last=${JSON.stringify(msgs[msgs.length - 1] ?? null).slice(0, 160)}`);
     }
-    if (body && isMainRequest(body) && (opts.onTurnStart || opts.onTurnEnd)) {
-      const start = turnStartOf(body);
+    if (body && ad.isMainRequest(body) && (opts.onTurnStart || opts.onTurnEnd)) {
+      const start = ad.turnStartOf(body);
       if (start && start.key !== turnKey) {
         turnKey = start.key;
         if (opts.onTurnStart) await Promise.race([Promise.resolve(opts.onTurnStart(start)).catch(() => undefined), new Promise((r) => setTimeout(r, TURN_START_WAIT_MS))]);
       }
       const key = turnKey;
-      const calls = turnToolCalls(body);
+      const calls = ad.turnToolCalls(body);
       onDone = (u) => {
         opts.onRequest?.(`response: stop=${u?.stopReason ?? "?"} textLen=${u?.text?.length ?? 0}`);
         if (u?.stopReason === "end_turn" && key) opts.onTurnEnd?.({ key, text: u.text ?? "", toolCalls: calls });

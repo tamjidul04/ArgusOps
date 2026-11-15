@@ -72,7 +72,7 @@ export const BUILT_IN_AGENTS: AgentEntry[] = [
     support: "possible",
     api: "openai",
     spawnable: false,
-    note: "Should accept a base URL, but ArgusOps does not speak the OpenAI API format yet, so only the workspace checks (argus watch) work for now.",
+    note: "ArgusOps now speaks the OpenAI formats: run it with `argus run codex`, or point it at `argus proxy --provider openai`. Built from the published API and tested with simulated traffic, not yet run with a real Codex session. If Codex is signed in with ChatGPT instead of an API key, it may use a service that ignores the base URL. The workspace checks (argus watch) work either way.",
   },
   {
     id: "gemini-cli",

@@ -14,6 +14,27 @@ export interface RunSpec {
 export type ParsedRun = { ok: true; spec: RunSpec } | { ok: false; error: string };
 
 export const ANTHROPIC_UPSTREAM = "https://api.anthropic.com";
+export const OPENAI_UPSTREAM = "https://api.openai.com";
+
+/** The provider's defaults. Add a provider here and in core/src/adapters.ts. */
+const PROVIDERS: Record<string, { upstream: string; baseUrlEnv: string; overrideEnv: string; type: string }> = {
+  anthropic: { upstream: ANTHROPIC_UPSTREAM, baseUrlEnv: "ANTHROPIC_BASE_URL", overrideEnv: "ARGUS_UPSTREAM_ANTHROPIC", type: "CLAUDE" },
+  openai: { upstream: OPENAI_UPSTREAM, baseUrlEnv: "OPENAI_BASE_URL", overrideEnv: "ARGUS_UPSTREAM_OPENAI", type: "OPENAI" },
+};
+
+function pickUpstream(provider: string, flag: string | undefined, env: Record<string, string | undefined>): { ok: true; upstream: string } | { ok: false; error: string } {
+  const p = PROVIDERS[provider];
+  if (!p) return { ok: false, error: `Provider "${provider}" isn't supported yet. Supported: ${Object.keys(PROVIDERS).join(", ")}.` };
+  const override = flag ?? env[p.overrideEnv];
+  if (!override) return { ok: true, upstream: p.upstream };
+  try {
+    const u = new URL(override);
+    if (u.protocol !== "http:" && u.protocol !== "https:") throw new Error("protocol");
+    return { ok: true, upstream: override.replace(/\/+$/, "") };
+  } catch {
+    return { ok: false, error: `"${override}" isn't a valid URL for --upstream.` };
+  }
+}
 
 const PRESETS: Record<string, Omit<RunSpec, "offline" | "args">> = {
   claude: {
@@ -23,6 +44,14 @@ const PRESETS: Record<string, Omit<RunSpec, "offline" | "args">> = {
     provider: "anthropic",
     upstream: ANTHROPIC_UPSTREAM,
     baseUrlEnv: "ANTHROPIC_BASE_URL",
+  },
+  codex: {
+    label: "OpenAI Codex",
+    type: "CODEX",
+    command: "codex",
+    provider: "openai",
+    upstream: OPENAI_UPSTREAM,
+    baseUrlEnv: "OPENAI_BASE_URL",
   },
 };
 
@@ -71,7 +100,7 @@ export function parseRunArgs(argv: string[], env: Record<string, string | undefi
       args,
       provider: values["--provider"] ?? "anthropic",
       upstream: ANTHROPIC_UPSTREAM,
-      baseUrlEnv: "ANTHROPIC_BASE_URL",
+      baseUrlEnv: (PROVIDERS[values["--provider"] ?? "anthropic"] ?? PROVIDERS.anthropic).baseUrlEnv,
     };
   } else {
     const preset = PRESETS[first];
@@ -81,19 +110,10 @@ export function parseRunArgs(argv: string[], env: Record<string, string | undefi
     spec = { ...preset, label: values["--name"] ?? preset.label, args: argv.slice(i + 1) };
   }
 
-  if (spec.provider !== "anthropic") {
-    return { ok: false, error: `Provider "${spec.provider}" isn't supported yet. Supported: anthropic.` };
-  }
-  const override = values["--upstream"] ?? env.ARGUS_UPSTREAM_ANTHROPIC;
-  if (override) {
-    try {
-      const u = new URL(override);
-      if (u.protocol !== "http:" && u.protocol !== "https:") throw new Error("protocol");
-      spec.upstream = override.replace(/\/+$/, "");
-    } catch {
-      return { ok: false, error: `"${override}" isn't a valid URL for --upstream.` };
-    }
-  }
+  const picked = pickUpstream(spec.provider, values["--upstream"], env);
+  if (!picked.ok) return picked;
+  spec.upstream = picked.upstream;
+  spec.baseUrlEnv = PROVIDERS[spec.provider].baseUrlEnv;
   return { ok: true, spec: { ...spec, offline } };
 }
 
@@ -115,7 +135,7 @@ export interface ProxySpec {
 export type ParsedProxy = { ok: true; spec: ProxySpec } | { ok: false; error: string };
 
 /**
- * `argus proxy [--port <n>] [--name <label>] [--offline] [--upstream <url>]`
+ * `argus proxy [--provider anthropic|openai] [--port <n>] [--name <label>] [--offline] [--upstream <url>]`
  * Runs the supervising proxy on its own, for an agent that something else launches (the Claude Code panel in
  * VS Code, for example) and that is pointed here with ANTHROPIC_BASE_URL.
  */
@@ -131,7 +151,7 @@ export function parseProxyArgs(argv: string[], env: Record<string, string | unde
     }
     const eq = tok.indexOf("=");
     const flag = eq === -1 ? tok : tok.slice(0, eq);
-    if (!["--port", "--name", "--upstream"].includes(flag)) return { ok: false, error: `Unknown option ${flag}.` };
+    if (!["--port", "--name", "--upstream", "--provider"].includes(flag)) return { ok: false, error: `Unknown option ${flag}.` };
     const value = eq === -1 ? argv[++i] : tok.slice(eq + 1);
     if (!value || value.startsWith("--")) return { ok: false, error: `${flag} needs a value.` };
     values[flag] = value;
@@ -140,20 +160,13 @@ export function parseProxyArgs(argv: string[], env: Record<string, string | unde
   const port = values["--port"] === undefined ? DEFAULT_PROXY_PORT : Number(values["--port"]);
   if (!Number.isInteger(port) || port < 1024 || port > 65535) return { ok: false, error: "--port must be a whole number between 1024 and 65535." };
 
-  let upstream = ANTHROPIC_UPSTREAM;
-  const override = values["--upstream"] ?? env.ARGUS_UPSTREAM_ANTHROPIC;
-  if (override) {
-    try {
-      const u = new URL(override);
-      if (u.protocol !== "http:" && u.protocol !== "https:") throw new Error("protocol");
-      upstream = override.replace(/\/+$/, "");
-    } catch {
-      return { ok: false, error: `"${override}" isn't a valid URL for --upstream.` };
-    }
-  }
+  const provider = values["--provider"] ?? "anthropic";
+  const picked = pickUpstream(provider, values["--upstream"], env);
+  if (!picked.ok) return picked;
+  const prov = PROVIDERS[provider];
 
   return {
     ok: true,
-    spec: { offline, label: values["--name"] ?? "Claude Code (IDE)", type: "CLAUDE", provider: "anthropic", upstream, baseUrlEnv: "ANTHROPIC_BASE_URL", port },
+    spec: { offline, label: values["--name"] ?? (provider === "anthropic" ? "Claude Code (IDE)" : "OpenAI agent (IDE)"), type: prov.type, provider, upstream: picked.upstream, baseUrlEnv: prov.baseUrlEnv, port },
   };
 }

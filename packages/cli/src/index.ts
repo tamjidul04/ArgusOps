@@ -14,7 +14,8 @@ const HELP = `argus ${VERSION}: supervise your AI coding agents, on your own mac
 
 Usage:
   argus run [options] claude [claude args...]    run Claude Code under supervision
-  argus run [options] -- <command> [args...]     run any agent that talks to the Anthropic API
+  argus run [options] codex [codex args...]      run OpenAI Codex under supervision (OpenAI API format)
+  argus run [options] -- <command> [args...]     run any agent that talks to the Anthropic API (or OpenAI with --provider openai)
   argus ide                                       one step for the Claude Code panel in VS Code or Antigravity:
                                                   points this folder's panel at Argus, undoes it on Ctrl+C
   argus proxy [options]                           supervise an agent you start yourself
@@ -38,11 +39,12 @@ Usage:
 Run options (before the agent):
   --offline            save nothing to disk (no history, no outside control)
   --name <label>       the name shown for this agent
-  --upstream <url>     send model calls somewhere other than api.anthropic.com
+  --upstream <url>     send model calls somewhere other than the provider's own address
+  --provider <name>    anthropic (default) or openai: which API format the agent speaks
 
 Proxy options (argus proxy, argus ide):
   --port <n>           listen on this port (default 47821)
-  --offline, --name <label>, --upstream <url>   as above
+  --provider, --offline, --name <label>, --upstream <url>   as above
 
 Environment:
   ARGUSOPS_HOME        where ArgusOps keeps its files (default ~/.argusops)

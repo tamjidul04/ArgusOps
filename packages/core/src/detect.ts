@@ -1,4 +1,11 @@
-import { countToolCalls, extractToolTrace } from "./anthropic";
+import { countToolCalls as anthropicCount, extractToolTrace as anthropicTrace, type ToolTrace } from "./anthropic";
+
+/** How to read tool calls out of a conversation. Defaults to the Anthropic format. */
+export interface TraceReader {
+  extractToolTrace(body: unknown): ToolTrace;
+  countToolCalls(body: unknown): number;
+}
+const ANTHROPIC_READER: TraceReader = { extractToolTrace: anthropicTrace, countToolCalls: anthropicCount };
 
 export interface DetectPolicy {
   loopScoreThreshold: number;
@@ -60,6 +67,8 @@ export class LoopDetector {
   private policy: DetectPolicy = DEFAULT_POLICY;
   private ignoreFirstCalls = 0;
 
+  constructor(private readonly reader: TraceReader = ANTHROPIC_READER) {}
+
   setPolicy(p: Partial<DetectPolicy> | undefined) {
     if (!p) return;
     this.policy = {
@@ -70,12 +79,12 @@ export class LoopDetector {
 
   /** Call when the operator resumes an agent. `body` is the conversation about to be sent. */
   markResumed(body: unknown) {
-    this.ignoreFirstCalls = countToolCalls(body);
+    this.ignoreFirstCalls = this.reader.countToolCalls(body);
   }
 
   check(body: unknown): LoopVerdict {
     const started = performance.now();
-    const trace = extractToolTrace(body);
+    const trace = this.reader.extractToolTrace(body);
     if (this.ignoreFirstCalls > trace.calls.length) this.ignoreFirstCalls = 0; // the agent compacted its history
 
     // only what happened after the resume point counts
