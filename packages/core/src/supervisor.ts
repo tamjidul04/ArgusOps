@@ -136,6 +136,8 @@ export interface TurnSupervisorOptions {
   say?: (message: string) => void;
   onNotification?: (n: NotificationRow) => void;
   now?: () => number;
+  /** How long the request that starts a turn may wait for the starting snapshot. */
+  snapshotTimeoutMs?: number;
   /** For tests. */
   inspect?: typeof inspectSince;
   snapshot?: typeof takeSnapshot;
@@ -167,7 +169,8 @@ export class TurnSupervisor {
     this.turnKey = ev.key;
     this.turnTokens = 0;
     this.budgetTripped = false;
-    this.baseline = await withTimeout((this.o.snapshot ?? takeSnapshot)(this.o.root), SNAPSHOT_TIMEOUT_MS);
+    this.baseline = await withTimeout((this.o.snapshot ?? takeSnapshot)(this.o.root), this.o.snapshotTimeoutMs ?? SNAPSHOT_TIMEOUT_MS);
+    if (!this.baseline) this.o.say?.("ArgusOps could not take its starting snapshot in time, so it will not check this turn.");
   }
 
   /** Called when the agent hands back. Runs the checks in the background; the promise is for tests and callers that want the outcome. */

@@ -179,6 +179,15 @@ describe("TurnSupervisor", () => {
     expect(actions).toEqual(["redirect", "held-back"]);
   }, 30_000);
 
+  it("says so when it cannot take the starting snapshot in time, and then skips that turn", async () => {
+    const s = setup("alert");
+    await s.init();
+    const slow = new TurnSupervisor({ store: s.store, root: s.root, agentId: "ag_x", agentName: "Claude Code · demo", say: (m) => s.said.push(m), snapshotTimeoutMs: 50, snapshot: () => new Promise(() => undefined) });
+    await slow.turnStarted({ key: "t1", humanText: "x" });
+    expect(s.said.join(" ")).toContain("could not take its starting snapshot");
+    expect(await slow.turnEnded({ key: "t1", text: "done", toolCalls: [] })).toBeNull();
+  }, 20_000);
+
   it("is silent when switched off", async () => {
     const s = setup("off");
     const sup = await s.init();

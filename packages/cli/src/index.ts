@@ -31,6 +31,8 @@ Usage:
   argus project [status|allow|deny] [folder]      allow ArgusOps to run this project's tests, lint and build
   argus supervisor [off|alert|redirect] [--max-turn-tokens <n>]
                                                   how ArgusOps reacts to problems in an agent's turn (default: alert)
+  argus agents                                    the AI agents and editors on this machine, and what ArgusOps can do for each
+  argus disconnect [--force]                      remove a leftover editor setting that points at a proxy that is gone
   argus serve [--port <n>]                        run the local control API (127.0.0.1 only) for apps and editors
 
 Run options (before the agent):
@@ -182,6 +184,10 @@ export async function main(argv: string[]): Promise<number> {
     }
     case "supervisor":
       return commands.supervisor(new Store(), io, rest);
+    case "agents":
+      return commands.agents(io);
+    case "disconnect":
+      return commands.disconnect(io, rest);
     case "serve":
       return serve(rest);
     case "ide":

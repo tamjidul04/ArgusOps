@@ -3,6 +3,9 @@ import { resolve as resolvePath } from "node:path";
 import { Controls } from "../../core/src/control";
 import { allowProject, consentState, denyProject, detectGates } from "../../core/src/gates";
 import { formatReport, inspectSince, recordReport, watchWorkspace } from "../../core/src/inspect";
+import path from "node:path";
+import { discover, formatDiscovery, knownEditors, realEnv, type Env } from "../../core/src/discover";
+import { removeStaleEntry } from "../../core/src/ide-settings";
 import { snapshotFromRef } from "../../core/src/workspace";
 import { loadPrices } from "../../core/src/prices";
 import type { AgentRecord, Store } from "../../core/src/store";
@@ -311,5 +314,36 @@ export async function supervisor(store: Store, io: Io, argv: string[]): Promise<
   io.out(`Supervisor: ${what}.`);
   io.out(`Token limit per turn: ${c.maxTurnTokens ? c.maxTurnTokens.toLocaleString("en-US") : "none"}.`);
   if (c.mode === "redirect") io.out(`Redirects: at most one per turn, ${Math.round(c.redirectCooldownMs / 60000)} min apart, and it stops after ${c.maxRedirectsInARow} in a row.`);
+  return 0;
+}
+
+/* ---------------------------- agents on this machine ---------------------------- */
+
+export async function agents(io: Io, env: Env = realEnv(), home?: string): Promise<number> {
+  const names = Object.fromEntries(knownEditors(env).map((e) => [e.id, e.name]));
+  io.out(formatDiscovery(await discover(env, home), names));
+  return 0;
+}
+
+/** Removes ArgusOps' leftover setting from editors (and this folder) when the proxy it points at is gone. */
+export async function disconnect(io: Io, argv: string[], env: Env = realEnv(), cwd = process.cwd()): Promise<number> {
+  const force = argv.includes("--force");
+  const bad = argv.find((a) => a !== "--force");
+  if (bad) return (io.err(`Unknown option ${bad}. Usage: argus disconnect [--force]`), 1);
+  const files = [path.join(cwd, ".vscode", "settings.json"), ...knownEditors(env).flatMap((e) => e.settingsDirs.map((d) => path.join(d, "settings.json")))];
+  let touched = 0;
+  for (const f of [...new Set(files)]) {
+    const r = await removeStaleEntry(f, env.probePort, force);
+    if (r.action === "removed") {
+      touched++;
+      io.out(`Removed ${r.url} from ${f}`);
+    } else if (r.action === "kept-live") io.out(`Kept ${f}: ${r.url} is running. Use --force to remove it anyway.`);
+    else if (r.action === "needs-manual") {
+      touched++;
+      io.out(`${f} has comments, so ArgusOps will not edit it. Delete the ANTHROPIC_BASE_URL entry pointing at ${r.url} yourself.`);
+    }
+  }
+  if (touched === 0) io.out("Nothing to clean up: no editor is pointed at a proxy that is gone.");
+  else io.out("Reload the editor window so the agent picks up the change.");
   return 0;
 }

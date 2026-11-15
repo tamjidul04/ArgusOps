@@ -270,3 +270,58 @@ describe("project, check", () => {
     expect(await check(store, io, ["--bogus"], plain)).toBe(1);
   });
 });
+
+describe("agents and disconnect", () => {
+  const entry = { name: "ANTHROPIC_BASE_URL", value: "http://127.0.0.1:47821" };
+  const env = (home: string, probe: boolean) => ({ home, appdata: path.join(home, "AppData"), platform: "win32" as const, path: "", pathext: "", listProcesses: async () => [], probePort: async () => probe });
+  function machine() {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), "argus-agents-"));
+    dirs.push(home);
+    const userSettings = path.join(home, "AppData", "Code", "User", "settings.json");
+    fs.mkdirSync(path.dirname(userSettings), { recursive: true });
+    fs.writeFileSync(userSettings, JSON.stringify({ "editor.fontSize": 14, "claudeCode.environmentVariables": [entry] }));
+    return { home, userSettings };
+  }
+
+  it("agents: lists what is installed", async () => {
+    const { home } = machine();
+    fs.mkdirSync(path.join(home, ".vscode", "extensions", "anthropic.claude-code-2.1.325-win32-x64"), { recursive: true });
+    const { io, lines } = setup();
+    const { agents } = await import("./commands");
+    expect(await agents(io, env(home, false))).toBe(0);
+    expect(lines.join("\n")).toContain("VS Code");
+    expect(lines.join("\n")).toContain("Claude Code 2.1.325");
+  });
+
+  it("disconnect: removes a leftover entry whose proxy is gone, and keeps the user's other settings", async () => {
+    const { home, userSettings } = machine();
+    const { io, lines } = setup();
+    const { disconnect } = await import("./commands");
+    expect(await disconnect(io, [], env(home, false), home)).toBe(0);
+    expect(JSON.parse(fs.readFileSync(userSettings, "utf8"))).toEqual({ "editor.fontSize": 14 });
+    expect(lines.join("\n")).toContain("Removed http://127.0.0.1:47821");
+    expect(lines.join("\n")).toContain("Reload the editor window");
+  });
+
+  it("disconnect: leaves a running proxy's entry alone unless forced", async () => {
+    const { home, userSettings } = machine();
+    const { io, lines } = setup();
+    const { disconnect } = await import("./commands");
+    await disconnect(io, [], env(home, true), home);
+    expect(fs.readFileSync(userSettings, "utf8")).toContain("47821");
+    expect(lines.join("\n")).toContain("is running");
+    await disconnect(io, ["--force"], env(home, true), home);
+    expect(fs.readFileSync(userSettings, "utf8")).not.toContain("47821");
+  });
+
+  it("disconnect: says so when there is nothing to do, and rejects unknown options", async () => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), "argus-agents-"));
+    dirs.push(home);
+    const { io, lines, errs } = setup();
+    const { disconnect } = await import("./commands");
+    expect(await disconnect(io, [], env(home, false), home)).toBe(0);
+    expect(lines.join("\n")).toContain("Nothing to clean up");
+    expect(await disconnect(io, ["--nope"], env(home, false), home)).toBe(1);
+    expect(errs[0]).toContain("Unknown option");
+  });
+});

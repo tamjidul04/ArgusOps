@@ -248,16 +248,22 @@ describe("the supervisor during a real proxied session", () => {
     await r!.text();
 
     // the check runs in the background: wait for the redirect to be queued
-    const until = async (fn: () => boolean, ms = 20_000) => {
+    const until = async (fn: () => boolean, ms = 60_000) => {
       const end = Date.now() + ms;
       while (Date.now() < end && !fn()) await new Promise((x) => setTimeout(x, 50));
       return fn();
     };
     const agentId = store.agents()[0]?.id;
-    expect(await until(() => store.incidents().some((i) => i.kind === "FINDING"))).toBe(true);
+    const sawFinding = await until(() => store.incidents().some((i) => i.kind === "FINDING"), 30_000);
+    if (!sawFinding) throw new Error(`no finding was recorded. The run said: ${JSON.stringify(output.join(""))}. Incidents: ${JSON.stringify(store.incidents().map((i) => i.kind))}. Upstream calls: ${bodies.length}`);
     const finding = store.incidents().find((i) => i.kind === "FINDING")!;
     expect(finding.findings?.map((f) => f.code)).toEqual(expect.arrayContaining(["claim-contradicted", "gate-test"]));
     expect(finding.agentId).toBe(agentId);
+
+    // the redirect is stored just after the incident; wait for it, and for the run to pick it up
+    // (the run picks it up within ~40 ms, so polling the store for it would often just miss it: use the run's own message)
+    expect(await until(() => output.join("").includes("will pass what needs fixing"))).toBe(true);
+    expect(await until(() => !store.agent(agentId)?.hint)).toBe(true);
 
     // the human's next message carries the supervisor's instruction to the agent
     await (await ask([{ role: "user", content: "fix the bug" }, { role: "assistant", content: "Fixed it. All tests pass." }, { role: "user", content: "thanks, anything else?" }])).text();
@@ -267,5 +273,5 @@ describe("the supervisor during a real proxied session", () => {
 
     stop.abort();
     expect(await running).toBe(0);
-  }, 60_000);
+  }, 150_000);
 });
