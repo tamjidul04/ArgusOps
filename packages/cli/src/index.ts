@@ -6,7 +6,7 @@ import { clearToken, loadConfig, saveConfig } from "./config";
 import { runAgent } from "./run";
 import { pointWorkspaceAtProxy, snippet } from "./ide-settings";
 
-export const VERSION = "0.2.0";
+export const VERSION = "0.5.0";
 
 const HELP = `argus ${VERSION}: supervise your AI coding agents
 

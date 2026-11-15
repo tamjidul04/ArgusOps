@@ -30,4 +30,4 @@ The extension only talks to your ArgusOps server. The key is kept in VS Code's s
 
 ## License
 
-Copyright (c) 2026 MD.Tamjidul Islam. All rights reserved.
+Released under the [MIT License](LICENSE). Copyright (c) 2026 MD.Tamjidul Islam.

@@ -1,7 +1,7 @@
 {
   "name": "argusops",
-  "version": "0.2.0",
-  "license": "UNLICENSED",
+  "version": "0.5.0",
+  "license": "MIT",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -9,7 +9,6 @@
     "start": "next start",
     "lint": "eslint",
     "seed": "tsx prisma/seed.ts",
-    "daemon": "node daemon/argus-daemon.mjs",
     "test": "vitest run",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "cli:build": "node packages/cli/build.mjs",

@@ -129,7 +129,6 @@ prisma/                  schema and seed
 docs/PRD.md              original product brief (v1.1); the spec above supersedes it where they differ
 ```
 
-`daemon/` holds the earlier prototype process scanner. It is being replaced by the `argus` CLI and no longer works against the authenticated API.
 
 ## Security notes
 
@@ -140,4 +139,4 @@ docs/PRD.md              original product brief (v1.1); the spec above supersede
 
 ## License
 
-Copyright (c) 2026 MD.Tamjidul Islam. **All rights reserved.** The source is visible for reference only; see [LICENSE](LICENSE). Using, copying, modifying or reselling it requires written permission.
+Released under the [MIT License](LICENSE). Copyright (c) 2026 MD.Tamjidul Islam.
