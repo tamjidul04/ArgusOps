@@ -1,10 +1,10 @@
 import os from "node:os";
 import { spawn } from "node:child_process";
 import { parseProxyArgs, parseRunArgs } from "./args";
-import { CloudClient, CloudError } from "./api";
+import { CloudClient, CloudError } from "../../core/src/api";
 import { clearToken, loadConfig, saveConfig } from "./config";
-import { runAgent } from "./run";
-import { pointWorkspaceAtProxy, snippet } from "./ide-settings";
+import { runAgent } from "../../core/src/run";
+import { pointWorkspaceAtProxy, snippet } from "../../core/src/ide-settings";
 
 export const VERSION = "0.5.0";
 

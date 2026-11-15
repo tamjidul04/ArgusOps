@@ -1,4 +1,4 @@
-// Bundles the CLI (and the shared loop detector from src/lib) into one dependency-free file.
+// Bundles the CLI and the engine in packages/core into one dependency-free file.
 import { build } from "esbuild";
 import { chmodSync, mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";

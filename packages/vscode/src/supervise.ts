@@ -1,6 +1,6 @@
-import { runAgent } from "../../cli/src/run";
+import { runAgent } from "../../core/src/run";
 import { ANTHROPIC_UPSTREAM, DEFAULT_PROXY_PORT } from "../../cli/src/args";
-import { CloudClient } from "../../cli/src/api";
+import { CloudClient } from "../../core/src/api";
 
 const VAR = "ANTHROPIC_BASE_URL";
 
