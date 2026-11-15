@@ -193,3 +193,80 @@ describe("webhook command", () => {
     expect(errs.join("\n")).toContain("No webhooks yet");
   });
 });
+
+describe("project, check", () => {
+  const { execFileSync } = require("node:child_process") as typeof import("node:child_process");
+  const gitIn = (cwd: string, ...a: string[]) => execFileSync("git", ["-c", "user.name=t", "-c", "user.email=t@example.test", "-c", "commit.gpgsign=false", ...a], { cwd, stdio: ["ignore", "pipe", "pipe"] }).toString();
+  function proj() {
+    const d = fs.mkdtempSync(path.join(os.tmpdir(), "argus-proj-"));
+    dirs.push(d);
+    gitIn(d, "init", "-q");
+    fs.writeFileSync(path.join(d, "package.json"), JSON.stringify({ scripts: { test: 'node -e "process.exit(0)"' } }));
+    fs.writeFileSync(path.join(d, "a.test.ts"), "// t\n");
+    gitIn(d, "add", "-A");
+    gitIn(d, "commit", "-q", "-m", "init");
+    return d;
+  }
+
+  it("project: shows the commands, asks first, then remembers the answer", async () => {
+    const { store, io, lines } = setup();
+    const { project } = await import("./commands");
+    const d = proj();
+    await project(store, io, ["status"], d);
+    expect(lines.join("\n")).toContain("npm test");
+    expect(lines.join("\n")).toContain("Not allowed yet");
+    lines.length = 0;
+    expect(await project(store, io, ["allow"], d)).toBe(0);
+    await project(store, io, ["status"], d);
+    expect(lines.join("\n")).toContain("Allowed: ArgusOps may run");
+    expect(await project(store, io, ["deny"], d)).toBe(0);
+    lines.length = 0;
+    await project(store, io, [], d);
+    expect(lines.join("\n")).toContain("chose not to allow");
+    expect(await project(store, io, ["bogus"], d)).toBe(1);
+  });
+
+  it("project allow refuses when there is nothing to run", async () => {
+    const { store, io, errs } = setup();
+    const { project } = await import("./commands");
+    const empty = fs.mkdtempSync(path.join(os.tmpdir(), "argus-proj-"));
+    dirs.push(empty);
+    expect(await project(store, io, ["allow"], empty)).toBe(1);
+    expect(errs[0]).toMatch(/Nothing to allow/);
+  });
+
+  it("check: reports problems since the last commit and exits 1 on a critical one", async () => {
+    const { store, io, lines } = setup();
+    const { check } = await import("./commands");
+    const d = proj();
+    fs.rmSync(path.join(d, "a.test.ts"));
+    expect(await check(store, io, [], d)).toBe(1);
+    expect(lines.join("\n")).toContain("Test files were deleted");
+    expect(store.incidents()).toHaveLength(0); // a manual check does not raise alerts by itself
+    expect(await check(store, io, ["--alert"], d)).toBe(1);
+    expect(store.incidents()[0]?.kind).toBe("FINDING");
+  });
+
+  it("check: exits 0 when the changes are clean, and prints JSON on request", async () => {
+    const { store, io, lines } = setup();
+    const { check } = await import("./commands");
+    const d = proj();
+    fs.writeFileSync(path.join(d, "b.ts"), "export const x = 1;\n");
+    expect(await check(store, io, ["--no-checks"], d)).toBe(0);
+    expect(lines.join("\n")).toContain("No problems found");
+    lines.length = 0;
+    expect(await check(store, io, ["--json", "--no-checks"], d)).toBe(0);
+    expect(JSON.parse(lines.join("\n")).changes.files[0].path).toBe("b.ts");
+  });
+
+  it("check: explains when there is no git repository or the commit is unknown", async () => {
+    const { store, io, errs } = setup();
+    const { check } = await import("./commands");
+    const plain = fs.mkdtempSync(path.join(os.tmpdir(), "argus-proj-"));
+    dirs.push(plain);
+    expect(await check(store, io, [], plain)).toBe(1);
+    expect(errs[0]).toContain("argus watch");
+    expect(await check(store, io, ["--since", "nope"], proj())).toBe(1);
+    expect(await check(store, io, ["--bogus"], plain)).toBe(1);
+  });
+});

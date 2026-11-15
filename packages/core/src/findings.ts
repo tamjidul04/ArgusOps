@@ -139,7 +139,7 @@ export function scanChanges(changes: ChangeSet, opts: ScanOptions = {}): Finding
       code: "secret",
       severity: "CRITICAL",
       title: "A secret was written into a file",
-      detail: `${secretHits.length} line${secretHits.length === 1 ? "" : "s"} look like ${[...new Set(secretHits.map((h) => h.name))].join(", ")}. Check before committing or sharing the project.`,
+      detail: `${secretHits.length} line${secretHits.length === 1 ? " looks" : "s look"} like ${[...new Set(secretHits.map((h) => h.name))].join(", ")}. Check before committing or sharing the project.`,
       evidence: examples(secretHits, true),
       files: uniqueFiles(secretHits),
     });
@@ -178,7 +178,7 @@ export function scanChanges(changes: ChangeSet, opts: ScanOptions = {}): Finding
   // placeholders and "the rest stays the same" shortcuts
   const stubs = collect(code, STUB);
   if (stubs.length) {
-    out.push({ code: "placeholder", severity: "WARN", title: "Placeholder code was added", detail: `${stubs.length} line${stubs.length === 1 ? "" : "s"} say something is not implemented or is a placeholder. The task may look finished while parts are missing.`, evidence: examples(stubs), files: uniqueFiles(stubs) });
+    out.push({ code: "placeholder", severity: "WARN", title: "Placeholder code was added", detail: `${stubs.length} line${stubs.length === 1 ? " says" : "s say"} something is not implemented or is a placeholder. The task may look finished while parts are missing.`, evidence: examples(stubs), files: uniqueFiles(stubs) });
   }
   const elisions = collect(code, ELISION);
   if (elisions.length) {

@@ -114,6 +114,24 @@ async function gitSnapshot(top: string, now: number): Promise<GitSnapshot> {
   }
 }
 
+/** A snapshot of a commit or branch (e.g. "HEAD"), to compare the working folder against. Needs a git repository. */
+export async function snapshotFromRef(root: string, ref: string, now = Date.now()): Promise<Snapshot | null> {
+  const top = await gitToplevel(root);
+  if (!top) return null;
+  try {
+    const tree = (await git(top, ["rev-parse", "--verify", "--end-of-options", `${ref}^{tree}`])).trim();
+    let head: string | null = null;
+    try {
+      head = (await git(top, ["rev-parse", "HEAD"])).trim();
+    } catch {
+      // no commits yet
+    }
+    return { kind: "git", root: top, tree, head, takenAt: now };
+  } catch {
+    return null; // not a known commit
+  }
+}
+
 function folderSnapshot(root: string, now: number): FolderSnapshot {
   const files = new Map<string, string>();
   let skipped = 0;

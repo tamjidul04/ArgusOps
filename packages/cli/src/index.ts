@@ -25,6 +25,10 @@ Usage:
   argus usage [--range 24h|7d|30d]                tokens and estimated cost
   argus alerts [--all]                            what ArgusOps has told you
   argus webhook [list|add <url>|remove <url>|test]  also post alerts to Slack, Discord or any URL
+  argus check [--since <ref>] [--no-checks] [--json] [--alert] [folder]
+                                                  look at what an agent changed (default: since the last commit)
+  argus watch [folder]                            check a folder automatically whenever the agent stops writing
+  argus project [status|allow|deny] [folder]      allow ArgusOps to run this project's tests, lint and build
   argus serve [--port <n>]                        run the local control API (127.0.0.1 only) for apps and editors
 
 Run options (before the agent):
@@ -163,6 +167,16 @@ export async function main(argv: string[]): Promise<number> {
     case "webhook":
     case "webhooks":
       return commands.webhook(new Store(), io, rest);
+    case "check":
+      return commands.check(new Store(), io, rest);
+    case "project":
+      return commands.project(new Store(), io, rest);
+    case "watch": {
+      const stop = new AbortController();
+      process.once("SIGINT", () => stop.abort());
+      process.once("SIGTERM", () => stop.abort());
+      return commands.watch(new Store(), io, rest, stop.signal);
+    }
     case "serve":
       return serve(rest);
     case "ide":

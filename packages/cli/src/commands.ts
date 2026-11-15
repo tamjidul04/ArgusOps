@@ -1,4 +1,9 @@
+import fs from "node:fs";
+import { resolve as resolvePath } from "node:path";
 import { Controls } from "../../core/src/control";
+import { allowProject, consentState, denyProject, detectGates } from "../../core/src/gates";
+import { formatReport, inspectSince, recordReport, watchWorkspace } from "../../core/src/inspect";
+import { snapshotFromRef } from "../../core/src/workspace";
 import { loadPrices } from "../../core/src/prices";
 import type { AgentRecord, Store } from "../../core/src/store";
 import { summarizeUsage } from "../../core/src/usage";
@@ -198,4 +203,88 @@ export async function webhook(store: Store, io: Io, argv: string[]): Promise<num
   }
   io.err("Usage: argus webhook [list | add <url> | remove <url> | test]");
   return 1;
+}
+
+/* ------------------- checking an agent's work (any agent, any editor) ------------------- */
+
+const rootOf = (argv: string[], cwd: string) => {
+  const dir = argv.find((a) => !a.startsWith("--"));
+  return dir ? resolvePath(cwd, dir) : cwd;
+};
+
+export async function project(store: Store, io: Io, argv: string[], cwd = process.cwd()): Promise<number> {
+  const [sub = "status", ...rest] = argv;
+  const root = rootOf(rest, cwd);
+  const gates = detectGates(root);
+  if (sub === "status") {
+    io.out(`Project: ${root}`);
+    if (gates.length === 0) io.out("No test, lint or build commands detected (you can list them in .argusops.json).");
+    for (const g of gates) io.out(`  ${g.name.padEnd(9)} ${g.command}${g.body !== g.command ? `   (runs: ${g.body})` : ""}`);
+    if (gates.length) {
+      const state = consentState(store, root, gates);
+      io.out(
+        state === "allowed" ? "Allowed: ArgusOps may run these after an agent's turn." : state === "changed" ? "These commands changed since you allowed them. Review them, then run: argus project allow" : state === "denied" ? "You chose not to allow this project. Change that with: argus project allow" : "Not allowed yet. ArgusOps will not run anything until you say so: argus project allow"
+      );
+    }
+    return 0;
+  }
+  if (sub === "allow") {
+    if (gates.length === 0) return (io.err("Nothing to allow: no test, lint or build commands were found in this folder."), 1);
+    await allowProject(store, root, gates);
+    io.out("Allowed. After an agent's turn, ArgusOps may run:");
+    for (const g of gates) io.out(`  ${g.command}${g.body !== g.command ? `   (runs: ${g.body})` : ""}`);
+    io.out("If these commands change you will be asked again.");
+    return 0;
+  }
+  if (sub === "deny") {
+    await denyProject(store, root);
+    io.out("ArgusOps will not run anything in this project.");
+    return 0;
+  }
+  io.err("Usage: argus project [status | allow | deny] [folder]");
+  return 1;
+}
+
+export async function check(store: Store, io: Io, argv: string[], cwd = process.cwd()): Promise<number> {
+  let since = "HEAD";
+  let runChecks = true;
+  let json = false;
+  let alert = false;
+  const rest: string[] = [];
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (a === "--since") {
+      since = argv[++i] ?? "";
+      if (!since) return (io.err("--since needs a commit or branch name."), 1);
+    } else if (a.startsWith("--since=")) since = a.slice(8);
+    else if (a === "--no-checks" || a === "--no-gates") runChecks = false;
+    else if (a === "--json") json = true;
+    else if (a === "--alert") alert = true;
+    else if (a.startsWith("--")) return (io.err(`Unknown option ${a}.`), 1);
+    else rest.push(a);
+  }
+  const root = rootOf(rest, cwd);
+  const baseline = await snapshotFromRef(root, since);
+  if (!baseline) return (io.err(`Can't compare against "${since}": this needs a git repository (and that commit). To watch any folder instead, use: argus watch`), 1);
+  const report = await inspectSince(store, baseline, { runGates: runChecks });
+  if (alert) recordReport(store, report, webhookNotifier(store)); // a manual check shows its result here; alerts only when asked
+  io.out(json ? JSON.stringify(report, null, 2) : `Changes since ${since} in ${report.root}\n\n${formatReport(report)}`);
+  return report.worst === "CRITICAL" ? 1 : 0;
+}
+
+/** Runs until `signal` aborts (Ctrl+C in the real command). */
+export async function watch(store: Store, io: Io, argv: string[], signal: AbortSignal, cwd = process.cwd(), debounceMs = 5000): Promise<number> {
+  const root = rootOf(argv, cwd);
+  if (!fs.existsSync(root) || !fs.statSync(root).isDirectory()) return (io.err(`"${root}" is not a folder.`), 1);
+  const w = await watchWorkspace({
+    store,
+    root,
+    debounceMs,
+    onNotification: webhookNotifier(store),
+    onReport: (r) => io.out(`\n[${new Date(r.at).toLocaleTimeString()}] ${formatReport(r)}`),
+  });
+  io.out(`Watching ${root}. After files settle for ${Math.round(debounceMs / 1000)}s, ArgusOps checks what changed. Press Ctrl+C to stop.`);
+  await new Promise<void>((resolve) => (signal.aborted ? resolve() : signal.addEventListener("abort", () => resolve(), { once: true })));
+  w.stop();
+  return 0;
 }

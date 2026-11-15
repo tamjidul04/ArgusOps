@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import type { Finding } from "./findings";
 import type { Desired } from "./state";
 
 /**
@@ -61,13 +62,15 @@ export interface IncidentRow {
   ts: number;
   agentId: string;
   agentName: string;
-  kind: "LOOP" | "INFO";
+  kind: "LOOP" | "INFO" | "FINDING";
   action: "PAUSED" | "KILLED" | "NONE";
   severity: "INFO" | "WARN" | "CRITICAL";
   loop_type?: string;
   score: number;
   detail: string;
   evidence?: { unit: string[]; repeats: number };
+  /** For kind FINDING: what the supervisor found in one turn's changes. */
+  findings?: Finding[];
 }
 
 export interface NotificationRow {
