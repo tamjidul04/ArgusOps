@@ -50,7 +50,7 @@ const STUB: RegExp[] = [
   /\bunimplemented!\s*\(/,
   /\btodo!\s*\(/,
   /\bpass\s*#\s*(todo|fixme|implement)/i,
-  /\bplaceholder\b/i,
+  /\bplaceholder (implementation|code|function|logic|body)\b/i,
   /lorem ipsum/i,
   /implement (me|this|later)\b/i,
 ];
