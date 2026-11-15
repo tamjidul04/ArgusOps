@@ -4,6 +4,7 @@ import { loadPrices } from "../../core/src/prices";
 import { runAgent } from "../../core/src/run";
 import { pointWorkspaceAtProxy, snippet } from "../../core/src/ide-settings";
 import { Store } from "../../core/src/store";
+import { startControlApi } from "../../core/src/control-api";
 import { webhookNotifier } from "../../core/src/webhooks";
 import * as commands from "./commands";
 
@@ -24,6 +25,7 @@ Usage:
   argus usage [--range 24h|7d|30d]                tokens and estimated cost
   argus alerts [--all]                            what ArgusOps has told you
   argus webhook [list|add <url>|remove <url>|test]  also post alerts to Slack, Discord or any URL
+  argus serve [--port <n>]                        run the local control API (127.0.0.1 only) for apps and editors
 
 Run options (before the agent):
   --offline            save nothing to disk (no history, no outside control)
@@ -114,6 +116,33 @@ async function ide(argv: string[]): Promise<number> {
 
 const io = { out, err };
 
+async function serve(argv: string[]): Promise<number> {
+  const store = new Store();
+  let port = store.config().apiPort;
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    const v = a === "--port" ? argv[++i] : a.startsWith("--port=") ? a.slice(7) : null;
+    if (v === null) return (err(`Unknown option ${a}.`), 1);
+    port = Number(v);
+    if (!Number.isInteger(port) || port < 1024 || port > 65535) return (err("--port must be a whole number between 1024 and 65535."), 1);
+  }
+  let api;
+  try {
+    api = await startControlApi({ store, port, version: VERSION, onNotification: webhookNotifier(store) });
+  } catch (e) {
+    err(e instanceof Error ? e.message : String(e));
+    return 2;
+  }
+  out(`ArgusOps control API on ${api.url} (this machine only). Press Ctrl+C to stop.`);
+  out(`Programs must send the token from ${store.root}${process.platform === "win32" ? "\\" : "/"}control.token in the x-argus-token header.`);
+  await new Promise<void>((resolve) => {
+    process.once("SIGINT", () => resolve());
+    process.once("SIGTERM", () => resolve());
+  });
+  await api.close();
+  return 0;
+}
+
 export async function main(argv: string[]): Promise<number> {
   const [cmd, ...rest] = argv;
   switch (cmd) {
@@ -134,6 +163,8 @@ export async function main(argv: string[]): Promise<number> {
     case "webhook":
     case "webhooks":
       return commands.webhook(new Store(), io, rest);
+    case "serve":
+      return serve(rest);
     case "ide":
       return ide(rest);
     case "proxy":
