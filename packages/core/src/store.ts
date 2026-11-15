@@ -90,6 +90,15 @@ export interface AppConfig {
   apiPort: number;
 }
 
+/** What the user allowed ArgusOps to run in one project folder (its test, lint and build commands). */
+export interface ProjectConsent {
+  allowed: boolean;
+  /** Fingerprint of the exact commands that were shown to the user; if they change, the question is asked again. */
+  fingerprint: string;
+  commands: Array<{ name: string; command: string }>;
+  at: number;
+}
+
 export const DEFAULT_CONFIG: AppConfig = {
   policy: { loopScoreThreshold: 0.85, exactRepeatLimit: 2 },
   webhooks: [],
@@ -310,6 +319,26 @@ export class Store {
       const read = new Set(this.readJson<string[]>("notifications-read.json", []));
       for (const id of all) read.add(id);
       this.writeJson("notifications-read.json", [...read].slice(-2000));
+    });
+  }
+
+  /* ------------------------------- projects ------------------------------ */
+
+  projects(): Record<string, ProjectConsent> {
+    return this.readJson<Record<string, ProjectConsent>>("projects.json", {});
+  }
+
+  projectConsent(key: string): ProjectConsent | null {
+    return this.projects()[key] ?? null;
+  }
+
+  /** Remember (or, with null, forget) the user's answer for one project. */
+  async setProjectConsent(key: string, consent: ProjectConsent | null): Promise<void> {
+    await this.withLock("projects", () => {
+      const all = this.projects();
+      if (consent) all[key] = consent;
+      else delete all[key];
+      this.writeJson("projects.json", all);
     });
   }
 
