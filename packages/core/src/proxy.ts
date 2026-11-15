@@ -52,6 +52,8 @@ export interface ProxyOptions {
   onTurnStart?: (ev: { key: string; humanText: string }) => Promise<void> | void;
   /** The agent handed back to the human. Not awaited: checks must not delay the reply. */
   onTurnEnd?: (ev: { key: string; text: string; toolCalls: string[] }) => void;
+  /** Debug only: one line per model request. */
+  onRequest?: (info: string) => void;
 }
 
 const TURN_START_WAIT_MS = 10_000;
@@ -219,6 +221,10 @@ export function startProxy(opts: ProxyOptions): Promise<RunningProxy> {
     }
     // 4. turns: a snapshot before the agent can touch anything, a check once it hands back
     let onDone: ((u: UsageResult | null) => void) | undefined;
+    if (opts.onRequest && body) {
+      const msgs = Array.isArray(body.messages) ? (body.messages as unknown[]) : [];
+      opts.onRequest(`request: main=${isMainRequest(body)} messages=${msgs.length} turnStart=${turnStartOf(body)?.key ?? "no"} last=${JSON.stringify(msgs[msgs.length - 1] ?? null).slice(0, 160)}`);
+    }
     if (body && isMainRequest(body) && (opts.onTurnStart || opts.onTurnEnd)) {
       const start = turnStartOf(body);
       if (start && start.key !== turnKey) {
@@ -228,6 +234,7 @@ export function startProxy(opts: ProxyOptions): Promise<RunningProxy> {
       const key = turnKey;
       const calls = turnToolCalls(body);
       onDone = (u) => {
+        opts.onRequest?.(`response: stop=${u?.stopReason ?? "?"} textLen=${u?.text?.length ?? 0}`);
         if (u?.stopReason === "end_turn" && key) opts.onTurnEnd?.({ key, text: u.text ?? "", toolCalls: calls });
       };
     }

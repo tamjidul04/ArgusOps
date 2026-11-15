@@ -153,8 +153,9 @@ export class LocalHub implements SyncTransport {
 
       if (p.run.end && next.runId === p.run.id) next = { ...next, status: next.status === "STOPPED" ? "STOPPED" : "ENDED" };
 
-      if (next.desired === "RUN" && next.hint) {
-        delivered = next.hint; // handed out exactly once
+      if (next.desired === "RUN" && next.hint && !p.run.end) {
+        // handed out exactly once, and never to a run that is ending (nobody would receive it)
+        delivered = next.hint;
         next = { ...next, hint: undefined };
       }
       return next;

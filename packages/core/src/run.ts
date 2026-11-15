@@ -116,6 +116,11 @@ export async function runAgent(opts: RunOptions): Promise<number> {
     }
   }
 
+  const debugOn = !!process.env.ARGUSOPS_DEBUG;
+  const debug = (m: string) => {
+    if (debugOn) write(`[argus debug] ${m}
+`);
+  };
   const supervisor = opts.supervise
     ? new TurnSupervisor({ store: opts.supervise.store, root: opts.supervise.root, agentId: agentIdFor(agentName), agentName, say, onNotification: opts.supervise.onNotification })
     : null;
@@ -137,8 +142,19 @@ export async function runAgent(opts: RunOptions): Promise<number> {
         desktopNotify(`${agentName} paused`, over);
       }
     },
-    onTurnStart: supervisor ? (ev) => supervisor.turnStarted(ev) : undefined,
-    onTurnEnd: supervisor ? (ev) => void supervisor.turnEnded(ev) : undefined,
+    onTurnStart: supervisor
+      ? (ev) => {
+          debug(`turn start ${ev.key}`);
+          return supervisor.turnStarted(ev);
+        }
+      : undefined,
+    onTurnEnd: supervisor
+      ? (ev) => {
+          debug(`turn end ${ev.key} (${ev.toolCalls.length} tool calls)`);
+          void supervisor.turnEnded(ev).then((o) => debug(`turn check: ${o ? `${o.action}, ${o.report.changes.files.length} files, ${o.report.findings.map((f) => f.code).join(",") || "no findings"}` : "nothing to check"}`));
+        }
+      : undefined,
+    onRequest: debugOn ? (info) => debug(info) : undefined,
     onIncident: (i: IncidentOut) => {
       enqueue({ type: "incident", ...i });
       // the moment it happens, without waiting for the next save

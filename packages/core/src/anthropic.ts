@@ -264,7 +264,10 @@ export function lastHumanIndex(body: unknown): number {
 export function turnStartOf(body: unknown): { key: string; humanText: string } | null {
   const msgs = messagesOf(body);
   const i = lastHumanIndex(body);
-  if (i < 0 || i !== msgs.length - 1) return null;
+  // Claude Code may append a "system" message (environment details) after the human's; only user/assistant turns count
+  let lastTurn = msgs.length - 1;
+  while (lastTurn >= 0 && msgs[lastTurn].role !== "user" && msgs[lastTurn].role !== "assistant") lastTurn--;
+  if (i < 0 || i !== lastTurn) return null;
   const text = textOf(msgs[i].content).trim();
   let h = 0;
   for (let k = 0; k < text.length; k++) h = (h * 31 + text.charCodeAt(k)) | 0;

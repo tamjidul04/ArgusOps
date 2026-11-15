@@ -154,6 +154,12 @@ describe("turns", () => {
     expect(turnStartOf({ tools, messages: [] })).toBeNull();
   });
 
+  it("still sees the turn start when a system message follows the human's (as Claude Code sends it)", () => {
+    const sys = { role: "system", content: [{ type: "text", text: "# Environment ..." }] };
+    expect(turnStartOf({ tools, messages: [humanBlocks("fix it"), sys] })?.humanText).toBe("fix it");
+    expect(turnStartOf({ tools, messages: [human("fix"), call("c1", "ls"), result("c1"), sys] })).toBeNull();
+  });
+
   it("gives a retried request the same key and a new message a new key", () => {
     const a = turnStartOf({ messages: [human("one")] });
     const b = turnStartOf({ messages: [human("one")] });

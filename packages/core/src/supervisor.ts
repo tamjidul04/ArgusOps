@@ -39,12 +39,16 @@ const MAX_REDIRECT_CHARS = 1800;
 
 const CLAIMS_TESTS = /\b(?:all\s+(?:the\s+|\d+\s+)?tests?|the\s+tests?|tests?|test\s+suite|specs?)\s+(?:now\s+|are\s+now\s+|are\s+all\s+|all\s+)?(?:pass(?:es|ed|ing)?|succeed(?:s|ed)?|are\s+passing|are\s+green|is\s+green|green)\b/i;
 const CLAIMS_BUILD = /\b(?:the\s+)?(build|compil(?:e|ation)|type-?check(?:ing)?|types?|lint(?:ing|er)?)\s+(?:now\s+|is\s+now\s+)?(?:pass(?:es|ed|ing)?|succeed(?:s|ed)?|is\s+clean|are\s+clean|is\s+green|works|without\s+errors)\b/i;
-const NEGATED = /\b(?:not|n't|never|no longer|fail|failing|couldn't|could not|unable)\b/i;
+// "can't", "isn't", "don't": there is no word boundary before the n of n't, so it is matched on its own
+const NEGATED = /\bnot\b|n't\b|n’t\b|\bnever\b|\bno longer\b|\bfail(?:s|ed|ing)?\b|\bcannot\b|\bunable\b|\bwould\b|\bshould\b|\bif\b/i;
+/** Quoted text is the agent quoting someone (often while refusing to say it), not a claim of its own. */
+const QUOTED = /"[^"]*"|“[^”]*”|‘[^’]*’|`[^`]*`/g;
 const RAN_TESTS = /\b(test|tests|pytest|jest|vitest|mocha|ava|rspec|phpunit|go test|cargo test|npm t\b|unittest)\b/i;
 
 function claimSentence(text: string, re: RegExp): string | null {
   for (const sentence of text.split(/(?<=[.!?])\s+|\n+/)) {
-    if (re.test(sentence) && !NEGATED.test(sentence)) return sentence.trim().slice(0, 200);
+    const own = sentence.replace(QUOTED, " ");
+    if (re.test(own) && !NEGATED.test(own)) return sentence.trim().slice(0, 200);
   }
   return null;
 }

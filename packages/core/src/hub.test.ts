@@ -89,6 +89,16 @@ describe("LocalHub", () => {
     expect(second.hint).toBeUndefined();
   });
 
+  it("keeps an instruction for later instead of handing it to a run that is ending", async () => {
+    const { hub, controls, store } = setup();
+    await hub.sync(payload({ start: true }));
+    const id = store.agents()[0].id;
+    await store.setControl(id, { hint: "fix the failing test" });
+    expect((await hub.sync(payload({ end: true }))).hint).toBeUndefined();
+    expect(store.agent(id)?.hint).toBe("fix the failing test");
+    void controls;
+  });
+
   it("approving the suggestion resumes with its text and marks it applied", async () => {
     const { hub, controls, store } = setup();
     await hub.sync(payload({ start: true }, [loop]));

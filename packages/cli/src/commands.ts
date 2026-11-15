@@ -73,6 +73,7 @@ export function status(store: Store, io: Io, json = false): number {
   for (const a of agents) {
     io.out(`${a.name}   [${a.id}]`);
     io.out(`  ${labelOf(a, now)}  ·  ${formatTokens(a.tokensUsed)} tokens  ·  seen ${timeAgo(a.lastSeen, now)}`);
+    if (a.hint && a.status !== "PAUSED") io.out(`  Waiting to be passed to the agent with your next message: ${a.hint.split("\n")[0].slice(0, 160)}`);
     if (a.status === "PAUSED") {
       if (a.reason) io.out(`  Why: ${a.reason}`);
       if (a.suggestion?.status === "PENDING") {
