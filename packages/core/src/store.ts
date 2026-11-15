@@ -91,6 +91,18 @@ export interface AppConfig {
   proxyPort: number;
   /** Port of the local control API. */
   apiPort: number;
+  supervisor: SupervisorConfig;
+}
+
+export interface SupervisorConfig {
+  /** off: no checks. alert (default): check each turn and tell you. redirect: also tell the agent what to fix. */
+  mode: "off" | "alert" | "redirect";
+  /** Pause an agent that uses more than this many tokens in one turn. 0 = no limit. */
+  maxTurnTokens: number;
+  /** Minimum time between two automatic redirects of the same agent. */
+  redirectCooldownMs: number;
+  /** After this many redirects in a row without a clean turn, stop redirecting and only tell you. */
+  maxRedirectsInARow: number;
 }
 
 /** What the user allowed ArgusOps to run in one project folder (its test, lint and build commands). */
@@ -107,6 +119,7 @@ export const DEFAULT_CONFIG: AppConfig = {
   webhooks: [],
   proxyPort: 47821,
   apiPort: 47822,
+  supervisor: { mode: "alert", maxTurnTokens: 0, redirectCooldownMs: 10 * 60_000, maxRedirectsInARow: 3 },
 };
 
 const DAY_MS = 86_400_000;
@@ -236,13 +249,15 @@ export class Store {
       ...DEFAULT_CONFIG,
       ...saved,
       policy: { ...DEFAULT_CONFIG.policy, ...(saved.policy ?? {}) },
+      supervisor: { ...DEFAULT_CONFIG.supervisor, ...(saved.supervisor ?? {}) },
       webhooks: Array.isArray(saved.webhooks) ? saved.webhooks.filter((w) => typeof w === "string") : [],
     };
   }
 
   async saveConfig(patch: Partial<AppConfig>): Promise<AppConfig> {
     return this.withLock("config", () => {
-      const next = { ...this.config(), ...patch, policy: { ...this.config().policy, ...(patch.policy ?? {}) } };
+      const cur = this.config();
+      const next = { ...cur, ...patch, policy: { ...cur.policy, ...(patch.policy ?? {}) }, supervisor: { ...cur.supervisor, ...(patch.supervisor ?? {}) } };
       this.writeJson("config.json", next);
       return next;
     });

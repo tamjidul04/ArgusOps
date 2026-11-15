@@ -288,3 +288,27 @@ export async function watch(store: Store, io: Io, argv: string[], signal: AbortS
   w.stop();
   return 0;
 }
+
+export async function supervisor(store: Store, io: Io, argv: string[]): Promise<number> {
+  let mode: "off" | "alert" | "redirect" | undefined;
+  let maxTurnTokens: number | undefined;
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (a === "off" || a === "alert" || a === "redirect") mode = a;
+    else if (a === "--max-turn-tokens" || a.startsWith("--max-turn-tokens=")) {
+      const v = Number(a.includes("=") ? a.split("=")[1] : argv[++i]);
+      if (!Number.isInteger(v) || v < 0) return (io.err("--max-turn-tokens must be a whole number (0 = no limit)."), 1);
+      maxTurnTokens = v;
+    } else return (io.err(`Unknown option ${a}. Usage: argus supervisor [off|alert|redirect] [--max-turn-tokens <n>]`), 1);
+  }
+  if (mode !== undefined || maxTurnTokens !== undefined) {
+    const cur = store.config().supervisor;
+    await store.saveConfig({ supervisor: { ...cur, ...(mode ? { mode } : {}), ...(maxTurnTokens !== undefined ? { maxTurnTokens } : {}) } });
+  }
+  const c = store.config().supervisor;
+  const what = c.mode === "off" ? "off: no checks after the agent's turns" : c.mode === "alert" ? "alert: checks each turn and tells you what it found" : "redirect: checks each turn, tells you, and tells the agent what to fix (with your next message)";
+  io.out(`Supervisor: ${what}.`);
+  io.out(`Token limit per turn: ${c.maxTurnTokens ? c.maxTurnTokens.toLocaleString("en-US") : "none"}.`);
+  if (c.mode === "redirect") io.out(`Redirects: at most one per turn, ${Math.round(c.redirectCooldownMs / 60000)} min apart, and it stops after ${c.maxRedirectsInARow} in a row.`);
+  return 0;
+}

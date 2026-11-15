@@ -1,6 +1,6 @@
 import http from "node:http";
 import https from "node:https";
-import { applyHint, SseUsageTap, usageFromJson, type UsageResult } from "./anthropic";
+import { applyHint, isMainRequest, SseUsageTap, turnStartOf, turnToolCalls, usageFromJson, type UsageResult } from "./anthropic";
 import type { LoopDetector } from "./detect";
 import type { ControlState } from "./state";
 
@@ -48,7 +48,13 @@ export interface ProxyOptions {
   maxBodyBytes?: number;
   /** Listen on this port instead of a random free one (used by `argus proxy`). */
   port?: number;
+  /** A new turn begins (the human sent a message). The request waits for this, up to a few seconds. */
+  onTurnStart?: (ev: { key: string; humanText: string }) => Promise<void> | void;
+  /** The agent handed back to the human. Not awaited: checks must not delay the reply. */
+  onTurnEnd?: (ev: { key: string; text: string; toolCalls: string[] }) => void;
 }
+
+const TURN_START_WAIT_MS = 10_000;
 
 export interface RunningProxy {
   port: number;
@@ -77,7 +83,9 @@ export function startProxy(opts: ProxyOptions): Promise<RunningProxy> {
     res.end(errorBody(type, message));
   };
 
-  function forward(req: http.IncomingMessage, res: http.ServerResponse, body: Buffer | null, requestModel: string) {
+  let turnKey = "";
+
+  function forward(req: http.IncomingMessage, res: http.ServerResponse, body: Buffer | null, requestModel: string, onDone?: (u: UsageResult | null) => void) {
     const started = Date.now();
     const headers: http.OutgoingHttpHeaders = {};
     for (const [k, v] of Object.entries(req.headers)) if (!HOP_BY_HOP.has(k.toLowerCase())) headers[k] = v;
@@ -127,6 +135,7 @@ export function startProxy(opts: ProxyOptions): Promise<RunningProxy> {
               latency_ms: Date.now() - started,
             });
           }
+          onDone?.(usage);
         });
         upRes.pipe(res);
       }
@@ -208,7 +217,21 @@ export function startProxy(opts: ProxyOptions): Promise<RunningProxy> {
       out = Buffer.from(JSON.stringify(applyHint(body, hint)), "utf8");
       opts.onNotice?.("Delivered your hint to the agent.");
     }
-    forward(req, res, out, model);
+    // 4. turns: a snapshot before the agent can touch anything, a check once it hands back
+    let onDone: ((u: UsageResult | null) => void) | undefined;
+    if (body && isMainRequest(body) && (opts.onTurnStart || opts.onTurnEnd)) {
+      const start = turnStartOf(body);
+      if (start && start.key !== turnKey) {
+        turnKey = start.key;
+        if (opts.onTurnStart) await Promise.race([Promise.resolve(opts.onTurnStart(start)).catch(() => undefined), new Promise((r) => setTimeout(r, TURN_START_WAIT_MS))]);
+      }
+      const key = turnKey;
+      const calls = turnToolCalls(body);
+      onDone = (u) => {
+        if (u?.stopReason === "end_turn" && key) opts.onTurnEnd?.({ key, text: u.text ?? "", toolCalls: calls });
+      };
+    }
+    forward(req, res, out, model, onDone);
   }
 
   const server = http.createServer((req, res) => {

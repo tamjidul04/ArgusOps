@@ -29,6 +29,8 @@ Usage:
                                                   look at what an agent changed (default: since the last commit)
   argus watch [folder]                            check a folder automatically whenever the agent stops writing
   argus project [status|allow|deny] [folder]      allow ArgusOps to run this project's tests, lint and build
+  argus supervisor [off|alert|redirect] [--max-turn-tokens <n>]
+                                                  how ArgusOps reacts to problems in an agent's turn (default: alert)
   argus serve [--port <n>]                        run the local control API (127.0.0.1 only) for apps and editors
 
 Run options (before the agent):
@@ -49,12 +51,13 @@ provider; nothing is sent to ArgusOps because there is no ArgusOps server.`;
 const out = (m: string) => process.stdout.write(m + "\n");
 const err = (m: string) => process.stderr.write(m + "\n");
 
-/** The local store and hub, or null when `--offline` asks for nothing to be saved. */
-function openHub(offline: boolean): LocalHub | null {
-  if (offline) return null;
+/** The local store, hub and turn supervisor, or nothing when `--offline` asks for nothing to be saved. */
+function openHub(offline: boolean) {
+  if (offline) return { hub: null, supervise: undefined };
   const store = new Store();
   void store.prune().catch(() => undefined); // old history is dropped quietly; failing to is not worth a message
-  return new LocalHub(store, loadPrices(store.root), { onNotification: webhookNotifier(store) });
+  const notify = webhookNotifier(store);
+  return { hub: new LocalHub(store, loadPrices(store.root), { onNotification: notify }), supervise: { store, root: process.cwd(), onNotification: notify } };
 }
 
 async function run(argv: string[]): Promise<number> {
@@ -73,7 +76,7 @@ async function run(argv: string[]): Promise<number> {
     upstream: spec.upstream,
     baseUrlEnv: spec.baseUrlEnv,
     cwd: process.cwd(),
-    hub: openHub(spec.offline),
+    ...openHub(spec.offline),
   });
 }
 
@@ -92,7 +95,7 @@ async function proxy(argv: string[]): Promise<number> {
     upstream: spec.upstream,
     baseUrlEnv: spec.baseUrlEnv,
     cwd: process.cwd(),
-    hub: openHub(spec.offline),
+    ...openHub(spec.offline),
     port: spec.port,
   });
 }
@@ -177,6 +180,8 @@ export async function main(argv: string[]): Promise<number> {
       process.once("SIGTERM", () => stop.abort());
       return commands.watch(new Store(), io, rest, stop.signal);
     }
+    case "supervisor":
+      return commands.supervisor(new Store(), io, rest);
     case "serve":
       return serve(rest);
     case "ide":

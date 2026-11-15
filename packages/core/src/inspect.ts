@@ -71,11 +71,11 @@ export async function inspectSince(store: Store, before: Snapshot, opts: Inspect
 const RANK: Record<Severity, number> = { INFO: 0, WARN: 1, CRITICAL: 2 };
 
 /** Writes a report to the local history, and raises an alert when something needs attention. Returns the alert, if any. */
-export function recordReport(store: Store, report: CheckReport, onNotification?: (n: NotificationRow) => void): NotificationRow | null {
+export function recordReport(store: Store, report: CheckReport, onNotification?: (n: NotificationRow) => void, who?: { agentId: string; agentName: string }): NotificationRow | null {
   const worthy = report.findings.filter((f) => f.severity !== "INFO");
   if (worthy.length === 0) return null;
-  const name = `Workspace ${path.basename(report.root) || report.root}`;
-  const id = "ws_" + crypto.createHash("sha1").update(report.root).digest("hex").slice(0, 10);
+  const name = who?.agentName ?? `Workspace ${path.basename(report.root) || report.root}`;
+  const id = who?.agentId ?? "ws_" + crypto.createHash("sha1").update(report.root).digest("hex").slice(0, 10);
   store.appendIncident({
     id: crypto.randomUUID(),
     ts: report.at,
@@ -92,6 +92,7 @@ export function recordReport(store: Store, report: CheckReport, onNotification?:
     title: `${name}: ${worthy.length} problem${worthy.length === 1 ? "" : "s"} in the latest changes`,
     body: worthy.slice(0, 3).map((f) => f.title).join("; "),
     level: report.worst === "CRITICAL" ? "CRITICAL" : "WARN",
+    agentId: who?.agentId,
   });
   onNotification?.(note);
   return note;

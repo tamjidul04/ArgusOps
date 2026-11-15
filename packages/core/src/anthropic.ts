@@ -133,7 +133,13 @@ export interface UsageResult {
   inputTokens: number;
   outputTokens: number;
   cacheReadTokens: number;
+  /** Why the model stopped: "end_turn" means it handed back to the human; "tool_use" means it wants a tool run. */
+  stopReason?: string;
+  /** The text the model wrote (capped), used to compare what it claims with what really happened. */
+  text?: string;
 }
+
+const MAX_TEXT = 16_000;
 
 interface RawUsage {
   input_tokens?: number;
@@ -152,6 +158,8 @@ export class SseUsageTap {
   private cacheWrite = 0;
   private cacheRead = 0;
   private output = 0;
+  private stopReason = "";
+  private text = "";
 
   push(chunk: Buffer | string) {
     this.buffer += typeof chunk === "string" ? chunk : chunk.toString("utf8");
@@ -166,7 +174,7 @@ export class SseUsageTap {
 
   private handle(payload: string) {
     if (!payload || payload === "[DONE]") return;
-    let ev: { type?: string; message?: { model?: string; usage?: RawUsage }; usage?: RawUsage };
+    let ev: { type?: string; message?: { model?: string; usage?: RawUsage }; usage?: RawUsage; delta?: { type?: string; text?: string; stop_reason?: string } };
     try {
       ev = JSON.parse(payload);
     } catch {
@@ -179,11 +187,16 @@ export class SseUsageTap {
       this.cacheWrite = n(u.cache_creation_input_tokens);
       this.cacheRead = n(u.cache_read_input_tokens);
       this.output = Math.max(this.output, n(u.output_tokens));
-    } else if (ev.type === "message_delta" && ev.usage) {
+    } else if (ev.type === "message_delta") {
+      if (typeof ev.delta?.stop_reason === "string") this.stopReason = ev.delta.stop_reason;
       const u = ev.usage;
-      // later events carry cumulative totals, so take the larger value
-      this.output = Math.max(this.output, n(u.output_tokens));
-      if (n(u.input_tokens)) this.input = Math.max(this.input, n(u.input_tokens));
+      if (u) {
+        // later events carry cumulative totals, so take the larger value
+        this.output = Math.max(this.output, n(u.output_tokens));
+        if (n(u.input_tokens)) this.input = Math.max(this.input, n(u.input_tokens));
+      }
+    } else if (ev.type === "content_block_delta" && ev.delta?.type === "text_delta" && typeof ev.delta.text === "string") {
+      if (this.text.length < MAX_TEXT) this.text += ev.delta.text.slice(0, MAX_TEXT - this.text.length);
     }
   }
 
@@ -193,6 +206,8 @@ export class SseUsageTap {
       inputTokens: this.input + this.cacheWrite,
       outputTokens: this.output,
       cacheReadTokens: this.cacheRead,
+      stopReason: this.stopReason || undefined,
+      text: this.text || undefined,
     };
   }
 }
@@ -200,15 +215,77 @@ export class SseUsageTap {
 /** Usage from a non-streaming `/v1/messages` JSON response. */
 export function usageFromJson(text: string): UsageResult | null {
   try {
-    const j = JSON.parse(text) as { model?: string; usage?: RawUsage };
+    const j = JSON.parse(text) as { model?: string; usage?: RawUsage; stop_reason?: string; content?: ContentBlock[] };
     if (!j || typeof j !== "object" || !j.usage) return null;
+    const written = Array.isArray(j.content) ? j.content.filter((b) => b && b.type === "text" && typeof b.text === "string").map((b) => b.text).join("\n") : "";
     return {
       model: typeof j.model === "string" ? j.model : "unknown",
       inputTokens: n(j.usage.input_tokens) + n(j.usage.cache_creation_input_tokens),
       outputTokens: n(j.usage.output_tokens),
       cacheReadTokens: n(j.usage.cache_read_input_tokens),
+      stopReason: typeof j.stop_reason === "string" ? j.stop_reason : undefined,
+      text: written ? written.slice(0, MAX_TEXT) : undefined,
     };
   } catch {
     return null;
   }
+}
+
+/* ------------------------------------ turns ------------------------------------ */
+
+/**
+ * The agent's main conversation carries its tools. Side calls (titles, summaries, quota checks) usually do not, and
+ * must not be mistaken for turns.
+ */
+export function isMainRequest(body: unknown): boolean {
+  const tools = body && typeof body === "object" ? (body as { tools?: unknown }).tools : undefined;
+  return Array.isArray(tools) && tools.length > 0;
+}
+
+/** Index of the last message that is a real message from the human (text, not a tool result), or -1. */
+export function lastHumanIndex(body: unknown): number {
+  const msgs = messagesOf(body);
+  for (let i = msgs.length - 1; i >= 0; i--) {
+    const m = msgs[i];
+    if (m.role !== "user") continue;
+    if (typeof m.content === "string") return m.content.trim() ? i : -1;
+    const blocks = blocksOf(m);
+    if (blocks.some((b) => b.type === "tool_result")) return -1; // the newest user message answers a tool: mid-turn
+    if (blocks.some((b) => b.type === "text" && typeof b.text === "string" && b.text.trim())) return i;
+    return -1;
+  }
+  return -1;
+}
+
+/**
+ * If this request begins a new turn (its newest message is the human speaking), a key that identifies that turn, so a
+ * retried request is not counted twice. Otherwise null.
+ */
+export function turnStartOf(body: unknown): { key: string; humanText: string } | null {
+  const msgs = messagesOf(body);
+  const i = lastHumanIndex(body);
+  if (i < 0 || i !== msgs.length - 1) return null;
+  const text = textOf(msgs[i].content).trim();
+  let h = 0;
+  for (let k = 0; k < text.length; k++) h = (h * 31 + text.charCodeAt(k)) | 0;
+  return { key: `${msgs.length}:${h}`, humanText: text.slice(0, 2000) };
+}
+
+/** The tool calls made since the human last spoke (this turn so far), as signatures like Bash({"command":"npm test"}). */
+export function turnToolCalls(body: unknown): string[] {
+  const start = lastHumanIndex(body);
+  const msgs = messagesOf(body);
+  // mid-turn the newest human message is earlier: find it ignoring trailing tool results
+  let from = start;
+  if (from < 0) {
+    for (let i = msgs.length - 1; i >= 0; i--) {
+      const m = msgs[i];
+      if (m.role === "user" && (typeof m.content === "string" || blocksOf(m).every((b) => b.type !== "tool_result"))) {
+        from = i;
+        break;
+      }
+    }
+  }
+  const slice = { messages: msgs.slice(Math.max(0, from)) };
+  return extractToolTrace(slice).calls;
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { SseUsageTap, applyHint, countToolCalls, extractToolTrace, stableStringify, usageFromJson } from "./anthropic";
+import { SseUsageTap, applyHint, countToolCalls, extractToolTrace, isMainRequest, lastHumanIndex, stableStringify, turnStartOf, turnToolCalls, usageFromJson } from "./anthropic";
 
 const call = (id: string, name: string, input: unknown) => ({
   role: "assistant",
@@ -106,7 +106,7 @@ describe("usage from a streamed response", () => {
   it("reads model, billed input, output and cache reads", () => {
     const tap = new SseUsageTap();
     tap.push(stream);
-    expect(tap.result()).toEqual({ model: "claude-sonnet-4-5-20250929", inputTokens: 150, outputTokens: 42, cacheReadTokens: 5000 });
+    expect(tap.result()).toEqual({ model: "claude-sonnet-4-5-20250929", inputTokens: 150, outputTokens: 42, cacheReadTokens: 5000, stopReason: undefined, text: "hi" });
   });
 
   it("is correct however the bytes are split, even one at a time and with CRLF", () => {
@@ -119,7 +119,7 @@ describe("usage from a streamed response", () => {
   it("ignores garbage and reports unknown when nothing was seen", () => {
     const tap = new SseUsageTap();
     tap.push("data: {not json}\n\ndata: [DONE]\n\nrandom\n");
-    expect(tap.result()).toEqual({ model: "unknown", inputTokens: 0, outputTokens: 0, cacheReadTokens: 0 });
+    expect(tap.result()).toMatchObject({ model: "unknown", inputTokens: 0, outputTokens: 0, cacheReadTokens: 0 });
   });
 });
 
@@ -131,5 +131,51 @@ describe("usage from a plain JSON response", () => {
   it("returns null for errors and non-JSON", () => {
     expect(usageFromJson('{"type":"error","error":{"message":"x"}}')).toBeNull();
     expect(usageFromJson("<html>")).toBeNull();
+  });
+});
+
+describe("turns", () => {
+  const human = (text: string) => ({ role: "user", content: text });
+  const humanBlocks = (text: string) => ({ role: "user", content: [{ type: "text", text }] });
+  const call = (id: string, cmd: string) => ({ role: "assistant", content: [{ type: "tool_use", id, name: "Bash", input: { command: cmd, description: "x" } }] });
+  const result = (id: string) => ({ role: "user", content: [{ type: "tool_result", tool_use_id: id, content: "ok" }] });
+  const tools = [{ name: "Bash" }];
+
+  it("tells the main conversation from side calls", () => {
+    expect(isMainRequest({ tools, messages: [] })).toBe(true);
+    expect(isMainRequest({ messages: [] })).toBe(false);
+    expect(isMainRequest({ tools: [], messages: [] })).toBe(false);
+  });
+
+  it("sees a turn start only when the human spoke last", () => {
+    expect(turnStartOf({ tools, messages: [human("fix the tests")] })?.humanText).toBe("fix the tests");
+    expect(turnStartOf({ tools, messages: [humanBlocks("fix it")] })).not.toBeNull();
+    expect(turnStartOf({ tools, messages: [human("fix"), call("c1", "npm test"), result("c1")] })).toBeNull();
+    expect(turnStartOf({ tools, messages: [] })).toBeNull();
+  });
+
+  it("gives a retried request the same key and a new message a new key", () => {
+    const a = turnStartOf({ messages: [human("one")] });
+    const b = turnStartOf({ messages: [human("one")] });
+    const c = turnStartOf({ messages: [human("one"), { role: "assistant", content: "done" }, human("two")] });
+    expect(a?.key).toBe(b?.key);
+    expect(c?.key).not.toBe(a?.key);
+  });
+
+  it("lists only this turn's tool calls, without the description field", () => {
+    const body = { messages: [human("old task"), call("a", "ls"), result("a"), { role: "assistant", content: "ok" }, human("run the tests"), call("b", "npm test"), result("b")] };
+    expect(turnToolCalls(body)).toEqual(['Bash({"command":"npm test"})']);
+    expect(lastHumanIndex(body)).toBe(-1); // mid-turn
+  });
+
+  it("reads the stop reason and text from streamed and plain responses", () => {
+    const tap = new SseUsageTap();
+    tap.push('data: {"type":"message_start","message":{"model":"m","usage":{"input_tokens":5}}}\n');
+    tap.push('data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"All tests "}}\n');
+    tap.push('data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"pass."}}\n');
+    tap.push('data: {"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"output_tokens":7}}\n');
+    expect(tap.result()).toMatchObject({ stopReason: "end_turn", text: "All tests pass.", outputTokens: 7 });
+    const plain = usageFromJson(JSON.stringify({ model: "m", stop_reason: "tool_use", content: [{ type: "text", text: "Let me check." }, { type: "tool_use" }], usage: { input_tokens: 1, output_tokens: 1 } }));
+    expect(plain).toMatchObject({ stopReason: "tool_use", text: "Let me check." });
   });
 });

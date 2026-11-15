@@ -1,7 +1,9 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import crypto from "node:crypto";
 import path from "node:path";
-import type { SyncPayload, SyncTransport } from "./hub";
+import { agentIdFor, type SyncPayload, type SyncTransport } from "./hub";
+import type { NotificationRow, Store } from "./store";
+import { TurnSupervisor } from "./supervisor";
 import { LoopDetector } from "./detect";
 import { startProxy, type IncidentOut, type UsageOut } from "./proxy";
 import { ControlState } from "./state";
@@ -25,6 +27,8 @@ export interface RunOptions {
   port?: number;
   /** Resolves when serve mode should stop (tests); Ctrl+C always stops it. */
   stopSignal?: AbortSignal;
+  /** Check each of the agent's turns (files, the project's checks, its claims). Needs the local store. */
+  supervise?: { store: Store; root: string; onNotification?: (n: NotificationRow) => void };
 }
 
 const MAX_QUEUED_EVENTS = 1000;
@@ -112,6 +116,10 @@ export async function runAgent(opts: RunOptions): Promise<number> {
     }
   }
 
+  const supervisor = opts.supervise
+    ? new TurnSupervisor({ store: opts.supervise.store, root: opts.supervise.root, agentId: agentIdFor(agentName), agentName, say, onNotification: opts.supervise.onNotification })
+    : null;
+
   let proxy: Awaited<ReturnType<typeof startProxy>>;
   try {
     proxy = await startProxy({
@@ -119,7 +127,18 @@ export async function runAgent(opts: RunOptions): Promise<number> {
     upstream: opts.upstream,
     state,
     detector,
-    onUsage: (u: UsageOut) => enqueue({ type: "usage", ...u }),
+    onUsage: (u: UsageOut) => {
+      enqueue({ type: "usage", ...u });
+      const over = supervisor?.usage(u.input_tokens + u.output_tokens);
+      if (over && state.desired === "RUN") {
+        state.pauseLocally(over);
+        enqueue({ type: "incident", kind: "LOOP", loop_type: "TOKEN_BUDGET", action: "PAUSED", score: 1, detail: over, interception_ms: 0 });
+        say(`Paused: ${over}. Resume it with "argus resume" or end it with "argus stop".`);
+        desktopNotify(`${agentName} paused`, over);
+      }
+    },
+    onTurnStart: supervisor ? (ev) => supervisor.turnStarted(ev) : undefined,
+    onTurnEnd: supervisor ? (ev) => void supervisor.turnEnded(ev) : undefined,
     onIncident: (i: IncidentOut) => {
       enqueue({ type: "incident", ...i });
       // the moment it happens, without waiting for the next save
@@ -195,6 +214,7 @@ export async function runAgent(opts: RunOptions): Promise<number> {
     process.off("SIGTERM", ignore);
   }
   await proxy.close();
+  await supervisor?.settle();
   await sync({ end: true }).catch(() => undefined);
   return code;
 }
