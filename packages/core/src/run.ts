@@ -52,7 +52,7 @@ function killTree(child: ChildProcess) {
 export async function runAgent(opts: RunOptions): Promise<number> {
   const write = opts.write ?? ((t: string) => process.stderr.write(t));
   const say = (m: string) => write(`\n[argus] ${m}\n`);
-  const interval = opts.syncIntervalMs ?? 2000;
+  const interval = opts.syncIntervalMs ?? 500;
 
   const runId = crypto.randomUUID();
   const agentName = opts.command ? `${opts.label} · ${path.basename(opts.cwd) || "project"}` : opts.label;

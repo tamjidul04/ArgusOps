@@ -184,7 +184,7 @@ export function startProxy(opts: ProxyOptions): Promise<RunningProxy> {
           interception_ms: verdict.interceptionMs,
           evidence: verdict.evidence,
         });
-        opts.onNotice?.(`Paused: ${verdict.reason}. Resume or stop it from the ArgusOps dashboard (Guardrails).`);
+        opts.onNotice?.(`Paused: ${verdict.reason}. Resume it with "argus resume" or end it with "argus stop".`);
       }
     }
 

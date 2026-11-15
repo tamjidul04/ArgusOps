@@ -4,6 +4,8 @@ import { loadPrices } from "../../core/src/prices";
 import { runAgent } from "../../core/src/run";
 import { pointWorkspaceAtProxy, snippet } from "../../core/src/ide-settings";
 import { Store } from "../../core/src/store";
+import { webhookNotifier } from "../../core/src/webhooks";
+import * as commands from "./commands";
 
 export const VERSION = "0.5.0";
 
@@ -15,6 +17,13 @@ Usage:
   argus ide                                       one step for the Claude Code panel in VS Code or Antigravity:
                                                   points this folder's panel at Argus, undoes it on Ctrl+C
   argus proxy [options]                           supervise an agent you start yourself
+
+  argus status [--json]                           what is running, what is paused and why
+  argus resume [agent] [--approve | --hint "..."]  continue a paused agent (approve the suggested instruction, or write your own)
+  argus pause [agent]    argus stop [agent]       hold or end an agent
+  argus usage [--range 24h|7d|30d]                tokens and estimated cost
+  argus alerts [--all]                            what ArgusOps has told you
+  argus webhook [list|add <url>|remove <url>|test]  also post alerts to Slack, Discord or any URL
 
 Run options (before the agent):
   --offline            save nothing to disk (no history, no outside control)
@@ -39,7 +48,7 @@ function openHub(offline: boolean): LocalHub | null {
   if (offline) return null;
   const store = new Store();
   void store.prune().catch(() => undefined); // old history is dropped quietly; failing to is not worth a message
-  return new LocalHub(store, loadPrices(store.root));
+  return new LocalHub(store, loadPrices(store.root), { onNotification: webhookNotifier(store) });
 }
 
 async function run(argv: string[]): Promise<number> {
@@ -103,11 +112,28 @@ async function ide(argv: string[]): Promise<number> {
   }
 }
 
+const io = { out, err };
+
 export async function main(argv: string[]): Promise<number> {
   const [cmd, ...rest] = argv;
   switch (cmd) {
     case "run":
       return run(rest);
+    case "status":
+      return commands.status(new Store(), io, rest.includes("--json"));
+    case "resume":
+      return commands.resume(new Store(), io, rest);
+    case "pause":
+      return commands.pause(new Store(), io, rest);
+    case "stop":
+      return commands.stop(new Store(), io, rest);
+    case "usage":
+      return commands.usage(new Store(), io, rest);
+    case "alerts":
+      return commands.alerts(new Store(), io, rest);
+    case "webhook":
+    case "webhooks":
+      return commands.webhook(new Store(), io, rest);
     case "ide":
       return ide(rest);
     case "proxy":
