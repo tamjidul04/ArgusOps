@@ -1,6 +1,8 @@
 import { runAgent } from "../../core/src/run";
 import { ANTHROPIC_UPSTREAM, DEFAULT_PROXY_PORT } from "../../cli/src/args";
-import { CloudClient } from "../../core/src/api";
+import { LocalHub } from "../../core/src/hub";
+import { loadPrices } from "../../core/src/prices";
+import { Store } from "../../core/src/store";
 
 const VAR = "ANTHROPIC_BASE_URL";
 
@@ -30,6 +32,12 @@ export interface SuperviseHost {
  * Runs the ArgusOps proxy inside the editor and points the Claude Code panel at it, so there is nothing to start by
  * hand. The setting is only present while the proxy is running, so Claude Code never points at something that is gone.
  */
+/** The paused extension now records to the same local store as the CLI. */
+function localHub(): LocalHub {
+  const store = new Store();
+  return new LocalHub(store, loadPrices(store.root));
+}
+
 export class Supervisor {
   private abort: AbortController | null = null;
   private done: Promise<number> | null = null;
@@ -69,7 +77,7 @@ export class Supervisor {
       upstream: ANTHROPIC_UPSTREAM,
       baseUrlEnv: VAR,
       cwd: "ide",
-      hub: new CloudClient(creds.url, creds.key),
+      hub: localHub(),
       port: this.port,
       stopSignal: abort.signal,
       write: (t) => {

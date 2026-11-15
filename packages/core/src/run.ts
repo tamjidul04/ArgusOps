@@ -1,8 +1,7 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import crypto from "node:crypto";
 import path from "node:path";
-import type { SyncPayload } from "./api";
-import type { SyncTransport } from "./hub";
+import type { SyncPayload, SyncTransport } from "./hub";
 import { LoopDetector } from "./detect";
 import { startProxy, type IncidentOut, type UsageOut } from "./proxy";
 import { ControlState } from "./state";

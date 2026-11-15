@@ -1,11 +1,24 @@
 import crypto from "node:crypto";
-import type { SyncPayload, SyncResponse } from "./api";
 import type { PriceRow } from "./pricing";
 import { costUsd } from "./pricing";
 import { draftRewrite, estimateTokens, loopCost } from "./rewrite-core";
+import type { SyncReply } from "./state";
 import type { AgentRecord, IncidentRow, NotificationRow, Store } from "./store";
 
-/** Anything a run can sync with: the local hub here (and, until it is removed, the old cloud client). */
+/** What a run reports on each sync. */
+export interface SyncPayload {
+  run: { id: string; start?: boolean; end?: boolean; agent: { name: string; type: string } };
+  events: unknown[];
+  telemetry?: { ram_mb?: number; cpu_percent?: number; current_task?: string };
+}
+
+/** What it gets back: whether it may run, and an instruction to deliver if there is one. */
+export interface SyncResponse extends SyncReply {
+  ok: boolean;
+  agentId?: string;
+}
+
+/** Anything a run can sync with (the local hub; tests use stand-ins). */
 export interface SyncTransport {
   sync(payload: SyncPayload): Promise<SyncResponse>;
 }

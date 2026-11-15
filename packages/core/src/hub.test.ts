@@ -6,7 +6,7 @@ import { Controls } from "./control";
 import { agentIdFor, LocalHub } from "./hub";
 import { DEFAULT_PRICES } from "./prices";
 import { Store } from "./store";
-import type { SyncPayload } from "./api";
+import type { SyncPayload } from "./hub";
 
 const dirs: string[] = [];
 function setup() {
