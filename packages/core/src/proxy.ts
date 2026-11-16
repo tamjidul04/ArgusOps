@@ -1,6 +1,7 @@
 import http from "node:http";
 import https from "node:https";
 import { anthropicAdapter, type Adapter } from "./adapters";
+import { HintLedger } from "./hints";
 import type { UsageResult } from "./anthropic";
 import type { LoopDetector } from "./detect";
 import type { ControlState } from "./state";
@@ -63,7 +64,14 @@ export interface ProxyOptions {
   onRequest?: (info: string) => void;
   /** Model routing: may send a request to another model. */
   router?: RouterLike;
+  /**
+   * Testing only: ask the provider to enforce its conversation-history check on this account (Anthropic's
+   * thinking-binding beta), so a history edit fails loudly instead of passing on accounts that are not enforced yet.
+   */
+  testBinding?: "error" | "drop_block";
 }
+
+const BINDING_BETA = "thinking-binding-controls-2026-08-01";
 
 /** What the proxy needs from the model router (see routing.ts). */
 export interface RouterLike {
@@ -107,6 +115,8 @@ export function startProxy(opts: ProxyOptions): Promise<RunningProxy> {
   };
 
   let turnKey = "";
+  // notes ArgusOps delivered stay in the conversation from then on (see hints.ts): Anthropic models check the history
+  const ledger = ad.id === "anthropic" ? new HintLedger() : null;
 
   interface Reroute {
     from: string;
@@ -115,13 +125,17 @@ export function startProxy(opts: ProxyOptions): Promise<RunningProxy> {
     original: Buffer;
   }
 
-  function forward(req: http.IncomingMessage, res: http.ServerResponse, body: Buffer | null, requestModel: string, onDone?: (u: UsageResult | null) => void, reroute?: Reroute) {
+  function forward(req: http.IncomingMessage, res: http.ServerResponse, body: Buffer | null, requestModel: string, onDone?: (u: UsageResult | null) => void, reroute?: Reroute, extraBeta?: string) {
     const started = Date.now();
     const headers: http.OutgoingHttpHeaders = {};
     for (const [k, v] of Object.entries(req.headers)) if (!HOP_BY_HOP.has(k.toLowerCase())) headers[k] = v;
     headers.host = target.host;
     headers["accept-encoding"] = "identity"; // so token usage can be read from the response
     if (body) headers["content-length"] = String(body.length);
+    if (extraBeta) {
+      const cur = headers["anthropic-beta"];
+      headers["anthropic-beta"] = cur ? `${Array.isArray(cur) ? cur.join(",") : cur},${extraBeta}` : extraBeta;
+    }
 
     const upReq = lib.request(
       {
@@ -141,7 +155,7 @@ export function startProxy(opts: ProxyOptions): Promise<RunningProxy> {
           });
           upRes.on("end", () => {
             opts.router?.failed(reroute.from, reroute.to, upRes.statusCode ?? 0, Buffer.concat(parts).toString("utf8").slice(0, 500));
-            if (!res.destroyed) forward(req, res, reroute.original, requestModel, onDone);
+            if (!res.destroyed) forward(req, res, reroute.original, requestModel, onDone, undefined, extraBeta);
           });
           upRes.resume();
           return;
@@ -149,6 +163,13 @@ export function startProxy(opts: ProxyOptions): Promise<RunningProxy> {
         const outHeaders: http.OutgoingHttpHeaders = {};
         for (const [k, v] of Object.entries(upRes.headers)) if (!["connection", "keep-alive", "transfer-encoding"].includes(k.toLowerCase())) outHeaders[k] = v;
         res.writeHead(upRes.statusCode ?? 502, outHeaders);
+        if ((upRes.statusCode ?? 0) >= 400 && opts.onRequest) {
+          const errParts: Buffer[] = [];
+          upRes.on("data", (c: Buffer) => {
+            if (errParts.length < 16) errParts.push(c);
+          });
+          upRes.on("end", () => opts.onRequest?.(`upstream error ${upRes.statusCode}: ${Buffer.concat(errParts).toString("utf8").slice(0, 600)}`));
+        }
 
         const type = String(upRes.headers["content-type"] ?? "");
         const sse = type.includes("text/event-stream") ? ad.newTap() : null;
@@ -209,7 +230,7 @@ export function startProxy(opts: ProxyOptions): Promise<RunningProxy> {
       if (size > maxBody) return send(res, 413, "request_too_large", "Request is too large for the ArgusOps proxy.");
       chunks.push(c as Buffer);
     }
-    const raw = Buffer.concat(chunks);
+    let raw = Buffer.concat(chunks);
 
     let body: Record<string, unknown> | null = null;
     try {
@@ -217,6 +238,13 @@ export function startProxy(opts: ProxyOptions): Promise<RunningProxy> {
       if (parsed && typeof parsed === "object") body = parsed as Record<string, unknown>;
     } catch {
       body = null; // not JSON: forward untouched
+    }
+    // 0. put back notes delivered earlier in this conversation, exactly where they were
+    const replayed = body && ledger ? ledger.replay(body) : null;
+    if (replayed) {
+      body = replayed;
+      raw = Buffer.from(JSON.stringify(body), "utf8");
+      opts.onRequest?.("replayed earlier operator notes");
     }
 
     const gone = new AbortController();
@@ -261,7 +289,7 @@ export function startProxy(opts: ProxyOptions): Promise<RunningProxy> {
     let current = body;
     const hint = opts.state.takeHint();
     if (hint && body) {
-      current = ad.applyHint(body, hint);
+      current = ledger ? ledger.deliver(body, hint) : ad.applyHint(body, hint);
       out = Buffer.from(JSON.stringify(current), "utf8");
       opts.onNotice?.("Delivered your hint to the agent.");
     }
@@ -282,11 +310,24 @@ export function startProxy(opts: ProxyOptions): Promise<RunningProxy> {
       opts.onRequest?.(`routed ${routed.from} -> ${routed.to}`);
     }
 
+    // 3d. testing only: opt this request into the provider's history check
+    let extraBeta: string | undefined;
+    if (opts.testBinding && ad.id === "anthropic") {
+      const b = JSON.parse(out.toString("utf8")) as Record<string, unknown>;
+      const th = (b.thinking ?? { type: "adaptive" }) as Record<string, unknown>;
+      if (th.type === "adaptive") {
+        b.thinking = { ...th, block_binding: { prefix_mismatch_behavior: opts.testBinding } };
+        out = Buffer.from(JSON.stringify(b), "utf8");
+        extraBeta = BINDING_BETA;
+      }
+    }
+
     // 4. turns: a snapshot before the agent can touch anything, a check once it hands back
     let onDone: ((u: UsageResult | null) => void) | undefined;
     if (opts.onRequest && body) {
       const msgs = Array.isArray(body.messages) ? (body.messages as unknown[]) : [];
-      opts.onRequest(`request: main=${ad.isMainRequest(body)} messages=${msgs.length} turnStart=${ad.turnStartOf(body)?.key ?? "no"} last=${JSON.stringify(msgs[msgs.length - 1] ?? null).slice(0, 160)}`);
+      const thinking = msgs.reduce<number>((n, m) => n + (Array.isArray((m as { content?: unknown }).content) ? ((m as { content: Array<{ type?: string }> }).content.filter((c) => c?.type === "thinking" || c?.type === "redacted_thinking").length) : 0), 0);
+      opts.onRequest(`request: main=${ad.isMainRequest(body)} messages=${msgs.length} thinkingBlocks=${thinking} model=${model} turnStart=${ad.turnStartOf(body)?.key ?? "no"} last=${JSON.stringify(msgs[msgs.length - 1] ?? null).slice(0, 160)}`);
     }
     if (body && ad.isMainRequest(body) && (opts.onTurnStart || opts.onTurnEnd)) {
       const start = ad.turnStartOf(body);
@@ -301,7 +342,7 @@ export function startProxy(opts: ProxyOptions): Promise<RunningProxy> {
         if (u?.stopReason === "end_turn" && key) opts.onTurnEnd?.({ key, text: u.text ?? "", toolCalls: calls });
       };
     }
-    forward(req, res, out, model, onDone, reroute);
+    forward(req, res, out, model, onDone, reroute, extraBeta);
   }
 
   const server = http.createServer((req, res) => {

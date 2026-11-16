@@ -222,14 +222,17 @@ describe("pause, resume and stop", () => {
     await second;
   });
 
-  it("hands over a hint left while the agent was running, on its next request, once", async () => {
+  it("hands over a hint left while the agent was running on its next request; later requests keep it in place, never twice", async () => {
     const up = await fakeUpstream((_r, res) => sse(res));
     const p = await setup(up.url);
     p.state.apply({ desired: "RUN", hint: "Use pnpm, not npm." });
     await (await post(`${p.base}/v1/messages`, healthyConversation)).text();
     await (await post(`${p.base}/v1/messages`, healthyConversation)).text();
     expect(up.seen[0].body).toContain("Use pnpm, not npm.");
-    expect(up.seen[1].body).not.toContain("Use pnpm");
+    // the history must stay as the model saw it (newer models check it), so the note stays, exactly once
+    expect(up.seen[1].body).toBe(up.seen[0].body);
+    expect(up.seen[1].body.split("Use pnpm").length - 1).toBe(1);
+    expect(p.notices.filter((n) => n.includes("Delivered"))).toHaveLength(1);
   });
 
   it("answers a final 403 (never a retryable 503) to a held request when the agent is stopped, and never calls the provider", async () => {

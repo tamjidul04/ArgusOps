@@ -201,6 +201,7 @@ export async function runAgent(opts: RunOptions): Promise<number> {
     onNotice: say,
     port: opts.port,
     router: router ?? undefined,
+    testBinding: process.env.ARGUSOPS_TEST_BINDING === "error" || process.env.ARGUSOPS_TEST_BINDING === "drop_block" ? process.env.ARGUSOPS_TEST_BINDING : undefined,
   });
   } catch (e) {
     say(e instanceof Error ? e.message : "Couldn't start the local proxy.");
