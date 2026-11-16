@@ -1,19 +1,42 @@
 {
   "name": "argusops",
-  "version": "0.5.0",
-  "description": "Supervise AI coding agents: detect loops, pause or stop them, and track real token usage.",
+  "version": "0.6.0",
+  "description": "Supervise AI coding agents on your own computer: catch loops, check the work, Autopilot, and cheaper models for small tasks. No server, no account.",
   "type": "module",
   "bin": {
     "argus": "dist/argus.mjs"
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
-    "build": "node build.mjs"
+    "build": "node build.mjs",
+    "prepack": "node build.mjs && node -e \"require('fs').copyFileSync('../../README.md','README.md')\"",
+    "postpack": "node -e \"require('fs').rmSync('README.md',{force:true})\""
   },
   "engines": {
     "node": ">=20"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "keywords": [
+    "ai",
+    "agents",
+    "claude-code",
+    "supervisor",
+    "autopilot",
+    "llm",
+    "cli",
+    "developer-tools"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tamjidul04/ArgusOps.git"
+  },
+  "homepage": "https://github.com/tamjidul04/ArgusOps#readme",
+  "bugs": {
+    "url": "https://github.com/tamjidul04/ArgusOps/issues"
+  },
+  "author": "MD.Tamjidul Islam"
 }

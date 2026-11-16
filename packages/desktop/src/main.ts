@@ -8,7 +8,7 @@ import { agentsNeedingYou, ensureEngine, type Engine } from "./engine";
  * `argus ui` opens in a browser, and it can reach nothing but that page: no Node in the page, no other sites, no new windows.
  */
 
-const VERSION = "0.5.0";
+const VERSION = "0.6.0";
 let engine: Engine | null = null;
 let win: BrowserWindow | null = null;
 let tray: Tray | null = null;

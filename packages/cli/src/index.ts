@@ -12,7 +12,7 @@ import { findUiDir, uiCommand } from "./ui-cmd";
 import { runTui } from "./tui/app";
 import { createInterface } from "node:readline/promises";
 
-export const VERSION = "0.5.0";
+export const VERSION = "0.6.0";
 
 const HELP = `argus ${VERSION}: supervise your AI coding agents, on your own machine
 
