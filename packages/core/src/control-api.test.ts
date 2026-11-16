@@ -253,3 +253,86 @@ describe("control API: what it does", () => {
     await expect(startControlApi({ store, port: api.port, version: "1", token: TOKEN })).rejects.toThrow(/already in use/);
   });
 });
+
+describe("the app's page", () => {
+  async function withUi() {
+    const d = fs.mkdtempSync(path.join(os.tmpdir(), "argus-apiui-"));
+    dirs.push(d);
+    const ui = path.join(d, "ui");
+    fs.mkdirSync(ui);
+    fs.writeFileSync(path.join(ui, "index.html"), "<html>page</html>");
+    fs.writeFileSync(path.join(ui, "app.js"), "// js");
+    fs.writeFileSync(path.join(ui, "style.css"), "/* css */");
+    fs.writeFileSync(path.join(ui, "secret.txt"), "do not serve");
+    fs.writeFileSync(path.join(d, "control.token"), "x"); // next to the page, outside it
+    const store = new Store(path.join(d, "home"));
+    const api = await startControlApi({ store, port: 0, version: "1", token: TOKEN, uiDir: ui });
+    closers.push(api.close);
+    return { store, api };
+  }
+
+  it("serves the page without a token, with headers that keep it from running anything else", async () => {
+    const { api } = await withUi();
+    for (const [p, type] of [["/", "text/html"], ["/index.html", "text/html"], ["/app.js", "text/javascript"], ["/style.css", "text/css"]] as const) {
+      const r = await call(api, "GET", p, { token: null });
+      expect(r.status).toBe(200);
+      expect(String(r.headers["content-type"])).toContain(type);
+      expect(String(r.headers["content-security-policy"])).toContain("script-src 'self'");
+      expect(String(r.headers["content-security-policy"])).toContain("frame-ancestors 'none'");
+      expect(r.headers["x-frame-options"]).toBe("DENY");
+      expect(r.headers["cache-control"]).toBe("no-store");
+    }
+    expect((await call(api, "GET", "/", { token: null })).raw).toBe("<html>page</html>");
+  });
+
+  it("only serves its three files, never anything else on disk", async () => {
+    const { api } = await withUi();
+    for (const p of ["/secret.txt", "/../control.token", "/%2e%2e/control.token", "/..%2fcontrol.token", "/ui/secret.txt", "/index.html/../secret.txt"]) {
+      const r = await call(api, "GET", p, { token: null });
+      expect(r.status, p).toBe(404);
+      expect(r.raw).not.toContain("do not serve");
+    }
+    expect((await call(api, "POST", "/", { token: null, headers: { "content-type": "application/json" }, body: "{}" })).status).toBe(404);
+  });
+
+  it("still refuses a rebinding Host or a web page's Origin for the page itself", async () => {
+    const { api } = await withUi();
+    expect((await call(api, "GET", "/", { token: null, headers: { host: "evil.example" } })).status).toBe(403);
+    expect((await call(api, "GET", "/", { token: null, headers: { origin: "https://evil.example" } })).status).toBe(403);
+    expect((await call(api, "GET", "/", { token: null, headers: { "sec-fetch-site": "cross-site" } })).status).toBe(403);
+  });
+
+  it("serves nothing when no page is configured", async () => {
+    const { api } = await setup();
+    expect((await call(api, "GET", "/", { token: null })).status).toBe(404);
+  });
+
+  it("lists Autopilot runs and lets you pause or stop one, but not a finished one", async () => {
+    const { api, store } = await withUi();
+    const run = (id: string, status: string) => ({
+      id, goal: `goal ${id}`, root: "/p", createdAt: 1, updatedAt: 2, status, answers: [], costUsd: 0.5, control: null, needsYou: null, sessionId: null,
+      plan: { summary: "s", steps: [{ id: "step-1", title: "Do it", instructions: "x", acceptance: [], size: "small" }] },
+      steps: [{ id: "step-1", status: "running", attempts: 1, costUsd: 0, problems: [], checks: [] }],
+      log: [{ ts: 3, message: "Step 1/1" }],
+    });
+    store.saveAutopilotRun(run("ap_live", "running"));
+    store.saveAutopilotRun(run("ap_done", "done"));
+    const list = (await call(api, "GET", "/api/autopilot")).body.runs as Array<Record<string, unknown>>;
+    expect(list.map((r) => r.id).sort()).toEqual(["ap_done", "ap_live"]);
+    expect(list.find((r) => r.id === "ap_live")).toMatchObject({ goal: "goal ap_live", steps: [{ title: "Do it", size: "small", status: "running" }] });
+    expect((await call(api, "POST", "/api/autopilot/ap_live/pause", { headers: { "content-type": "application/json" }, body: "{}" })).status).toBe(200);
+    expect(store.autopilotRun<{ control: string }>("ap_live")?.control).toBe("pause");
+    expect((await call(api, "POST", "/api/autopilot/ap_done/stop", { headers: { "content-type": "application/json" }, body: "{}" })).status).toBe(409);
+    expect((await call(api, "POST", "/api/autopilot/ap_nope/stop", { headers: { "content-type": "application/json" }, body: "{}" })).status).toBe(404);
+    expect((await call(api, "POST", "/api/autopilot/ap_live/pause", { token: null, headers: { "content-type": "application/json" }, body: "{}" })).status).toBe(401);
+  });
+
+  it("changes the routing mode, and only to a known one", async () => {
+    const { api, store } = await withUi();
+    const json = { "content-type": "application/json" };
+    expect((await call(api, "POST", "/api/routing", { headers: json, body: JSON.stringify({ mode: "auto" }) })).status).toBe(200);
+    expect(store.config().routing.mode).toBe("auto");
+    expect((await call(api, "POST", "/api/routing", { headers: json, body: JSON.stringify({ mode: "reckless" }) })).status).toBe(400);
+    expect(store.config().routing.mode).toBe("auto");
+  });
+});

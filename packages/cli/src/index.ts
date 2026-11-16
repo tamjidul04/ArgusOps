@@ -8,6 +8,7 @@ import { startControlApi } from "../../core/src/control-api";
 import { webhookNotifier } from "../../core/src/webhooks";
 import * as commands from "./commands";
 import { autopilotCommand } from "./autopilot-cmd";
+import { findUiDir, uiCommand } from "./ui-cmd";
 import { createInterface } from "node:readline/promises";
 
 export const VERSION = "0.5.0";
@@ -40,6 +41,7 @@ Usage:
   argus autopilot list | status [id] | pause [id] | stop [id] | resume [id] [--yes]
   argus agents                                    the AI agents and editors on this machine, and what ArgusOps can do for each
   argus disconnect [--force]                      remove a leftover editor setting that points at a proxy that is gone
+  argus ui [--port <n>] [--no-open]               open the ArgusOps app in your browser (agents, Autopilot, usage, alerts)
   argus serve [--port <n>]                        run the local control API (127.0.0.1 only) for apps and editors
 
 Run options (before the agent):
@@ -150,7 +152,7 @@ async function serve(argv: string[]): Promise<number> {
   }
   let api;
   try {
-    api = await startControlApi({ store, port, version: VERSION, onNotification: webhookNotifier(store) });
+    api = await startControlApi({ store, port, version: VERSION, uiDir: findUiDir() ?? undefined, onNotification: webhookNotifier(store) });
   } catch (e) {
     err(e instanceof Error ? e.message : String(e));
     return 2;
@@ -212,6 +214,9 @@ export async function main(argv: string[]): Promise<number> {
       return commands.agents(io);
     case "disconnect":
       return commands.disconnect(io, rest);
+    case "ui":
+    case "app":
+      return uiCommand(rest, new Store(), io, { version: VERSION });
     case "serve":
       return serve(rest);
     case "ide":

@@ -1,5 +1,8 @@
 import crypto from "node:crypto";
+import fs from "node:fs";
 import http from "node:http";
+import nodePath from "node:path";
+import type { AutopilotRun } from "./autopilot";
 import { Controls } from "./control";
 import { loadPrices } from "./prices";
 import type { NotificationRow, Store } from "./store";
@@ -30,7 +33,15 @@ export interface ControlApiOptions {
   allowedOrigins?: string[];
   onNotification?: (n: NotificationRow) => void;
   maxBodyBytes?: number;
+  /** A folder with the app's web page (index.html, app.js, style.css). When given, GET / serves it. */
+  uiDir?: string;
 }
+
+/** The only files the page is served from; nothing else on disk is reachable by name. */
+const UI_FILES: Record<string, string> = { "/": "index.html", "/index.html": "index.html", "/app.js": "app.js", "/style.css": "style.css" };
+const UI_TYPES: Record<string, string> = { "index.html": "text/html; charset=utf-8", "app.js": "text/javascript; charset=utf-8", "style.css": "text/css; charset=utf-8" };
+/** No inline script, nothing from other sites, no framing: a page that cannot be turned against the token it holds. */
+const UI_CSP = "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
 
 export interface RunningControlApi {
   port: number;
@@ -153,6 +164,25 @@ export function startControlApi(opts: ControlApiOptions): Promise<RunningControl
       return send(res, 200, { ok: true, app: "argusops", version: opts.version });
     }
 
+    if (method === "GET" && opts.uiDir && UI_FILES[path]) {
+      const name = UI_FILES[path];
+      let data: Buffer;
+      try {
+        data = fs.readFileSync(nodePath.join(opts.uiDir, name));
+      } catch {
+        throw new HttpError(404, "The app's page is not installed.");
+      }
+      res.writeHead(200, {
+        "content-type": UI_TYPES[name],
+        "content-length": data.length,
+        "cache-control": "no-store",
+        "content-security-policy": UI_CSP,
+        "x-content-type-options": "nosniff",
+        "x-frame-options": "DENY",
+        "referrer-policy": "no-referrer",
+      });
+      return res.end(data);
+    }
     if (!path.startsWith("/api/")) throw new HttpError(404, "Not found.");
     if (!authorized(req)) throw new HttpError(401, "Missing or wrong ArgusOps token.");
 
@@ -189,6 +219,37 @@ export function startControlApi(opts: ControlApiOptions): Promise<RunningControl
     if (get("/api/incidents")) {
       const limit = Math.min(500, Math.max(1, Number(url.searchParams.get("limit")) || 50));
       return send(res, 200, { incidents: store.incidents().slice(-limit).reverse() });
+    }
+    if (post("/api/routing")) {
+      const mode = body.mode;
+      if (mode !== "off" && mode !== "suggest" && mode !== "auto") throw new HttpError(400, '"mode" must be off, suggest or auto.');
+      const cur = store.config().routing;
+      await store.saveConfig({ routing: { ...cur, mode } });
+      return send(res, 200, { ok: true, mode });
+    }
+    if (get("/api/autopilot")) {
+      const runs = store.autopilotRuns<AutopilotRun>().slice(0, 20).map((r) => ({
+        id: r.id,
+        goal: r.goal,
+        root: r.root,
+        status: r.status,
+        createdAt: r.createdAt,
+        updatedAt: r.updatedAt,
+        costUsd: r.costUsd,
+        control: r.control,
+        needsYou: r.needsYou,
+        steps: r.plan.steps.map((st, i) => ({ title: st.title, size: st.size ?? null, status: r.steps[i]?.status ?? "pending", attempts: r.steps[i]?.attempts ?? 0, problems: r.steps[i]?.problems ?? [] })),
+        log: r.log.slice(-12),
+      }));
+      return send(res, 200, { runs });
+    }
+    const ap = method === "POST" ? /^\/api\/autopilot\/([A-Za-z0-9_-]{1,64})\/(pause|stop)$/.exec(path) : null;
+    if (ap) {
+      const run = store.autopilotRun<AutopilotRun>(ap[1]);
+      if (!run) throw new HttpError(404, `No Autopilot run "${ap[1]}".`);
+      if (run.status === "done" || run.status === "stopped" || run.status === "failed") throw new HttpError(409, `That run is already ${run.status}.`);
+      store.saveAutopilotRun({ ...run, control: ap[2] as "pause" | "stop" });
+      return send(res, 200, { ok: true, message: ap[2] === "pause" ? "Autopilot will pause after the agent's current turn." : "Autopilot will stop after the agent's current turn." });
     }
     if (get("/api/routing")) {
       const since = Date.now() - 7 * 86_400_000;
