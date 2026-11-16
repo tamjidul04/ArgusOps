@@ -1,0 +1,18 @@
+{
+  "name": "argusops-desktop",
+  "version": "0.5.0",
+  "private": true,
+  "description": "ArgusOps desktop app: a window and tray icon around the local ArgusOps engine.",
+  "main": "dist/main.cjs",
+  "license": "MIT",
+  "scripts": {
+    "build": "node build.mjs",
+    "start": "node build.mjs && electron ."
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "electron": "^45.3.3"
+  }
+}

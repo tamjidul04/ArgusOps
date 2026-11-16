@@ -74,3 +74,7 @@ stitch-export/
 /model_capabilities.yaml
 /VERSION
 /impo.txt
+
+# desktop app
+/packages/desktop/node_modules/
+/packages/desktop/dist/
