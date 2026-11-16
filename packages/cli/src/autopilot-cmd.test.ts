@@ -56,7 +56,9 @@ describe("argus autopilot", () => {
     const run = s.store.autopilotRuns<AutopilotRun>()[0];
     expect(run.status).toBe("awaiting-approval");
     expect(s.lines.join("\n")).toContain(`argus autopilot resume ${run.id} --yes`);
-    expect(await autopilotCommand(["resume", run.id, "--yes"], s.store, s.io, s.env, s.root)).toBe(0);
+    // options that take a value must keep it on resume (found in a real run)
+    expect(await autopilotCommand(["resume", run.id, "--yes", "--model", "claude-haiku-5-5", "--max-attempts", "2"], s.store, s.io, s.env, s.root)).toBe(0);
+    expect(fs.readFileSync(path.join(s.root, "fake-claude.log"), "utf8").length).toBeGreaterThan(0);
     expect(s.store.autopilotRun<AutopilotRun>(run.id)?.status).toBe("done");
   }, 60_000);
 

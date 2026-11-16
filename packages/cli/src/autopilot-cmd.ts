@@ -207,9 +207,10 @@ export async function autopilotCommand(argv: string[], store: Store, io: Autopil
     return 0;
   }
   if (sub === "resume") {
-    const parsed = parse(rest.filter((a) => a.startsWith("--")));
+    // options with values (e.g. --model x) are parsed as usual; the first plain word is the run id
+    const parsed = parse(rest);
     if (!parsed.ok) return (io.err(parsed.error), 1);
-    const r = pick(rest.find((a) => !a.startsWith("--")));
+    const r = pick(parsed.o.goal.split(" ")[0] || undefined);
     if (!r) return (io.err("No such Autopilot run. See: argus autopilot list"), 1);
     if (r.status === "done") return (io.err("That run is already done."), 1);
     if (r.status === "running") {

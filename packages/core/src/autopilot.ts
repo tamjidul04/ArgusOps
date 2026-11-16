@@ -292,7 +292,7 @@ export async function executePlan(run: AutopilotRun, deps: AutopilotDeps): Promi
     run.status = status;
     run.needsYou = status === "needs-you" ? why : null;
     if (why) log(why);
-    else log(`All ${run.plan.steps.length} steps are done.`);
+    else log(run.plan.steps.length === 1 ? "The step is done." : `All ${run.plan.steps.length} steps are done.`);
     save();
     return run;
   }
@@ -337,6 +337,7 @@ export function formatRun(run: AutopilotRun): string {
     lines.push(`${icon[st.status]} ${i + 1}. ${s.title}${st.attempts > 1 ? `   (${st.attempts} attempts)` : ""}`);
     if (st.status === "failed" || (st.status === "running" && st.problems.length)) for (const p of st.problems.slice(0, 4)) lines.push(`      - ${p.split("\n")[0].slice(0, 200)}`);
   });
-  lines.push("", `Cost so far (reported by Claude Code): $${run.costUsd.toFixed(2)}`);
+  const cost = run.costUsd > 0 && run.costUsd < 0.01 ? "less than $0.01" : `$${run.costUsd.toFixed(2)}`;
+  lines.push("", `Cost so far (reported by Claude Code): ${cost}`);
   return lines.join("\n");
 }
