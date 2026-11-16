@@ -340,6 +340,31 @@ export class Store {
     });
   }
 
+  /* ------------------------------- autopilot ------------------------------ */
+
+  /** Autopilot runs are kept one file each, as plain JSON, in <home>/autopilot. */
+  autopilotRuns<T extends { id: string; createdAt: number }>(): T[] {
+    const dir = this.file("autopilot");
+    let names: string[] = [];
+    try {
+      names = fs.readdirSync(dir).filter((n) => n.endsWith(".json"));
+    } catch {
+      return [];
+    }
+    return names.map((n) => this.readJson<T | null>(path.join("autopilot", n), null)).filter((r): r is T => r !== null).sort((a, b) => b.createdAt - a.createdAt);
+  }
+
+  autopilotRun<T>(id: string): T | null {
+    if (!/^[A-Za-z0-9_-]{1,64}$/.test(id)) return null;
+    return this.readJson<T | null>(path.join("autopilot", `${id}.json`), null);
+  }
+
+  saveAutopilotRun<T extends { id: string }>(run: T) {
+    if (!/^[A-Za-z0-9_-]{1,64}$/.test(run.id)) throw new Error("Bad autopilot run id.");
+    fs.mkdirSync(this.file("autopilot"), { recursive: true });
+    this.writeJson(path.join("autopilot", `${run.id}.json`), run);
+  }
+
   /* ------------------------------- projects ------------------------------ */
 
   projects(): Record<string, ProjectConsent> {

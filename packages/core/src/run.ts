@@ -28,6 +28,8 @@ export interface RunOptions {
   port?: number;
   /** Resolves when serve mode should stop (tests); Ctrl+C always stops it. */
   stopSignal?: AbortSignal;
+  /** Called once the proxy is listening, with the base URL agents should use. */
+  onReady?: (baseUrl: string) => void;
   /** Check each of the agent's turns (files, the project's checks, its claims). Needs the local store. */
   supervise?: { store: Store; root: string; onNotification?: (n: NotificationRow) => void };
 }
@@ -175,6 +177,7 @@ export async function runAgent(opts: RunOptions): Promise<number> {
     return 2;
   }
   const baseUrl = `http://127.0.0.1:${proxy.port}${adapter.baseUrlSuffix}`;
+  opts.onReady?.(baseUrl);
 
   // ---- start the agent, pointed at the local proxy -----------------------------------------------------------------
   const serve = !opts.command;
