@@ -9,6 +9,7 @@ import { webhookNotifier } from "../../core/src/webhooks";
 import * as commands from "./commands";
 import { autopilotCommand } from "./autopilot-cmd";
 import { findUiDir, uiCommand } from "./ui-cmd";
+import { runTui } from "./tui/app";
 import { createInterface } from "node:readline/promises";
 
 export const VERSION = "0.5.0";
@@ -41,6 +42,7 @@ Usage:
   argus autopilot list | status [id] | pause [id] | stop [id] | resume [id] [--yes]
   argus agents                                    the AI agents and editors on this machine, and what ArgusOps can do for each
   argus disconnect [--force]                      remove a leftover editor setting that points at a proxy that is gone
+  argus tui                                       the same screens inside this terminal (keyboard: 1-5, arrows, ? for help)
   argus ui [--port <n>] [--no-open]               open the ArgusOps app in your browser (agents, Autopilot, usage, alerts)
   argus serve [--port <n>]                        run the local control API (127.0.0.1 only) for apps and editors
 
@@ -214,6 +216,11 @@ export async function main(argv: string[]): Promise<number> {
       return commands.agents(io);
     case "disconnect":
       return commands.disconnect(io, rest);
+    case "tui":
+    case "top": {
+      if (!process.stdin.isTTY || !process.stdout.isTTY) return (err("argus tui needs a terminal. For a one-off look use: argus status"), 1);
+      return runTui({ store: new Store(), stdin: process.stdin, stdout: process.stdout });
+    }
     case "ui":
     case "app":
       return uiCommand(rest, new Store(), io, { version: VERSION });
