@@ -166,6 +166,23 @@ describe("LocalHub", () => {
     expect((await hub.sync(payload({}, [loop]))).desired).toBe("KILL");
   });
 
+  it("records routed usage with what it would have cost on the model the agent asked for", async () => {
+    const { hub, store } = setup();
+    await hub.sync(payload({ start: true }, [{ type: "usage", provider: "anthropic", model: "claude-sonnet-5-5", routed_from: "claude-fable-5-2", input_tokens: 1_000_000, output_tokens: 100_000, cache_read_tokens: 0, latency_ms: 5 }]));
+    const row = store.usage()[0];
+    expect(row).toMatchObject({ model: "claude-sonnet-5-5", routed_from: "claude-fable-5-2", cost_usd: 3, original_cost_usd: 12 });
+  });
+
+  it("logs routing decisions; suggestions and errors also become notifications", async () => {
+    const { hub, store, notes } = setup();
+    await hub.sync(payload({ start: true }));
+    const d = { from: "claude-fable-5-2", to: "claude-sonnet-5-5", reasons: ["a small edit"], applied: true, message: "switched" };
+    await hub.sync(payload({}, [{ type: "route", kind: "switch", ...d }, { type: "route", kind: "suggest", ...d, applied: false, message: "tip" }, { type: "route", kind: "bogus", ...d }]));
+    expect(store.routing().map((r) => r.kind)).toEqual(["switch", "suggest"]);
+    expect(store.routing()[0]).toMatchObject({ agentId: agentIdFor("Claude Code · demo"), from: "claude-fable-5-2", applied: true });
+    expect(notes).toEqual(["Claude Code · demo could use a cheaper model"]);
+  });
+
   it("answers with the policy from the config", async () => {
     const { hub, store } = setup();
     await store.saveConfig({ policy: { loopScoreThreshold: 0.95, exactRepeatLimit: 4 } });

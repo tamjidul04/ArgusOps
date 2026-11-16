@@ -7,6 +7,7 @@ import { agentIdFor, LocalHub } from "../../core/src/hub";
 import { askQuestions, claudePlanner, makePlan, projectContext } from "../../core/src/planner";
 import { loadPrices } from "../../core/src/prices";
 import { runAgent } from "../../core/src/run";
+import type { RouteHint } from "../../core/src/routing";
 import type { Store } from "../../core/src/store";
 import { describeCheck } from "../../core/src/acceptance";
 
@@ -84,7 +85,7 @@ function gitState(root: string): "clean" | "dirty" | "none" {
 function showPlan(io: AutopilotIo, run: AutopilotRun, store: Store) {
   io.out(`\nPlan: ${run.plan.summary || run.goal}`);
   run.plan.steps.forEach((s, i) => {
-    io.out(`\n${i + 1}. ${s.title}`);
+    io.out(`\n${i + 1}. ${s.title}${s.size ? ` (${s.size})` : ""}`);
     for (const line of s.instructions.split("\n").slice(0, 6)) io.out(`   ${line}`);
     for (const c of s.acceptance) io.out(`   check: ${describeCheck(c)}`);
   });
@@ -106,6 +107,8 @@ async function execute(run: AutopilotRun, o: Pick<Options, "model" | "maxAttempt
   const name = `Autopilot · ${path.basename(run.root) || "project"}`;
   const stop = new AbortController();
   let baseUrl = "";
+  let routeHint: RouteHint | null = null;
+  const prices = loadPrices(store.root);
   const proxyDone = runAgent({
     label: name,
     type: "CLAUDE",
@@ -114,7 +117,8 @@ async function execute(run: AutopilotRun, o: Pick<Options, "model" | "maxAttempt
     upstream: env.ARGUS_UPSTREAM_ANTHROPIC || "https://api.anthropic.com",
     baseUrlEnv: "ANTHROPIC_BASE_URL",
     cwd: run.root,
-    hub: new LocalHub(store, loadPrices(store.root)),
+    hub: new LocalHub(store, prices),
+    routing: { config: () => store.config().routing, prices, root: run.root, hint: () => routeHint },
     stopSignal: stop.signal,
     onReady: (u) => (baseUrl = u),
     write: () => undefined, // Autopilot reports progress itself
@@ -158,6 +162,7 @@ async function execute(run: AutopilotRun, o: Pick<Options, "model" | "maxAttempt
       store,
       agent: session,
       agentId: agentIdFor(name),
+      route: (h) => (routeHint = h),
       maxAttempts: o.maxAttempts,
       say: (m) => io.out(`[autopilot] ${m}`),
       decide: io.ask

@@ -11,6 +11,24 @@ import type { PriceRow } from "./pricing";
  * there replace the ones here with the same `model`.
  */
 export const DEFAULT_PRICES: PriceRow[] = [
+  // Anthropic list prices (checked 2026-11). The most specific name wins, so "claude-opus-5-5" beats "claude-opus-5".
+  { model: "claude-fable-5-2", input_per_mtok: 8, output_per_mtok: 40, cache_read_per_mtok: 0.2 },
+  { model: "claude-fable-5-1", input_per_mtok: 10, output_per_mtok: 50 },
+  { model: "claude-fable-5", input_per_mtok: 10, output_per_mtok: 50 },
+  { model: "claude-mythos-5-2", input_per_mtok: 8, output_per_mtok: 40, cache_read_per_mtok: 0.2 },
+  { model: "claude-mythos-5-1", input_per_mtok: 10, output_per_mtok: 50 },
+  { model: "claude-opus-5-5", input_per_mtok: 4, output_per_mtok: 20, cache_read_per_mtok: 0.2 },
+  { model: "claude-opus-5", input_per_mtok: 5, output_per_mtok: 25 },
+  { model: "claude-opus-4-8", input_per_mtok: 5, output_per_mtok: 25 },
+  { model: "claude-opus-4-7", input_per_mtok: 5, output_per_mtok: 25 },
+  { model: "claude-opus-4-6", input_per_mtok: 5, output_per_mtok: 25 },
+  { model: "claude-sonnet-5-5", input_per_mtok: 2, output_per_mtok: 10, cache_read_per_mtok: 0.1 },
+  { model: "claude-sonnet-5", input_per_mtok: 2, output_per_mtok: 10 },
+  { model: "claude-sonnet-4-6", input_per_mtok: 3, output_per_mtok: 15 },
+  // Haiku 5.5: prompts up to 100K tokens (longer prompts cost $0.50 / $2.50)
+  { model: "claude-haiku-5-5", input_per_mtok: 0.1, output_per_mtok: 0.5 },
+  { model: "claude-haiku-4-5", input_per_mtok: 1, output_per_mtok: 5 },
+  // older models, matched by family
   { model: "claude-opus", input_per_mtok: 15, output_per_mtok: 75 },
   { model: "claude-sonnet", input_per_mtok: 3, output_per_mtok: 15 },
   { model: "claude-haiku", input_per_mtok: 0.8, output_per_mtok: 4 },
@@ -28,7 +46,8 @@ const valid = (r: unknown): r is PriceRow =>
   Number.isFinite((r as PriceRow).input_per_mtok) &&
   Number.isFinite((r as PriceRow).output_per_mtok) &&
   (r as PriceRow).input_per_mtok >= 0 &&
-  (r as PriceRow).output_per_mtok >= 0;
+  (r as PriceRow).output_per_mtok >= 0 &&
+  ((r as PriceRow).cache_read_per_mtok === undefined || (Number.isFinite((r as PriceRow).cache_read_per_mtok) && (r as PriceRow).cache_read_per_mtok! >= 0));
 
 /** The built-in prices with the user's overrides from `<home>/prices.json` applied. A bad file is ignored. */
 export function loadPrices(home: string): PriceRow[] {

@@ -9,7 +9,8 @@ import { removeStaleEntry } from "../../core/src/ide-settings";
 import { snapshotFromRef } from "../../core/src/workspace";
 import { loadPrices } from "../../core/src/prices";
 import type { AgentRecord, Store } from "../../core/src/store";
-import { summarizeUsage } from "../../core/src/usage";
+import { summarizeRouting, summarizeUsage } from "../../core/src/usage";
+import { EFFORTS, pinKey, type Effort, type RouteTarget, type RoutingConfig } from "../../core/src/routing";
 import { addWebhook, postWebhook, removeWebhook, webhookNotifier } from "../../core/src/webhooks";
 import { parseRange } from "../../core/src/usage-core";
 
@@ -148,6 +149,8 @@ export function usage(store: Store, io: Io, argv: string[]): number {
   io.out(`  ${s.totals.calls} model calls · ${formatTokens(s.totals.inputTokens)} in · ${formatTokens(s.totals.outputTokens)} out`);
   io.out(`  Estimated cost at list prices: $${s.totals.costUsd.toFixed(2)}`);
   if (s.totals.cacheSavedUsd > 0) io.out(`  Estimated saved by prompt caching: $${s.totals.cacheSavedUsd.toFixed(2)}`);
+  const routed = summarizeRouting(store.usage(), now.getTime() - (range === "24h" ? 1 : range === "7d" ? 7 : 30) * 86_400_000);
+  if (routed.calls) io.out(`  Estimated saved by model routing: $${routed.savedUsd.toFixed(2)} (${routed.calls} requests on a cheaper model)`);
   io.out(`  Loops caught: ${s.totals.loopsCaught}`);
   if (s.byModel.length) {
     io.out("  By model:");
@@ -345,5 +348,88 @@ export async function disconnect(io: Io, argv: string[], env: Env = realEnv(), c
   }
   if (touched === 0) io.out("Nothing to clean up: no editor is pointed at a proxy that is gone.");
   else io.out("Reload the editor window so the agent picks up the change.");
+  return 0;
+}
+
+/* ------------------------------------ model routing ------------------------------------ */
+
+const ROUTE_USAGE = `Usage:
+  argus route                                   what routing does now, what it saved, and its last decisions
+  argus route off | suggest | auto              never / tell you what it would switch (default) / switch by itself
+  argus route set <trivial|simple> <model> [effort]   where small turns go (effort: ${EFFORTS.join(", ")})
+  argus route set <trivial|simple> none         keep your model for that kind of turn
+  argus route pin <model|keep> [--everywhere] [folder]   always use this model here (keep = never switch here)
+  argus route unpin [--everywhere] [folder]`;
+
+const describeTarget = (t: RouteTarget | null) => (t ? `${t.model}${t.effort ? ` at ${t.effort} effort` : ""}` : "your model");
+const MODEL_NAME = /^[A-Za-z0-9._:-]{1,100}$/;
+
+export async function route(store: Store, io: Io, argv: string[], cwd = process.cwd()): Promise<number> {
+  const [sub, ...rest] = argv;
+  const cfg = store.config().routing;
+  const save = (patch: Partial<RoutingConfig>) => store.saveConfig({ routing: { ...cfg, ...patch } });
+  const where = (args: string[]) => {
+    const everywhere = args.includes("--everywhere");
+    const other = args.filter((a) => a !== "--everywhere");
+    if (other.some((a) => a.startsWith("--")) || other.length > 1) return null;
+    const folder = resolvePath(cwd, other[0] ?? ".");
+    return { key: everywhere ? "*" : pinKey(folder), label: everywhere ? "everywhere" : `in ${folder}` };
+  };
+
+  if (sub === "off" || sub === "suggest" || sub === "auto") {
+    if (rest.length) return (io.err(ROUTE_USAGE), 1);
+    await save({ mode: sub });
+  } else if (sub === "set") {
+    const [kind, model, effort, extra] = rest;
+    if ((kind !== "trivial" && kind !== "simple") || !model || extra !== undefined) return (io.err(ROUTE_USAGE), 1);
+    if (effort !== undefined && !EFFORTS.includes(effort as Effort)) return (io.err(`Effort must be one of: ${EFFORTS.join(", ")}.`), 1);
+    if (model !== "none" && !MODEL_NAME.test(model)) return (io.err("That does not look like a model name."), 1);
+    await save({ targets: { ...cfg.targets, [kind]: model === "none" ? null : { model, ...(effort ? { effort: effort as Effort } : {}) } } });
+  } else if (sub === "pin") {
+    const [model, ...args] = rest;
+    const w = where(args);
+    if (!model || model.startsWith("--") || !w) return (io.err(ROUTE_USAGE), 1);
+    if (model !== "keep" && !MODEL_NAME.test(model)) return (io.err("That does not look like a model name."), 1);
+    await save({ pins: { ...cfg.pins, [w.key]: model } });
+    io.out(model === "keep" ? `ArgusOps will never switch models ${w.label}.` : `ArgusOps will use ${model} for every main request ${w.label}.`);
+  } else if (sub === "unpin") {
+    const w = where(rest);
+    if (!w) return (io.err(ROUTE_USAGE), 1);
+    if (!(w.key in cfg.pins)) io.out(`Nothing was pinned ${w.label}.`);
+    else {
+      const pins = { ...cfg.pins };
+      delete pins[w.key];
+      await save({ pins });
+      io.out(`Unpinned ${w.label}.`);
+    }
+  } else if (sub !== undefined) {
+    return (io.err(ROUTE_USAGE), 1);
+  }
+
+  const c = store.config().routing;
+  const now = io.now?.() ?? Date.now();
+  const mode =
+    c.mode === "off"
+      ? "off: your agents always use the model you chose"
+      : c.mode === "suggest"
+        ? "suggest: it tells you when a cheaper model could do a turn, and changes nothing"
+        : "auto: small turns run on a cheaper model, and go back to yours when the work needs it or the cheaper one struggles";
+  io.out(`Model routing: ${mode}.`);
+  io.out(`  Trivial turns (rename, typo, formatting): ${describeTarget(c.targets.trivial)}`);
+  io.out(`  Simple turns (explain, small test, docs): ${describeTarget(c.targets.simple)}`);
+  io.out("  Everything else: your model. Routing never picks a model more expensive than yours.");
+  const pins = Object.entries(c.pins);
+  if (pins.length) {
+    io.out("  Pins:");
+    for (const [k, v] of pins) io.out(`    ${k === "*" ? "everywhere" : k}: ${v === "keep" ? "never switch" : v}`);
+  }
+  const week = summarizeRouting(store.usage(), now - 7 * 86_400_000);
+  if (week.calls) io.out(`Last 7 days: ${week.calls} requests ran on a cheaper model, saving about $${week.savedUsd.toFixed(2)} (estimated at list prices: $${week.actualUsd.toFixed(2)} instead of $${week.originalUsd.toFixed(2)}).`);
+  const recent = store.routing(now - 7 * 86_400_000).slice(-8).reverse();
+  if (recent.length) {
+    io.out("Recent decisions:");
+    for (const r of recent) io.out(`  ${timeAgo(r.ts, now)}  ${r.message}`);
+  }
+  if (sub === undefined) io.out(c.mode === "auto" ? "Turn it off with: argus route off" : "Let ArgusOps switch by itself: argus route auto");
   return 0;
 }

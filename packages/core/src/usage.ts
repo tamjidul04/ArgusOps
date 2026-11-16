@@ -69,3 +69,17 @@ export function summarizeUsage(rows: UsageRow[], incidents: IncidentRow[], range
     byModel: [...byModel.values()].map((m) => ({ ...m, costUsd: round6(m.costUsd) })).sort(byCost),
   };
 }
+
+/** What model routing did over a period: requests it moved, what they cost, what they would have cost (list prices). */
+export function summarizeRouting(rows: UsageRow[], sinceMs: number): { calls: number; actualUsd: number; originalUsd: number; savedUsd: number } {
+  let calls = 0;
+  let actualUsd = 0;
+  let originalUsd = 0;
+  for (const r of rows) {
+    if (r.ts < sinceMs || !r.routed_from || typeof r.original_cost_usd !== "number") continue;
+    calls++;
+    actualUsd += r.cost_usd;
+    originalUsd += r.original_cost_usd;
+  }
+  return { calls, actualUsd: round6(actualUsd), originalUsd: round6(originalUsd), savedUsd: round6(originalUsd - actualUsd) };
+}

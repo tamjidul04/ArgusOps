@@ -9,6 +9,9 @@ import { LoopDetector } from "./detect";
 import { startProxy, type IncidentOut, type UsageOut } from "./proxy";
 import { ControlState } from "./state";
 import { desktopNotify } from "./notify";
+import type { PriceRow } from "./pricing";
+import { Router, type RouteHint, type RoutingConfig } from "./routing";
+import type { TurnOutcome } from "./supervisor";
 
 export interface RunOptions {
   label: string; // "Claude Code"
@@ -32,6 +35,13 @@ export interface RunOptions {
   onReady?: (baseUrl: string) => void;
   /** Check each of the agent's turns (files, the project's checks, its claims). Needs the local store. */
   supervise?: { store: Store; root: string; onNotification?: (n: NotificationRow) => void };
+  /** Model routing (see routing.ts): read the settings each turn, so a change applies without restarting. */
+  routing?: { config: () => RoutingConfig; prices: PriceRow[]; root: string; hint?: () => RouteHint | null };
+}
+
+/** Did the agent's turn go badly enough that a cheaper model should give way? Failing checks, broken claims, regressions. */
+export function turnFailed(o: TurnOutcome): boolean {
+  return o.report.findings.some((f) => f.severity === "CRITICAL" || f.code.startsWith("gate-") || f.code === "claim-contradicted" || f.code === "regression");
 }
 
 const MAX_QUEUED_EVENTS = 1000;
@@ -133,6 +143,22 @@ export async function runAgent(opts: RunOptions): Promise<number> {
     ? new TurnSupervisor({ store: opts.supervise.store, root: opts.supervise.root, agentId: agentIdFor(agentName), agentName, say, onNotification: opts.supervise.onNotification })
     : null;
 
+  const router = opts.routing
+    ? new Router({
+        provider: opts.provider,
+        adapter,
+        config: opts.routing.config,
+        prices: opts.routing.prices,
+        root: opts.routing.root,
+        hint: opts.routing.hint,
+        onDebug: debugOn ? (l) => debug(l) : undefined,
+        onDecision: (d) => {
+          enqueue({ type: "route", ...d });
+          say(d.message);
+        },
+      })
+    : null;
+
   let proxy: Awaited<ReturnType<typeof startProxy>>;
   try {
     proxy = await startProxy({
@@ -160,7 +186,10 @@ export async function runAgent(opts: RunOptions): Promise<number> {
     onTurnEnd: supervisor
       ? (ev) => {
           debug(`turn end ${ev.key} (${ev.toolCalls.length} tool calls)`);
-          void supervisor.turnEnded(ev).then((o) => debug(`turn check: ${o ? `${o.action}, ${o.report.changes.files.length} files, ${o.report.findings.map((f) => f.code).join(",") || "no findings"}` : "nothing to check"}`));
+          void supervisor.turnEnded(ev).then((o) => {
+            if (o) router?.turnOutcome(!turnFailed(o));
+            debug(`turn check: ${o ? `${o.action}, ${o.report.changes.files.length} files, ${o.report.findings.map((f) => f.code).join(",") || "no findings"}` : "nothing to check"}`);
+          });
         }
       : undefined,
     onRequest: debugOn ? (info) => debug(info) : undefined,
@@ -171,6 +200,7 @@ export async function runAgent(opts: RunOptions): Promise<number> {
     },
     onNotice: say,
     port: opts.port,
+    router: router ?? undefined,
   });
   } catch (e) {
     say(e instanceof Error ? e.message : "Couldn't start the local proxy.");

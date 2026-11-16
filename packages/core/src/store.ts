@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import type { Finding } from "./findings";
 import type { Desired } from "./state";
+import { DEFAULT_ROUTING, type RouteDecision, type RoutingConfig } from "./routing";
 
 /**
  * Everything ArgusOps remembers lives in one folder on this machine (default `~/.argusops`, or `ARGUSOPS_HOME`).
@@ -53,8 +54,20 @@ export interface UsageRow {
   input_tokens: number;
   output_tokens: number;
   cache_read_tokens: number;
+  cache_write_tokens?: number;
   latency_ms: number;
   cost_usd: number;
+  /** Set when ArgusOps ran the request on a cheaper (or pinned) model: the model the agent asked for. */
+  routed_from?: string;
+  /** What the same tokens would have cost on routed_from (list prices). */
+  original_cost_usd?: number;
+}
+
+/** One model-routing decision (a switch, a suggestion, an escalation...), kept so you can see why. */
+export interface RoutingRow extends RouteDecision {
+  id: string;
+  ts: number;
+  agentId: string;
 }
 
 export interface IncidentRow {
@@ -92,6 +105,7 @@ export interface AppConfig {
   /** Port of the local control API. */
   apiPort: number;
   supervisor: SupervisorConfig;
+  routing: RoutingConfig;
 }
 
 export interface SupervisorConfig {
@@ -120,7 +134,18 @@ export const DEFAULT_CONFIG: AppConfig = {
   proxyPort: 47821,
   apiPort: 47822,
   supervisor: { mode: "alert", maxTurnTokens: 0, redirectCooldownMs: 10 * 60_000, maxRedirectsInARow: 3 },
+  routing: DEFAULT_ROUTING,
 };
+
+function mergeRouting(base: RoutingConfig, patch: Partial<RoutingConfig> | undefined): RoutingConfig {
+  const p = patch && typeof patch === "object" ? patch : {};
+  return {
+    mode: p.mode === "off" || p.mode === "suggest" || p.mode === "auto" ? p.mode : base.mode,
+    targets: { ...base.targets, ...(p.targets && typeof p.targets === "object" ? p.targets : {}) },
+    ladder: Array.isArray(p.ladder) && p.ladder.every((m) => typeof m === "string") ? p.ladder : base.ladder,
+    pins: p.pins && typeof p.pins === "object" ? Object.fromEntries(Object.entries(p.pins).filter(([, v]) => typeof v === "string")) : base.pins,
+  };
+}
 
 const DAY_MS = 86_400_000;
 const LOCK_STALE_MS = 10_000;
@@ -250,6 +275,7 @@ export class Store {
       ...saved,
       policy: { ...DEFAULT_CONFIG.policy, ...(saved.policy ?? {}) },
       supervisor: { ...DEFAULT_CONFIG.supervisor, ...(saved.supervisor ?? {}) },
+      routing: mergeRouting(DEFAULT_CONFIG.routing, saved.routing),
       webhooks: Array.isArray(saved.webhooks) ? saved.webhooks.filter((w) => typeof w === "string") : [],
     };
   }
@@ -257,7 +283,7 @@ export class Store {
   async saveConfig(patch: Partial<AppConfig>): Promise<AppConfig> {
     return this.withLock("config", () => {
       const cur = this.config();
-      const next = { ...cur, ...patch, policy: { ...cur.policy, ...(patch.policy ?? {}) }, supervisor: { ...cur.supervisor, ...(patch.supervisor ?? {}) } };
+      const next = { ...cur, ...patch, policy: { ...cur.policy, ...(patch.policy ?? {}) }, supervisor: { ...cur.supervisor, ...(patch.supervisor ?? {}) }, routing: mergeRouting(cur.routing, patch.routing) };
       this.writeJson("config.json", next);
       return next;
     });
@@ -309,6 +335,13 @@ export class Store {
   }
   usage(sinceMs = 0): UsageRow[] {
     return this.readRows<UsageRow>("usage.jsonl", sinceMs);
+  }
+
+  appendRouting(row: RoutingRow) {
+    this.append("routing.jsonl", row);
+  }
+  routing(sinceMs = 0): RoutingRow[] {
+    return this.readRows<RoutingRow>("routing.jsonl", sinceMs);
   }
 
   appendIncident(row: IncidentRow) {
@@ -390,7 +423,7 @@ export class Store {
   /** Drops usage, incident and notification rows older than `days`, and agents not seen for that long. */
   async prune(days = 30, now = Date.now()) {
     const cutoff = now - days * DAY_MS;
-    for (const name of ["usage.jsonl", "incidents.jsonl", "notifications.jsonl"]) {
+    for (const name of ["usage.jsonl", "incidents.jsonl", "notifications.jsonl", "routing.jsonl"]) {
       await this.withLock(`prune-${name}`, () => {
         const keep = this.readRows<{ ts: number }>(name, cutoff);
         const all = this.readRows<{ ts: number }>(name);

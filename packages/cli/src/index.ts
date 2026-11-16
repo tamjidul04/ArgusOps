@@ -34,6 +34,7 @@ Usage:
   argus project [status|allow|deny] [folder]      allow ArgusOps to run this project's tests, lint and build
   argus supervisor [off|alert|redirect] [--max-turn-tokens <n>]
                                                   how ArgusOps reacts to problems in an agent's turn (default: alert)
+  argus route [off|suggest|auto|set|pin|unpin]   run simple turns on a cheaper model (default: suggest only)
   argus autopilot "goal" [--yes] [--model m] [--planner-model m] [--max-attempts n] [--allow-bash] [--no-questions]
                                                   plan it, show you the plan, then build it step by step with Claude Code, checking each step
   argus autopilot list | status [id] | pause [id] | stop [id] | resume [id] [--yes]
@@ -62,11 +63,16 @@ const err = (m: string) => process.stderr.write(m + "\n");
 
 /** The local store, hub and turn supervisor, or nothing when `--offline` asks for nothing to be saved. */
 function openHub(offline: boolean) {
-  if (offline) return { hub: null, supervise: undefined };
+  if (offline) return { hub: null, supervise: undefined, routing: undefined };
   const store = new Store();
   void store.prune().catch(() => undefined); // old history is dropped quietly; failing to is not worth a message
   const notify = webhookNotifier(store);
-  return { hub: new LocalHub(store, loadPrices(store.root), { onNotification: notify }), supervise: { store, root: process.cwd(), onNotification: notify } };
+  const prices = loadPrices(store.root);
+  return {
+    hub: new LocalHub(store, prices, { onNotification: notify }),
+    supervise: { store, root: process.cwd(), onNotification: notify },
+    routing: { config: () => store.config().routing, prices, root: process.cwd() },
+  };
 }
 
 async function run(argv: string[]): Promise<number> {
@@ -191,6 +197,9 @@ export async function main(argv: string[]): Promise<number> {
     }
     case "supervisor":
       return commands.supervisor(new Store(), io, rest);
+    case "route":
+    case "routing":
+      return commands.route(new Store(), io, rest);
     case "autopilot": {
       const rl = process.stdin.isTTY ? createInterface({ input: process.stdin, output: process.stdout }) : null;
       try {

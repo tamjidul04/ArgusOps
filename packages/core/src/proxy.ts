@@ -25,7 +25,11 @@ export interface UsageOut {
   input_tokens: number;
   output_tokens: number;
   cache_read_tokens: number;
+  /** The part of input_tokens written to the cache. */
+  cache_write_tokens?: number;
   latency_ms: number;
+  /** Set when ArgusOps ran this request on a different model: the model the agent asked for. */
+  routed_from?: string;
 }
 
 export interface IncidentOut {
@@ -57,7 +61,21 @@ export interface ProxyOptions {
   onTurnEnd?: (ev: { key: string; text: string; toolCalls: string[] }) => void;
   /** Debug only: one line per model request. */
   onRequest?: (info: string) => void;
+  /** Model routing: may send a request to another model. */
+  router?: RouterLike;
 }
+
+/** What the proxy needs from the model router (see routing.ts). */
+export interface RouterLike {
+  route(body: Record<string, unknown>): { body: Record<string, unknown>; from: string; to: string } | null;
+  /** The provider rejected a rerouted request; it was sent again unchanged. */
+  failed(from: string, to: string, status: number, detail: string): void;
+  /** The agent is stuck (a loop was caught) in this conversation. */
+  struggled(reason: string, body?: unknown): void;
+}
+
+/** Statuses that mean "this model can't take this request" (bad field, unknown model, no access), worth one retry unchanged. */
+const REJECTED = new Set([400, 403, 404]);
 
 const TURN_START_WAIT_MS = 10_000;
 
@@ -90,7 +108,14 @@ export function startProxy(opts: ProxyOptions): Promise<RunningProxy> {
 
   let turnKey = "";
 
-  function forward(req: http.IncomingMessage, res: http.ServerResponse, body: Buffer | null, requestModel: string, onDone?: (u: UsageResult | null) => void) {
+  interface Reroute {
+    from: string;
+    to: string;
+    /** The request as it was before routing, sent instead if the routed one is rejected. */
+    original: Buffer;
+  }
+
+  function forward(req: http.IncomingMessage, res: http.ServerResponse, body: Buffer | null, requestModel: string, onDone?: (u: UsageResult | null) => void, reroute?: Reroute) {
     const started = Date.now();
     const headers: http.OutgoingHttpHeaders = {};
     for (const [k, v] of Object.entries(req.headers)) if (!HOP_BY_HOP.has(k.toLowerCase())) headers[k] = v;
@@ -108,6 +133,19 @@ export function startProxy(opts: ProxyOptions): Promise<RunningProxy> {
         headers,
       },
       (upRes) => {
+        if (reroute && REJECTED.has(upRes.statusCode ?? 0)) {
+          // the other model refused this request: say so, then send the agent's own request instead (the agent never sees the failure)
+          const parts: Buffer[] = [];
+          upRes.on("data", (c: Buffer) => {
+            if (parts.length < 64) parts.push(c);
+          });
+          upRes.on("end", () => {
+            opts.router?.failed(reroute.from, reroute.to, upRes.statusCode ?? 0, Buffer.concat(parts).toString("utf8").slice(0, 500));
+            if (!res.destroyed) forward(req, res, reroute.original, requestModel, onDone);
+          });
+          upRes.resume();
+          return;
+        }
         const outHeaders: http.OutgoingHttpHeaders = {};
         for (const [k, v] of Object.entries(upRes.headers)) if (!["connection", "keep-alive", "transfer-encoding"].includes(k.toLowerCase())) outHeaders[k] = v;
         res.writeHead(upRes.statusCode ?? 502, outHeaders);
@@ -137,7 +175,9 @@ export function startProxy(opts: ProxyOptions): Promise<RunningProxy> {
               input_tokens: usage.inputTokens,
               output_tokens: usage.outputTokens,
               cache_read_tokens: usage.cacheReadTokens,
+              cache_write_tokens: usage.cacheWriteTokens,
               latency_ms: Date.now() - started,
+              ...(reroute ? { routed_from: reroute.from } : {}),
             });
           }
           onDone?.(usage);
@@ -199,6 +239,7 @@ export function startProxy(opts: ProxyOptions): Promise<RunningProxy> {
           evidence: verdict.evidence,
         });
         opts.onNotice?.(`Paused: ${verdict.reason}. Resume it with "argus resume" or end it with "argus stop".`);
+        opts.router?.struggled(verdict.reason, body);
       }
     }
 
@@ -217,15 +258,28 @@ export function startProxy(opts: ProxyOptions): Promise<RunningProxy> {
     // 3. pass on the operator's hint, once
     let out = raw;
     const model = typeof body?.model === "string" ? (body.model as string) : "";
+    let current = body;
     const hint = opts.state.takeHint();
     if (hint && body) {
-      out = Buffer.from(JSON.stringify(ad.applyHint(body, hint)), "utf8");
+      current = ad.applyHint(body, hint);
+      out = Buffer.from(JSON.stringify(current), "utf8");
       opts.onNotice?.("Delivered your hint to the agent.");
     }
     // 3b. a change the adapter needs to be able to read usage (never changes what the model is asked)
-    if (body && out === raw) {
-      const prepared = ad.prepare(body);
-      if (prepared) out = Buffer.from(JSON.stringify(prepared), "utf8");
+    if (current) {
+      const prepared = ad.prepare(current);
+      if (prepared) {
+        current = prepared;
+        out = Buffer.from(JSON.stringify(current), "utf8");
+      }
+    }
+    // 3c. model routing: maybe run this request on another model
+    let reroute: Reroute | undefined;
+    const routed = current && opts.router ? opts.router.route(current) : null;
+    if (routed) {
+      reroute = { from: routed.from, to: routed.to, original: out };
+      out = Buffer.from(JSON.stringify(routed.body), "utf8");
+      opts.onRequest?.(`routed ${routed.from} -> ${routed.to}`);
     }
 
     // 4. turns: a snapshot before the agent can touch anything, a check once it hands back
@@ -247,7 +301,7 @@ export function startProxy(opts: ProxyOptions): Promise<RunningProxy> {
         if (u?.stopReason === "end_turn" && key) opts.onTurnEnd?.({ key, text: u.text ?? "", toolCalls: calls });
       };
     }
-    forward(req, res, out, model, onDone);
+    forward(req, res, out, model, onDone, reroute);
   }
 
   const server = http.createServer((req, res) => {

@@ -3,6 +3,7 @@ import type { PriceRow } from "./pricing";
 import { costUsd } from "./pricing";
 import { draftRewrite, estimateTokens, loopCost } from "./rewrite-core";
 import type { SyncReply } from "./state";
+import type { RouteDecision } from "./routing";
 import type { AgentRecord, IncidentRow, NotificationRow, Store } from "./store";
 
 /** What a run reports on each sync. */
@@ -30,7 +31,13 @@ interface UsageEvent {
   input_tokens?: number;
   output_tokens?: number;
   cache_read_tokens?: number;
+  cache_write_tokens?: number;
   latency_ms?: number;
+  routed_from?: string;
+}
+
+interface RouteEvent extends Partial<RouteDecision> {
+  type: "route";
 }
 
 interface IncidentEvent {
@@ -67,11 +74,37 @@ export class LocalHub implements SyncTransport {
     return this.opts.now ? this.opts.now() : Date.now();
   }
 
+  private recordRoute(agentId: string, now: number, r: RouteEvent, agent: AgentRecord | null) {
+    const kinds: RouteDecision["kind"][] = ["switch", "suggest", "escalate", "revert", "pin", "error"];
+    if (!r.kind || !kinds.includes(r.kind) || typeof r.message !== "string") return;
+    const str = (v: unknown, max = 200) => (typeof v === "string" ? v.slice(0, max) : "");
+    this.store.appendRouting({
+      id: crypto.randomUUID(),
+      ts: now,
+      agentId,
+      kind: r.kind,
+      from: str(r.from),
+      to: str(r.to),
+      ...(r.effort ? { effort: r.effort } : {}),
+      ...(r.difficulty ? { difficulty: r.difficulty } : {}),
+      reasons: Array.isArray(r.reasons) ? r.reasons.map((x) => str(x)).slice(0, 5) : [],
+      ...(typeof r.estSavingUsd === "number" && Number.isFinite(r.estSavingUsd) ? { estSavingUsd: r.estSavingUsd } : {}),
+      applied: r.applied === true,
+      message: str(r.message, 600),
+    });
+    // a suggestion is something to act on, and an error is worth knowing; switches are shown live and kept in the log
+    if ((r.kind === "suggest" || r.kind === "error") && agent) {
+      const note = this.store.appendNotification({ ts: now, title: r.kind === "suggest" ? `${agent.name} could use a cheaper model` : `Model routing problem in ${agent.name}`, body: str(r.message, 600), level: r.kind === "error" ? "WARN" : "INFO", agentId });
+      this.opts.onNotification?.(note, agent);
+    }
+  }
+
   async sync(p: SyncPayload): Promise<SyncResponse> {
     const id = agentIdFor(p.run.agent.name);
     const now = this.now();
     let tokenDelta = 0;
     let incident: IncidentEvent | null = null;
+    const routes: RouteEvent[] = [];
 
     for (const raw of p.events) {
       const e = raw as { type?: string };
@@ -80,6 +113,8 @@ export class LocalHub implements SyncTransport {
         const input = num(u.input_tokens);
         const output = num(u.output_tokens);
         const model = typeof u.model === "string" ? u.model : "unknown";
+        const tokens = { inputTokens: input, outputTokens: output, cacheReadTokens: num(u.cache_read_tokens), cacheWriteTokens: num(u.cache_write_tokens) };
+        const routedFrom = typeof u.routed_from === "string" && u.routed_from ? u.routed_from : undefined;
         this.store.appendUsage({
           ts: now,
           agentId: id,
@@ -88,12 +123,16 @@ export class LocalHub implements SyncTransport {
           input_tokens: input,
           output_tokens: output,
           cache_read_tokens: num(u.cache_read_tokens),
+          ...(num(u.cache_write_tokens) ? { cache_write_tokens: num(u.cache_write_tokens) } : {}),
           latency_ms: num(u.latency_ms),
-          cost_usd: costUsd(model, { inputTokens: input, outputTokens: output }, this.prices),
+          cost_usd: costUsd(model, tokens, this.prices),
+          ...(routedFrom ? { routed_from: routedFrom, original_cost_usd: costUsd(routedFrom, tokens, this.prices) } : {}),
         });
         tokenDelta += input + output;
       } else if (e.type === "incident") {
         incident = e as IncidentEvent;
+      } else if (e.type === "route") {
+        routes.push(e as RouteEvent);
       }
     }
 
@@ -160,6 +199,8 @@ export class LocalHub implements SyncTransport {
       }
       return next;
     });
+
+    for (const r of routes) this.recordRoute(id, now, r, rec);
 
     const inc = newIncident as IncidentRow | null;
     const note = newNote as NotificationRow | null;

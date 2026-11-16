@@ -17,6 +17,8 @@ export interface PlanStep {
   title: string;
   instructions: string;
   acceptance: AcceptanceCheck[];
+  /** How much work the step is, as the planner sees it. Model routing may run small steps on a cheaper model. */
+  size?: "small" | "medium" | "large";
 }
 
 export interface Plan {
@@ -83,7 +85,7 @@ export function validatePlan(v: unknown): { ok: true; plan: Plan } | { ok: false
   if (raw.steps.length > LIMITS.steps) return { ok: false, error: `Too many steps (${raw.steps.length}); use at most ${LIMITS.steps}.` };
   const steps: PlanStep[] = [];
   for (const [i, s] of raw.steps.entries()) {
-    const step = s as { title?: unknown; instructions?: unknown; acceptance?: unknown };
+    const step = s as { title?: unknown; instructions?: unknown; acceptance?: unknown; size?: unknown };
     const title = str(step?.title, LIMITS.title);
     const instructions = str(step?.instructions, LIMITS.instructions);
     if (!title || !instructions) return { ok: false, error: `Step ${i + 1} needs a "title" and "instructions".` };
@@ -104,7 +106,8 @@ export function validatePlan(v: unknown): { ok: true; plan: Plan } | { ok: false
         if (safeRelativePath(p) && text) acceptance.push({ type: "file-contains", path: p, text });
       }
     }
-    steps.push({ id: `step-${i + 1}`, title, instructions, acceptance });
+    const size = step.size === "small" || step.size === "medium" || step.size === "large" ? step.size : undefined;
+    steps.push({ id: `step-${i + 1}`, title, instructions, acceptance, ...(size ? { size } : {}) });
   }
   return { ok: true, plan: { summary: str(raw.summary, LIMITS.summary), steps } };
 }
@@ -152,10 +155,11 @@ export function planPrompt(goal: string, context: string, answers: Array<{ quest
       `- Give each step up to ${LIMITS.checks} acceptance checks that prove it is done. Types: {"type":"command","command":"..."} (must exit with 0, e.g. running the tests), {"type":"file-exists","path":"relative/path"}, {"type":"file-contains","path":"relative/path","text":"..."}.`,
       "- Commands must be safe, local and quick (tests, type-check, build, running the program once). No installs from the internet unless the goal needs them, no deleting outside the project, no network calls to other services.",
       "- Paths are relative to the project folder.",
+      '- Give each step a "size": "small" (a few lines, mechanical), "medium", or "large" (new logic, several files, tricky).',
       "- Add or update tests where it makes sense, and make the last step run all of them.",
     ].join("\n"),
     previousError ? `Your previous answer could not be used: ${previousError}. Fix that.` : "",
-    'Answer with JSON only, exactly this shape: {"summary": "...", "steps": [{"title": "...", "instructions": "...", "acceptance": [...]}]}',
+    'Answer with JSON only, exactly this shape: {"summary": "...", "steps": [{"title": "...", "instructions": "...", "size": "small|medium|large", "acceptance": [...]}]}',
   ]
     .filter(Boolean)
     .join("\n\n");

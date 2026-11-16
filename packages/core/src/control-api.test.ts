@@ -150,7 +150,7 @@ describe("control API: who may call it", () => {
   it("does not put the token in any response", async () => {
     const { api, store } = await setup();
     await store.updateAgent("ag_one", () => agent());
-    for (const p of ["/api/agents", "/api/config", "/api/alerts", "/api/usage", "/api/incidents", "/api/health"]) {
+    for (const p of ["/api/agents", "/api/config", "/api/routing", "/api/alerts", "/api/usage", "/api/incidents", "/api/health"]) {
       expect((await call(api, "GET", p)).raw).not.toContain(TOKEN);
     }
   });
@@ -242,6 +242,7 @@ describe("control API: what it does", () => {
     expect(((await call(api, "GET", "/api/alerts?limit=5")).body.alerts as unknown[]).length).toBe(1);
     expect((await call(api, "GET", "/api/incidents")).body.incidents).toEqual([]);
     expect((await call(api, "GET", "/api/config")).body).toMatchObject({ proxyPort: 47821, apiPort: 47822 });
+    expect((await call(api, "GET", "/api/routing")).body).toMatchObject({ config: { mode: "suggest" }, savings7d: { calls: 0 }, decisions: [] });
     expect((await call(api, "POST", "/api/alerts/read", { headers: json, body: JSON.stringify({ ids: [n.id] }) })).status).toBe(200);
     expect(store.notifications()[0].read).toBe(true);
     expect((await call(api, "POST", "/api/alerts/read", { headers: json, body: JSON.stringify({ ids: [1] }) })).status).toBe(400);

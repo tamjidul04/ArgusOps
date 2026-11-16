@@ -133,6 +133,8 @@ export interface UsageResult {
   inputTokens: number;
   outputTokens: number;
   cacheReadTokens: number;
+  /** The part of inputTokens that was written to the cache. */
+  cacheWriteTokens?: number;
   /** Why the model stopped: "end_turn" means it handed back to the human; "tool_use" means it wants a tool run. */
   stopReason?: string;
   /** The text the model wrote (capped), used to compare what it claims with what really happened. */
@@ -206,6 +208,7 @@ export class SseUsageTap {
       inputTokens: this.input + this.cacheWrite,
       outputTokens: this.output,
       cacheReadTokens: this.cacheRead,
+      cacheWriteTokens: this.cacheWrite,
       stopReason: this.stopReason || undefined,
       text: this.text || undefined,
     };
@@ -223,6 +226,7 @@ export function usageFromJson(text: string): UsageResult | null {
       inputTokens: n(j.usage.input_tokens) + n(j.usage.cache_creation_input_tokens),
       outputTokens: n(j.usage.output_tokens),
       cacheReadTokens: n(j.usage.cache_read_input_tokens),
+      cacheWriteTokens: n(j.usage.cache_creation_input_tokens),
       stopReason: typeof j.stop_reason === "string" ? j.stop_reason : undefined,
       text: written ? written.slice(0, MAX_TEXT) : undefined,
     };

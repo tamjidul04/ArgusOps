@@ -106,7 +106,7 @@ describe("usage from a streamed response", () => {
   it("reads model, billed input, output and cache reads", () => {
     const tap = new SseUsageTap();
     tap.push(stream);
-    expect(tap.result()).toEqual({ model: "claude-sonnet-4-5-20250929", inputTokens: 150, outputTokens: 42, cacheReadTokens: 5000, stopReason: undefined, text: "hi" });
+    expect(tap.result()).toEqual({ model: "claude-sonnet-4-5-20250929", inputTokens: 150, outputTokens: 42, cacheReadTokens: 5000, cacheWriteTokens: 30, stopReason: undefined, text: "hi" });
   });
 
   it("is correct however the bytes are split, even one at a time and with CRLF", () => {
@@ -126,7 +126,7 @@ describe("usage from a streamed response", () => {
 describe("usage from a plain JSON response", () => {
   it("reads usage and model", () => {
     const text = JSON.stringify({ model: "claude-haiku-4-5", usage: { input_tokens: 10, output_tokens: 20, cache_read_input_tokens: 7 } });
-    expect(usageFromJson(text)).toEqual({ model: "claude-haiku-4-5", inputTokens: 10, outputTokens: 20, cacheReadTokens: 7 });
+    expect(usageFromJson(text)).toEqual({ model: "claude-haiku-4-5", inputTokens: 10, outputTokens: 20, cacheReadTokens: 7, cacheWriteTokens: 0 });
   });
   it("returns null for errors and non-JSON", () => {
     expect(usageFromJson('{"type":"error","error":{"message":"x"}}')).toBeNull();

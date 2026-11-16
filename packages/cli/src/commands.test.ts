@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { Store, type AgentRecord } from "../../core/src/store";
-import { alerts, formatTokens, pause, pickAgent, resume, status, stop, timeAgo, usage } from "./commands";
+import { alerts, formatTokens, pause, pickAgent, resume, route, status, stop, timeAgo, usage } from "./commands";
 
 const dirs: string[] = [];
 afterEach(() => {
@@ -323,5 +323,49 @@ describe("agents and disconnect", () => {
     expect(lines.join("\n")).toContain("Nothing to clean up");
     expect(await disconnect(io, ["--nope"], env(home, false), home)).toBe(1);
     expect(errs[0]).toContain("Unknown option");
+  });
+});
+
+describe("route", () => {
+  it("shows the default (suggest only) and changes mode, targets and pins", async () => {
+    const { store, io, lines, errs } = setup();
+    expect(await route(store, io, [])).toBe(0);
+    expect(lines.join("\n")).toContain("Model routing: suggest");
+    expect(lines.join("\n")).toContain("claude-sonnet-5-5 at low effort");
+
+    expect(await route(store, io, ["auto"])).toBe(0);
+    expect(store.config().routing.mode).toBe("auto");
+    expect(await route(store, io, ["set", "trivial", "claude-haiku-5-5", "low"])).toBe(0);
+    expect(store.config().routing.targets.trivial).toEqual({ model: "claude-haiku-5-5", effort: "low" });
+    expect(await route(store, io, ["set", "simple", "none"])).toBe(0);
+    expect(store.config().routing.targets.simple).toBeNull();
+
+    const folder = fs.mkdtempSync(path.join(os.tmpdir(), "argus-pin-"));
+    dirs.push(folder);
+    expect(await route(store, io, ["pin", "keep"], folder)).toBe(0);
+    expect(Object.values(store.config().routing.pins)).toEqual(["keep"]);
+    expect(await route(store, io, ["pin", "claude-opus-5-5", "--everywhere"], folder)).toBe(0);
+    expect(store.config().routing.pins["*"]).toBe("claude-opus-5-5");
+    expect(await route(store, io, ["unpin"], folder)).toBe(0);
+    expect(await route(store, io, ["unpin", "--everywhere"], folder)).toBe(0);
+    expect(store.config().routing.pins).toEqual({});
+
+    expect(await route(store, io, ["set", "trivial", "x", "turbo"])).toBe(1);
+    expect(await route(store, io, ["pin", "bad model!"])).toBe(1);
+    expect(await route(store, io, ["sideways"])).toBe(1);
+    expect(errs.length).toBe(3);
+  });
+
+  it("reports what routing saved and why it switched", async () => {
+    const { store, io, lines } = setup();
+    store.appendUsage({ ts: NOW - 1000, agentId: "ag_one", provider: "anthropic", model: "claude-sonnet-5-5", input_tokens: 1000, output_tokens: 100, cache_read_tokens: 0, latency_ms: 1, cost_usd: 1, routed_from: "claude-fable-5-2", original_cost_usd: 4 });
+    store.appendRouting({ id: "r1", ts: NOW - 1000, agentId: "ag_one", kind: "switch", from: "claude-fable-5-2", to: "claude-sonnet-5-5", reasons: ["a small edit"], applied: true, message: "This turn looks trivial: running it on claude-sonnet-5-5" });
+    await route(store, io, []);
+    const text = lines.join("\n");
+    expect(text).toContain("1 requests ran on a cheaper model, saving about $3.00");
+    expect(text).toContain("This turn looks trivial");
+    lines.length = 0;
+    usage(store, io, []);
+    expect(lines.join("\n")).toContain("Estimated saved by model routing: $3.00");
   });
 });

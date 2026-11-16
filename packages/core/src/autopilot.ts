@@ -7,6 +7,7 @@ import type { Finding, Severity } from "./findings";
 import type { GateResult } from "./gates";
 import { inspectChanges } from "./inspect";
 import type { Plan, PlanStep } from "./planner";
+import type { RouteHint } from "./routing";
 import type { Store } from "./store";
 import { assessClaims } from "./supervisor";
 import { diffSnapshots, takeSnapshot, type Snapshot } from "./workspace";
@@ -73,12 +74,24 @@ export interface AutopilotDeps {
   /** The agent id the proxy records this run under, so a loop it catches can be answered. */
   agentId?: string;
   checkTimeoutMs?: number;
+  /** Tells model routing about the step that is about to be sent: its size, and how many attempts already failed. */
+  route?: (hint: RouteHint) => void;
   /** For tests. */
   snapshot?: typeof takeSnapshot;
   pollMs?: number;
 }
 
 const RANK: Record<Severity, number> = { INFO: 0, WARN: 1, CRITICAL: 2 };
+
+/**
+ * What model routing should know about a step: small steps may run on a cheaper model; anything else (or a step the
+ * planner did not size) stays on yours. Each failed attempt climbs one tier back towards your model.
+ */
+export function routeHint(step: PlanStep, attempt: number): RouteHint {
+  const escalate = Math.max(0, attempt - 1);
+  if (step.size === "small") return { difficulty: "simple", escalate, reason: escalate ? `attempt ${attempt} of a small step` : "the plan marks this step as small" };
+  return { difficulty: step.size === "large" ? "hard" : "normal", escalate, reason: `the plan marks this step as ${step.size ?? "unsized"}` };
+}
 
 export function newRun(goal: string, root: string, plan: Plan, answers: AutopilotRun["answers"], now = Date.now()): AutopilotRun {
   return {
@@ -232,6 +245,7 @@ export async function executePlan(run: AutopilotRun, deps: AutopilotDeps): Promi
       state.attempts++;
       let reply: TurnResult;
       const loopWatch = watchForLoop(deps, run, step);
+      deps.route?.(routeHint(step, state.attempts));
       try {
         reply = await deps.agent.send(message);
       } catch (e) {

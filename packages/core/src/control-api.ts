@@ -3,7 +3,7 @@ import http from "node:http";
 import { Controls } from "./control";
 import { loadPrices } from "./prices";
 import type { NotificationRow, Store } from "./store";
-import { summarizeUsage } from "./usage";
+import { summarizeRouting, summarizeUsage } from "./usage";
 import { parseRange } from "./usage-core";
 
 /**
@@ -189,6 +189,10 @@ export function startControlApi(opts: ControlApiOptions): Promise<RunningControl
     if (get("/api/incidents")) {
       const limit = Math.min(500, Math.max(1, Number(url.searchParams.get("limit")) || 50));
       return send(res, 200, { incidents: store.incidents().slice(-limit).reverse() });
+    }
+    if (get("/api/routing")) {
+      const since = Date.now() - 7 * 86_400_000;
+      return send(res, 200, { config: store.config().routing, savings7d: summarizeRouting(store.usage(), since), decisions: store.routing(since).slice(-50).reverse() });
     }
     if (get("/api/config")) {
       const c = store.config();

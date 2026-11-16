@@ -3,7 +3,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { executePlan, formatRun, newRun, planCommands, stepMessage, type AgentLike, type AutopilotRun } from "./autopilot";
+import { executePlan, formatRun, newRun, planCommands, routeHint, stepMessage, type AgentLike, type AutopilotRun } from "./autopilot";
+import type { RouteHint } from "./routing";
 import { ClaudeSession, SessionError, type TurnResult } from "./claude-session";
 import type { Plan } from "./planner";
 import { Store, type AgentRecord } from "./store";
@@ -97,6 +98,20 @@ describe("executePlan", () => {
     expect(received[1]).toContain("ArgusOps checked step 1 (Create a.txt) and it is not done yet");
     expect(received[1]).toContain("a.txt does not exist");
     expect(received[1]).toContain("Attempt 2 of 3");
+  });
+
+  it("tells model routing each step's size, and climbs a tier for each failed attempt", async () => {
+    const sized: Plan = { summary: "s", steps: [{ ...plan.steps[0], size: "small" }, { ...plan.steps[1], size: "large" }] };
+    const { store, root, run } = setup(sized);
+    const hints: RouteHint[] = [];
+    const { agent } = scripted(root, [
+      () => reply("Done."), // not done: attempt 2 climbs a tier
+      () => (write(root, "a.txt", "hello\n"), reply("ok")),
+      () => (write(root, "b.txt", "b\n"), reply("ok")),
+    ]);
+    await executePlan(run, { store, agent, route: (h) => hints.push(h) });
+    expect(hints.map((h) => [h.difficulty, h.escalate])).toEqual([["simple", 0], ["simple", 1], ["hard", 0]]);
+    expect(routeHint({ ...plan.steps[0] }, 1).difficulty).toBe("normal"); // unsized: stays on your model
   });
 
   it("stops and waits for you after the last attempt, saying how to continue", async () => {

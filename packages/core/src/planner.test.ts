@@ -43,6 +43,12 @@ describe("validatePlan", () => {
     expect(r.plan.steps.map((s) => s.id)).toEqual(["step-1", "step-2"]);
     expect(r.plan.steps[0].acceptance).toHaveLength(2);
   });
+  it("keeps a valid step size and drops anything else", () => {
+    const r = validatePlan({ steps: [{ title: "a", instructions: "x", size: "small" }, { title: "b", instructions: "y", size: "huge" }] });
+    if (!r.ok) throw new Error(r.error);
+    expect(r.plan.steps[0].size).toBe("small");
+    expect("size" in r.plan.steps[1]).toBe(false);
+  });
   it("rejects plans with no steps, too many steps, or steps without instructions", () => {
     expect(validatePlan({ steps: [] }).ok).toBe(false);
     expect(validatePlan({ steps: Array.from({ length: 13 }, (_, i) => ({ title: `s${i}`, instructions: "x" })) }).ok).toBe(false);
