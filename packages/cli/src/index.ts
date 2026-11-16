@@ -7,6 +7,8 @@ import { Store } from "../../core/src/store";
 import { startControlApi } from "../../core/src/control-api";
 import { webhookNotifier } from "../../core/src/webhooks";
 import * as commands from "./commands";
+import { autopilotCommand } from "./autopilot-cmd";
+import { createInterface } from "node:readline/promises";
 
 export const VERSION = "0.5.0";
 
@@ -32,6 +34,9 @@ Usage:
   argus project [status|allow|deny] [folder]      allow ArgusOps to run this project's tests, lint and build
   argus supervisor [off|alert|redirect] [--max-turn-tokens <n>]
                                                   how ArgusOps reacts to problems in an agent's turn (default: alert)
+  argus autopilot "goal" [--yes] [--model m] [--planner-model m] [--max-attempts n] [--allow-bash] [--no-questions]
+                                                  plan it, show you the plan, then build it step by step with Claude Code, checking each step
+  argus autopilot list | status [id] | pause [id] | stop [id] | resume [id] [--yes]
   argus agents                                    the AI agents and editors on this machine, and what ArgusOps can do for each
   argus disconnect [--force]                      remove a leftover editor setting that points at a proxy that is gone
   argus serve [--port <n>]                        run the local control API (127.0.0.1 only) for apps and editors
@@ -186,6 +191,14 @@ export async function main(argv: string[]): Promise<number> {
     }
     case "supervisor":
       return commands.supervisor(new Store(), io, rest);
+    case "autopilot": {
+      const rl = process.stdin.isTTY ? createInterface({ input: process.stdin, output: process.stdout }) : null;
+      try {
+        return await autopilotCommand(rest, new Store(), { out, err, ask: rl ? (q) => rl.question(q) : undefined });
+      } finally {
+        rl?.close();
+      }
+    }
     case "agents":
       return commands.agents(io);
     case "disconnect":
