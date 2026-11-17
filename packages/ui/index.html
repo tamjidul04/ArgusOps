@@ -7,18 +7,31 @@
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-<header>
-  <div class="brand"><span class="logo" aria-hidden="true"></span><strong>ArgusOps</strong><span id="conn" class="conn" role="status"></span></div>
-  <nav id="tabs" role="tablist">
-    <button role="tab" data-tab="agents" aria-selected="true">Agents <span class="badge" id="b-agents" hidden></span></button>
-    <button role="tab" data-tab="autopilot" aria-selected="false">Autopilot</button>
-    <button role="tab" data-tab="usage" aria-selected="false">Usage</button>
-    <button role="tab" data-tab="alerts" aria-selected="false">Alerts <span class="badge" id="b-alerts" hidden></span></button>
-    <button role="tab" data-tab="routing" aria-selected="false">Models</button>
-  </nav>
-</header>
-<main id="main"></main>
-<footer>Everything stays on this computer. There is no ArgusOps server.</footer>
+<div class="shell">
+  <aside class="side">
+    <div class="brand"><span class="logo" aria-hidden="true"></span><strong>ArgusOps</strong></div>
+    <nav id="tabs" role="tablist" aria-label="Sections">
+      <span class="group" aria-hidden="true">Watch</span>
+      <button role="tab" data-tab="overview" aria-selected="true"><i aria-hidden="true"></i>Overview</button>
+      <button role="tab" data-tab="agents" aria-selected="false"><i aria-hidden="true"></i>Agents <span class="badge" id="b-agents" hidden></span></button>
+      <button role="tab" data-tab="alerts" aria-selected="false"><i aria-hidden="true"></i>Alerts <span class="badge" id="b-alerts" hidden></span></button>
+      <span class="group" aria-hidden="true">Build</span>
+      <button role="tab" data-tab="autopilot" aria-selected="false"><i aria-hidden="true"></i>Autopilot</button>
+      <span class="group" aria-hidden="true">Spend</span>
+      <button role="tab" data-tab="usage" aria-selected="false"><i aria-hidden="true"></i>Usage</button>
+      <button role="tab" data-tab="routing" aria-selected="false"><i aria-hidden="true"></i>Models</button>
+    </nav>
+    <p class="side-note">Everything stays on this computer. There is no ArgusOps server.</p>
+  </aside>
+  <div class="body">
+    <header class="top">
+      <h1 id="title">Overview</h1>
+      <span id="conn" class="conn" role="status"></span>
+      <button id="theme" class="btn icon" type="button" aria-label="Switch between light and dark"></button>
+    </header>
+    <main id="main"></main>
+  </div>
+</div>
 <script src="/app.js"></script>
 </body>
 </html>

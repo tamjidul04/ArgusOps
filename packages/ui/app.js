@@ -4,13 +4,13 @@
 
 const $ = (sel) => document.querySelector(sel);
 const main = $("#main");
-const state = { tab: "agents", range: "7d", agents: null, alerts: null, autopilot: null, usage: null, routing: null, drafts: new Map(), error: null };
+const state = { tab: "overview", range: "7d", agents: null, alerts: null, autopilot: null, usage: null, routing: null, drafts: new Map(), error: null };
 
 /* ---------------------------------- token ---------------------------------- */
 // `argus ui` opens this page as /#t=<token>. A fragment is never sent to any server; it is stored for this tab and removed from the address bar.
 let token = "";
 try {
-  const wanted = /[#&]tab=(agents|autopilot|usage|alerts|routing)(?![A-Za-z])/.exec(location.hash);
+  const wanted = /[#&]tab=(overview|agents|autopilot|usage|alerts|routing)(?![A-Za-z])/.exec(location.hash);
   if (wanted) {
     state.tab = wanted[1];
     for (const t of document.querySelectorAll("#tabs button")) t.setAttribute("aria-selected", String(t.dataset.tab === state.tab));
@@ -219,7 +219,7 @@ function viewUsage() {
   out.append(h("p", { class: "muted" }, "Costs are estimates from list prices. Your provider's bill is what counts."));
   return out;
 }
-const tile = (n, label) => h("div", { class: "tile" }, h("div", { class: "n" }, n), h("div", { class: "muted" }, label));
+const tile = (n, label, tone) => h("div", { class: "tile " + (tone || "") }, h("div", { class: "n" }, n), h("div", { class: "muted" }, label));
 function table(head, rows) {
   return h("div", { class: "card", style: "padding:6px 8px;overflow-x:auto" }, h("table", null, h("thead", null, h("tr", null, ...head.map((x, i) => h("th", { class: i ? "num" : "" }, x)))), h("tbody", null, ...rows.map((r) => h("tr", null, ...r.map((c, i) => h("td", { class: i ? "num" : "" }, c)))))));
 }
@@ -268,7 +268,50 @@ function viewRouting() {
   return out;
 }
 
-const VIEWS = { agents: viewAgents, autopilot: viewAutopilot, usage: viewUsage, alerts: viewAlerts, routing: viewRouting };
+/* The landing page: the few things worth a glance. */
+const TITLES = { overview: "Overview", agents: "Agents", autopilot: "Autopilot", usage: "Usage", alerts: "Alerts", routing: "Models" };
+const RANGE_LABEL = { "24h": "last 24 hours", "7d": "last 7 days", "30d": "last 30 days" };
+function viewOverview() {
+  const out = h("div");
+  const agents = state.agents || [];
+  const live = (a) => (a.status === "ACTIVE" || a.status === "PAUSED") && Date.now() - a.lastSeen <= STALE_MS;
+  const running = agents.filter((a) => a.status === "ACTIVE" && live(a)).length;
+  const waiting = agents.filter((a) => a.status === "PAUSED" && live(a));
+  const runs = state.autopilot || [];
+  const asking = runs.filter((r) => r.status === "needs-you" || r.status === "awaiting-approval");
+  const u = state.usage;
+  const saved = state.routing && state.routing.savings7d;
+  out.append(
+    h("div", { class: "tiles" },
+      tile(String(running), "agents running"),
+      tile(String(waiting.length + asking.length), "waiting for you", "t3"),
+      u ? tile(fmtUsd(u.totals.costUsd), "estimated cost, " + RANGE_LABEL[state.range], "t2") : tile("…", "estimated cost", "t2"),
+      saved && saved.calls ? tile(fmtUsd(saved.savedUsd), "saved by model routing, 7 days", "t4") : u ? tile(String(u.totals.loopsCaught), "loops caught", "t4") : null)
+  );
+  const left = h("div", { class: "card" }, h("div", { class: "row sp" }, h("span", { class: "title" }, "Spend"), h("span", { class: "muted" }, RANGE_LABEL[state.range])));
+  if (u && u.buckets.length) {
+    const max = Math.max(...u.buckets.map((b) => b.costUsd), 0.000001);
+    left.append(h("div", { class: "bars", role: "img", "aria-label": "Cost per period" }, ...u.buckets.map((b) => h("div", { class: "bar", title: `${b.bucket}: ${fmtUsd(b.costUsd)}`, style: `height:${Math.max(2, (b.costUsd / max) * 100)}%` }))));
+  } else left.append(h("div", { class: "muted" }, u ? "Nothing recorded yet." : "Loading…"));
+  const right = h("div", { class: "card" }, h("div", { class: "title" }, "Needs you"));
+  const items = [];
+  for (const a of waiting) items.push(h("div", { class: "item" }, h("div", { class: "row" }, h("span", { class: "title" }, a.name), pill("paused", "warn")), h("div", { class: "muted" }, a.reason || "Paused.")));
+  for (const r of asking) items.push(h("div", { class: "item" }, h("div", { class: "row" }, h("span", { class: "title" }, r.goal), pill(r.status === "needs-you" ? "needs you" : "approve plan", "warn")), h("div", { class: "muted" }, r.needsYou || "Review the plan before it starts.")));
+  for (const n of (state.alerts || []).filter((x) => !x.read).slice(0, 3)) items.push(h("div", { class: "item" }, h("div", { class: "row sp" }, h("span", { class: "title" }, n.title), h("span", { class: "muted" }, ago(n.ts)))));
+  right.append(...(items.length ? items : [h("div", { class: "muted", style: "margin-top:8px" }, "Nothing is waiting. You will see it here the moment an agent needs you.")]));
+  out.append(h("div", { class: "grid2" }, left, right));
+  const active = runs.filter((r) => r.status === "running" || r.status === "paused");
+  if (active.length) out.append(h("h3", null, "Autopilot"));
+  for (const r of active) {
+    const done = r.steps.filter((s) => s.status === "passed" || s.status === "skipped").length;
+    const bar = h("div", { style: `width:${r.steps.length ? Math.round((done / r.steps.length) * 100) : 0}%` });
+    out.append(h("div", { class: "card" }, h("div", { class: "row sp" }, h("span", { class: "title" }, r.goal), h("span", { class: "muted" }, `${done} of ${r.steps.length} steps · ${fmtUsd(r.costUsd)}`)), h("div", { class: "meter", role: "img", "aria-label": `${done} of ${r.steps.length} steps done` }, bar)));
+  }
+  if (!agents.length && !runs.length) out.append(empty(h("p", null, "No agent is being supervised yet."), h("p", null, "Start one with ", h("code", null, "argus run claude"), ", or let Autopilot build something with ", h("code", null, 'argus autopilot "your goal"'), ".")));
+  return out;
+}
+
+const VIEWS = { overview: viewOverview, agents: viewAgents, autopilot: viewAutopilot, usage: viewUsage, alerts: viewAlerts, routing: viewRouting };
 
 /* ----------------------------------- loop ----------------------------------- */
 let lastShown = "";
@@ -294,6 +337,7 @@ function render(force) {
   const snapshot = state.tab + JSON.stringify([state.agents, state.alerts, state.autopilot, state.usage, state.routing, state.range]);
   if (!force && (typing || snapshot === lastShown)) return;
   lastShown = snapshot;
+  $("#title").textContent = TITLES[state.tab];
   main.replaceChildren(VIEWS[state.tab]());
 }
 
@@ -305,7 +349,7 @@ async function refresh() {
     state.alerts = al.alerts ?? al.notifications ?? [];
     state.autopilot = ap.runs;
     state.routing = rt;
-    if (state.tab === "usage" || !state.usage) state.usage = await api("/api/usage?range=" + state.range);
+    if (state.tab === "usage" || state.tab === "overview" || !state.usage) state.usage = await api("/api/usage?range=" + state.range);
     state.error = null;
   } catch (e) {
     state.error = e.status === 401 ? "wrong token: reopen with argus ui" : "can't reach ArgusOps";
@@ -313,13 +357,34 @@ async function refresh() {
   render(false);
 }
 
+/* light / dark: follows the system until the person picks; the choice is remembered when storage allows */
+const isDark = () => (document.documentElement.dataset.theme ? document.documentElement.dataset.theme === "dark" : !!window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches);
+function applyTheme(t) {
+  if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+  $("#theme").textContent = isDark() ? "☀" : "☾";
+}
+try {
+  applyTheme(localStorage.getItem("argus-theme"));
+} catch {
+  applyTheme(null);
+}
+$("#theme").addEventListener("click", () => {
+  const next = isDark() ? "light" : "dark";
+  applyTheme(next);
+  try {
+    localStorage.setItem("argus-theme", next);
+  } catch {
+    /* not remembered */
+  }
+});
+
 $("#tabs").addEventListener("click", (e) => {
   const b = e.target.closest("button[data-tab]");
   if (!b) return;
   state.tab = b.dataset.tab;
   for (const t of document.querySelectorAll("#tabs button")) t.setAttribute("aria-selected", String(t === b));
   render(true);
-  if (state.tab === "usage") refresh();
+  if (state.tab === "usage" || state.tab === "overview") refresh();
 });
 refresh();
 setInterval(refresh, 2000);

@@ -1,9 +1,9 @@
 import type { Data } from "./model";
 import { isGone, isWaiting } from "./model";
 
-export const TABS = ["agents", "autopilot", "usage", "alerts", "models"] as const;
+export const TABS = ["overview", "agents", "autopilot", "usage", "alerts", "models"] as const;
 export type Tab = (typeof TABS)[number];
-export const TAB_LABEL: Record<Tab, string> = { agents: "Agents", autopilot: "Autopilot", usage: "Usage", alerts: "Alerts", models: "Models" };
+export const TAB_LABEL: Record<Tab, string> = { overview: "Overview", agents: "Agents", autopilot: "Autopilot", usage: "Usage", alerts: "Alerts", models: "Models" };
 
 export interface View {
   tab: Tab;
@@ -27,7 +27,7 @@ export type Effect =
   | { type: "alerts-read" }
   | { type: "quit" };
 
-export const initialView = (): View => ({ tab: "agents", sel: { agents: 0, autopilot: 0, usage: 0, alerts: 0, models: 0 }, mode: "normal", input: "", inputKind: null, confirm: null, message: "", help: false });
+export const initialView = (): View => ({ tab: "overview", sel: { overview: 0, agents: 0, autopilot: 0, usage: 0, alerts: 0, models: 0 }, mode: "normal", input: "", inputKind: null, confirm: null, message: "", help: false });
 
 const ESC = String.fromCharCode(27);
 const SEQUENCE = new RegExp("^" + ESC + "(\\[[0-9;]*[A-Za-z~]|O[A-D])");
@@ -59,7 +59,7 @@ export function parseKeys(chunk: string): string[] {
   return out;
 }
 
-const count = (view: View, data: Data) => ({ agents: data.agents.length, autopilot: data.runs.length, usage: 0, alerts: data.alerts.length, models: 3 })[view.tab];
+const count = (view: View, data: Data) => ({ overview: 0, agents: data.agents.length, autopilot: data.runs.length, usage: 0, alerts: data.alerts.length, models: 3 })[view.tab];
 export const MODES = ["suggest", "auto", "off"] as const;
 
 /** One key in, the new view and anything that should now happen out. Pure, so it can be tested without a terminal. */
@@ -94,7 +94,7 @@ export function handleKey(view: View, key: string, data: Data): { view: View; ef
   const i = TABS.indexOf(view.tab);
   if (key === "tab" || key === "right") return { view: { ...view, tab: TABS[(i + 1) % TABS.length], message: "" }, effects: [] };
   if (key === "shift-tab" || key === "left") return { view: { ...view, tab: TABS[(i + TABS.length - 1) % TABS.length], message: "" }, effects: [] };
-  if (/^[1-5]$/.test(key)) return { view: { ...view, tab: TABS[Number(key) - 1], message: "" }, effects: [] };
+  if (/^[1-6]$/.test(key)) return { view: { ...view, tab: TABS[Number(key) - 1], message: "" }, effects: [] };
 
   const n = count(view, data);
   const sel = view.sel[view.tab];

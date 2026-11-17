@@ -23,7 +23,7 @@ const usage = { range: "7d", totals: { inputTokens: 1000, outputTokens: 200, cal
 const routing = { config: { mode: "suggest" }, savings7d: { calls: 0, actualUsd: 0, originalUsd: 0, savedUsd: 0 }, decisions: [] };
 
 function start(o: { hash?: string; stored?: string; routes?: Record<string, unknown>; status?: number } = {}) {
-  const dom = new JSDOM(html, { runScripts: "outside-only", url: `http://127.0.0.1:47822/${o.hash ?? ""}`, pretendToBeVisual: true });
+  const dom = new JSDOM(html, { runScripts: "outside-only", url: `http://127.0.0.1:47822/${o.hash ?? (o.stored ? "#tab=agents" : "")}`, pretendToBeVisual: true });
   open.push(dom);
   const w = dom.window as unknown as Record<string, any>;
   if (o.stored) w.sessionStorage.setItem("argus-token", o.stored);
@@ -175,6 +175,32 @@ describe("an agent that stopped checking in", () => {
     expect(text).toContain("paused (not running)");
     expect(Array.from(doc.querySelectorAll("#main button"))).toHaveLength(0);
     expect(doc.getElementById("b-agents")!.hidden).toBe(true);
+  });
+});
+
+describe("the overview", () => {
+  it("is the landing page: counts, who needs you, and spend", async () => {
+    const waiting = agent({ id: "ag_2", name: "Held agent", status: "PAUSED", desired: "PAUSE", reason: "Repeated 3 times: npm test" });
+    const { doc } = start({ stored: "t", hash: "#x=1", routes: { "/api/agents": { agents: [agent(), waiting], unreadAlerts: 0 } } });
+    await flush();
+    expect(doc.querySelector('[data-tab="overview"]')!.getAttribute("aria-selected")).toBe("true");
+    expect(doc.getElementById("title")!.textContent).toBe("Overview");
+    const text = doc.getElementById("main")!.textContent!;
+    expect(text).toContain("agents running");
+    expect(text).toContain("Held agent");
+    expect(text).toContain("Repeated 3 times: npm test");
+    expect(text).toContain("$0.50");
+  });
+
+  it("switches between light and dark and remembers the choice", async () => {
+    const { doc, w } = start({ stored: "t" });
+    await flush();
+    (doc.getElementById("theme") as HTMLElement).click();
+    const first = doc.documentElement.dataset.theme;
+    expect(["light", "dark"]).toContain(first);
+    expect(w.localStorage.getItem("argus-theme")).toBe(first);
+    (doc.getElementById("theme") as HTMLElement).click();
+    expect(doc.documentElement.dataset.theme).not.toBe(first);
   });
 });
 
