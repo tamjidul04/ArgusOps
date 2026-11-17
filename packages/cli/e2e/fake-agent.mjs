@@ -16,7 +16,8 @@ async function ask(messages, label) {
     body: JSON.stringify({ model: "claude-sonnet-4-5", max_tokens: 100, stream: true, messages }),
   });
   const text = await res.text();
-  const reply = /"text":"([^"]*)"/.exec(text)?.[1] ?? "(no text)";
+  // a streamed reply arrives in pieces: join every text piece
+  const reply = [...text.matchAll(/"text":"([^"]*)"/g)].map((m) => m[1]).join("").trim() || "(no text)";
   console.log(`[fake-agent] ${label}: HTTP ${res.status} after ${Date.now() - started}ms -> ${reply}`);
   return res.status;
 }

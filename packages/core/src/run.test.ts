@@ -275,3 +275,21 @@ describe("the supervisor during a real proxied session", () => {
     expect(await running).toBe(0);
   }, 150_000);
 });
+
+describe("starting the agent", () => {
+  it.runIf(process.platform === "win32")("works when the program's path contains spaces (Windows)", async () => {
+    const fsm = await import("node:fs");
+    const osm = await import("node:os");
+    const pathm = await import("node:path");
+    const dir = fsm.mkdtempSync(pathm.join(osm.tmpdir(), "argus dir with spaces "));
+    const prog = pathm.join(dir, "agent.cmd");
+    fsm.writeFileSync(prog, "@echo off\r\necho %1 > \"%~dp0out.txt\"\r\nexit /b 0\r\n");
+    try {
+      const code = await runAgent({ label: "x", type: "NODE", command: prog, args: ["hello world"], provider: "anthropic", upstream: "http://127.0.0.1:1", baseUrlEnv: "ANTHROPIC_BASE_URL", cwd: dir, hub: null, write: () => undefined });
+      expect(code).toBe(0);
+      expect(fsm.readFileSync(pathm.join(dir, "out.txt"), "utf8").trim()).toBe('"hello world"');
+    } finally {
+      fsm.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});

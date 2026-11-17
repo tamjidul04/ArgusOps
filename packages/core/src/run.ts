@@ -233,7 +233,7 @@ export async function runAgent(opts: RunOptions): Promise<number> {
     const env = { ...process.env, [opts.baseUrlEnv]: baseUrl };
     const win = process.platform === "win32";
     child = win
-      ? spawn([opts.command!, ...opts.args.map(quoteWindowsArg)].join(" "), [], { stdio: "inherit", env, cwd: opts.cwd, shell: true })
+      ? spawn([quoteWindowsArg(opts.command!), ...opts.args.map(quoteWindowsArg)].join(" "), [], { stdio: "inherit", env, cwd: opts.cwd, shell: true })
       : spawn(opts.command!, opts.args, { stdio: "inherit", env, cwd: opts.cwd });
     const c = child;
     exit = new Promise<number>((resolve) => {
