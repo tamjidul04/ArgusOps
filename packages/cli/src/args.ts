@@ -1,4 +1,3 @@
-import path from "node:path";
 
 export interface RunSpec {
   offline: boolean;
@@ -104,7 +103,8 @@ export function parseRunArgs(argv: string[], env: Record<string, string | undefi
   if (first === "--") {
     const [command, ...args] = argv.slice(i + 1);
     if (!command) return { ok: false, error: "Nothing to run after `--`." };
-    const base = path.basename(command).replace(/\.(exe|cmd|bat)$/i, "");
+    // split on both kinds of slash: a Windows path (C:\tools\agent.exe) must work wherever the CLI runs
+    const base = (command.split(/[\\/]/).pop() ?? command).replace(/\.(exe|cmd|bat)$/i, "");
     const type = base.toUpperCase().replace(/[^A-Z0-9_]/g, "_");
     spec = {
       label: values["--name"] ?? base,
