@@ -21,8 +21,17 @@ jobs:
           cache: npm
       - run: git config --global user.email ci@example.com && git config --global user.name ci
       - run: npm ci
-      - run: npx tsc --noEmit -p tsconfig.json
-      - run: npx vitest run
+      # the desktop app has its own package (Electron); only its types are needed here, not the download
+      - name: Install desktop app types
+        run: npm ci
+        working-directory: packages/desktop
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
+      # the product is packages/; src/ is the parked website and is not checked here
+      - run: npx tsc -p tsconfig.packages.json
+      - run: npx vitest run packages
       - run: npm run cli:build
       - name: CLI starts
         run: node packages/cli/dist/argus.mjs version
+      - name: End-to-end test (free: fake agent and fake model)
+        run: node packages/cli/e2e/run-e2e.mjs
