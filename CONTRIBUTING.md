@@ -13,7 +13,7 @@ Node 20 or newer. The engine is in `packages/core`, commands and the terminal ap
 
 ## Ground rules
 
-- **Tests with every change.** The suite must pass: `npm test`, and `npx tsc --noEmit -p tsconfig.json`.
+- **Tests with every change.** The suite must pass: `npm test`, and `npx tsc -p tsconfig.packages.json`.
 - **Nothing leaves the machine.** No telemetry, no accounts, no calls to anything but the user's model provider (and a webhook the user added).
 - **Never run a project's commands without the user's permission.** Use the consent code in `packages/core/src/gates.ts`.
 - **Text from agents is untrusted.** In the page use `textContent` only (no `innerHTML`); in the terminal app pass it through `clean()`.

@@ -126,7 +126,8 @@ export function detectGates(root: string): Gate[] {
 export function projectKey(root: string): string {
   let real = root;
   try {
-    real = fs.realpathSync(root);
+    // .native also expands Windows 8.3 short names (RUNNER~1), which git and the shell can hand us instead of the long name
+    real = fs.realpathSync.native(root);
   } catch {
     real = path.resolve(root);
   }
