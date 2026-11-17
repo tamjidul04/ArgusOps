@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { loadPrices, DEFAULT_PRICES } from "./prices";
 import { summarizeUsage } from "./usage";
 import type { IncidentRow, UsageRow } from "./store";
@@ -53,7 +53,15 @@ describe("summarizeUsage", () => {
 });
 
 describe("loadPrices", () => {
-  const home = () => fs.mkdtempSync(path.join(os.tmpdir(), "argus-prices-"));
+  const made: string[] = [];
+  afterEach(() => {
+    for (const d of made.splice(0)) fs.rmSync(d, { recursive: true, force: true });
+  });
+  const home = () => {
+    const d = fs.mkdtempSync(path.join(os.tmpdir(), "argus-prices-"));
+    made.push(d);
+    return d;
+  };
 
   it("uses the built-in prices when there is no file", () => {
     expect(loadPrices(home())).toEqual(DEFAULT_PRICES);

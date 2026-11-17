@@ -1,10 +1,18 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { pointWorkspaceAtProxy } from "./ide-settings";
 
-const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), "argus-ide-"));
+const made: string[] = [];
+afterEach(() => {
+  for (const d of made.splice(0)) fs.rmSync(d, { recursive: true, force: true });
+});
+const tmp = () => {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), "argus-ide-"));
+  made.push(d);
+  return d;
+};
 const read = (d: string) => JSON.parse(fs.readFileSync(path.join(d, ".vscode", "settings.json"), "utf8"));
 
 describe("pointWorkspaceAtProxy", () => {
