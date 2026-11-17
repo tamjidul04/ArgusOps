@@ -104,7 +104,7 @@ There is also a desktop app (a window and tray icon around the same engine): `np
 | Other OpenAI-format agents | Written and tested against a stand-in; **not yet run for real** |
 | Roo Code, Cline | Detected and described; **not yet verified** |
 | Copilot, Gemini Code Assist, Antigravity's own agent | **Observe only** through `argus check`/`argus watch`: they offer no way to route their traffic through ArgusOps |
-| Linux and macOS | **Not yet tested.** Developed and verified on Windows; automated tests for all three systems are being set up |
+| Linux and macOS | Automated tests (including an end-to-end run with a fake agent) pass on Linux, macOS and Windows with Node 20 and 22. Real Claude Code and Codex runs have only been done **on Windows** so far |
 
 `argus agents` lists what is on your machine and what ArgusOps can do for each.
 
