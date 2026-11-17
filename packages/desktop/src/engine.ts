@@ -7,7 +7,7 @@ export interface Engine {
   url: string;
   /** The address to open: the page with the private token in the fragment (never sent to any server). */
   openUrl: string;
-  /** True when this app started the engine and should stop it; false when an engine was already running (for example `argus ui`). */
+  /** True when this app started the engine and should stop it; false when an engine was already running (for example one started by `argus serve`). */
   owned: boolean;
   close(): Promise<void>;
 }

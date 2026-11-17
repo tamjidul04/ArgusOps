@@ -8,7 +8,7 @@ import { startControlApi } from "../../core/src/control-api";
 import { webhookNotifier } from "../../core/src/webhooks";
 import * as commands from "./commands";
 import { autopilotCommand } from "./autopilot-cmd";
-import { findUiDir, uiCommand } from "./ui-cmd";
+import { appCommand } from "./ui-cmd";
 import { runTui } from "./tui/app";
 import { createInterface } from "node:readline/promises";
 
@@ -42,8 +42,8 @@ Usage:
   argus autopilot list | status [id] | pause [id] | stop [id] | resume [id] [--yes]
   argus agents                                    the AI agents and editors on this machine, and what ArgusOps can do for each
   argus disconnect [--force]                      remove a leftover editor setting that points at a proxy that is gone
-  argus tui                                       the same screens inside this terminal (keyboard: 1-5, arrows, ? for help)
-  argus ui [--port <n>] [--no-open]               open the ArgusOps app in your browser (agents, Autopilot, usage, alerts)
+  argus app                                       open the ArgusOps desktop app (agents, Autopilot, usage, alerts, models)
+  argus tui                                       the same screens inside this terminal (keyboard: 1-6, arrows, ? for help)
   argus serve [--port <n>]                        run the local control API (127.0.0.1 only) for apps and editors
 
 Run options (before the agent):
@@ -154,7 +154,7 @@ async function serve(argv: string[]): Promise<number> {
   }
   let api;
   try {
-    api = await startControlApi({ store, port, version: VERSION, uiDir: findUiDir() ?? undefined, onNotification: webhookNotifier(store) });
+    api = await startControlApi({ store, port, version: VERSION, onNotification: webhookNotifier(store) });
   } catch (e) {
     err(e instanceof Error ? e.message : String(e));
     return 2;
@@ -221,9 +221,10 @@ export async function main(argv: string[]): Promise<number> {
       if (!process.stdin.isTTY || !process.stdout.isTTY) return (err("argus tui needs a terminal. For a one-off look use: argus status"), 1);
       return runTui({ store: new Store(), stdin: process.stdin, stdout: process.stdout });
     }
-    case "ui":
     case "app":
-      return uiCommand(rest, new Store(), io, { version: VERSION });
+      return appCommand(rest, io);
+    case "ui":
+      return (err("argus ui is now argus app: ArgusOps is a desktop app, not a web page. For the terminal version: argus tui"), 1);
     case "serve":
       return serve(rest);
     case "ide":

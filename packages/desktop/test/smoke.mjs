@@ -25,7 +25,7 @@ const info = JSON.parse(line.slice(6));
 const problems = [];
 if (info.title !== "ArgusOps") problems.push(`title is ${info.title}`);
 if (info.conn !== "connected") problems.push(`not connected: ${info.conn}`);
-if (info.tabs !== 5) problems.push(`expected 5 tabs, saw ${info.tabs}`);
+if (info.sections < 4) problems.push(`expected the sidebar sections, saw ${info.sections}`);
 if (info.node !== "undefined" || info.process !== "undefined") problems.push("the page can reach Node");
 if (info.url.includes("#")) problems.push("the token is still in the address");
 if (!info.text.includes("No agent")) problems.push(`unexpected first view: ${info.text}`);

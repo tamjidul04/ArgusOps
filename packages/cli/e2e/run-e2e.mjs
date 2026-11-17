@@ -18,7 +18,7 @@ try {
   const fake = await fakeProvider();
   cleanup.push(() => fake.child.kill());
 
-  // the local control API, as the desktop app and `argus ui` use it
+  // the local control API, as the desktop app uses it
   const apiPort = await freePort();
   const serve = start(process.execPath, [CLI, "serve", "--port", String(apiPort)], { env: { ARGUSOPS_HOME: home } });
   cleanup.push(() => serve.child.kill());

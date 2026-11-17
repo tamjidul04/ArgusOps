@@ -9,7 +9,7 @@ ArgusOps sits next to Claude Code (and other agents) and does four things:
 - **Autopilot.** Give it a goal. It asks a few questions, writes a step-by-step plan with a check for each step, and after you approve it builds the plan with Claude Code, verifying every step and correcting the agent from the evidence.
 - **Right model for the job.** Small tasks can run on a cheaper model, and move back up when the cheaper one struggles. Off by default; you see every switch and what it saved.
 
-Free and open source (MIT). **Everything stays on your computer: there is no ArgusOps server, account or database.** Your prompts and code go straight to your model provider, as they do today.
+Free and open source (MIT), and a desktop app: **there is no website, ArgusOps server, account or database. Everything stays on your computer.** Your prompts and code go straight to your model provider, as they do today.
 
 > **Status: early (0.6).** Verified with real Claude Code 2.1.x on Windows. See [What is verified](#what-is-verified) before relying on it.
 
@@ -44,7 +44,7 @@ Then run "Developer: Reload Window" once and use Claude as normal.
 **See and control everything**
 
 ```
-argus ui           # opens the app in your browser
+argus app          # opens the desktop app (window and tray icon)
 argus tui          # the same screens inside the terminal
 argus status       # one-off look
 ```
@@ -72,7 +72,7 @@ argus route            # what it would do and what it saved
 argus route auto       # switch by itself (default is: only suggest)
 ```
 
-There is also a desktop app (a window and tray icon around the same engine): `npm run desktop:start` from a source checkout. Installers are not published yet.
+The desktop app is built from a source checkout for now (`npm run desktop:start`, or `argus app` once it is built); installers are not published yet. Until then, `argus tui` and the commands do everything the app does.
 
 ## How it works
 
@@ -80,12 +80,12 @@ There is also a desktop app (a window and tray icon around the same engine): `np
  your agent  ──►  ArgusOps proxy on 127.0.0.1  ──►  model provider
                      │ counts tokens, spots loops, checks each turn
                      ▼
-              ~/.argusops/  (plain files)  ◄──  argus ui / tui / cli
+              ~/.argusops/  (plain files)  ◄──  app / tui / cli
 ```
 
 - The proxy runs on your machine. The agent is pointed at it with a base-URL setting (`ANTHROPIC_BASE_URL`); your credentials pass through untouched.
 - Everything ArgusOps remembers is in `~/.argusops/` (or `ARGUSOPS_HOME`): usage, alerts, settings, Autopilot runs. Delete the folder to forget everything. History older than 30 days is dropped.
-- The app is served by a local engine on `127.0.0.1` only, behind a private token, Host and Origin checks, and a strict content policy. See [SECURITY.md](SECURITY.md).
+- The app talks to a local engine on `127.0.0.1` only, behind a private token, Host and Origin checks, and a strict content policy. No browser is involved. See [SECURITY.md](SECURITY.md).
 
 ## What it will and will not do to your project
 
@@ -112,7 +112,7 @@ Known limits: the checks are heuristics and will sometimes miss or over-flag; wh
 
 ## Commands
 
-`argus --help` lists everything. The main ones: `run`, `proxy`, `ide`, `status`, `pause`, `resume`, `stop`, `usage`, `alerts`, `check`, `watch`, `project`, `supervisor`, `route`, `autopilot`, `agents`, `ui`, `tui`, `serve`, `webhook`.
+`argus --help` lists everything. The main ones: `run`, `proxy`, `ide`, `status`, `pause`, `resume`, `stop`, `usage`, `alerts`, `check`, `watch`, `project`, `supervisor`, `route`, `autopilot`, `agents`, `app`, `tui`, `serve`, `webhook`.
 
 ## Develop
 
@@ -123,7 +123,7 @@ npm run cli:build        # builds packages/cli/dist
 npm run test:desktop     # launches the real desktop app (needs a display)
 ```
 
-Code layout: `packages/core` (the engine), `packages/cli` (commands and terminal app), `packages/ui` (the web page), `packages/desktop` (Electron). `packages/vscode` (an older editor extension) is paused and not published. The `src/` folder is the earlier hosted website, kept for reference and not used; the last hosted version is the git tag `hosted-v1`.
+Code layout: `packages/core` (the engine), `packages/cli` (commands and terminal app), `packages/ui` (the app's screens), `packages/desktop` (Electron). `packages/vscode` (an older editor extension) is paused and not published. ArgusOps used to have a hosted website; it was removed, and the last version is the git tag `hosted-v1`.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). Report security problems as described in [SECURITY.md](SECURITY.md).
 

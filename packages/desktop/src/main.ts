@@ -4,8 +4,8 @@ import { Store } from "../../core/src/store";
 import { agentsNeedingYou, ensureEngine, type Engine } from "./engine";
 
 /**
- * The ArgusOps desktop app: a window and a tray icon around the local engine. The window shows the same page that
- * `argus ui` opens in a browser, and it can reach nothing but that page: no Node in the page, no other sites, no new windows.
+ * The ArgusOps desktop app: a window and a tray icon around the local engine. The window shows the app's own screens
+ * and can reach nothing else: no Node in the page, no other sites, no new windows. No browser is involved.
  */
 
 const VERSION = "0.6.0";
@@ -14,7 +14,7 @@ let win: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let quitting = false;
 
-/** A blue dot, drawn in code so the app needs no image files. */
+/** An evergreen dot, drawn in code so the app needs no image files. */
 function icon(size: number) {
   const buf = Buffer.alloc(size * size * 4);
   const c = (size - 1) / 2;
@@ -23,9 +23,9 @@ function icon(size: number) {
       const d = Math.hypot(x - c, y - c);
       const o = (y * size + x) * 4;
       const a = d <= size * 0.46 ? 255 : d <= size * 0.5 ? Math.round(255 * (size * 0.5 - d) / (size * 0.04)) : 0;
-      buf[o] = 0xd0; // B
-      buf[o + 1] = 0x5f; // G
-      buf[o + 2] = 0x2f; // R
+      buf[o] = 0x37; // B
+      buf[o + 1] = 0x3d; // G
+      buf[o + 2] = 0x1f; // R
       buf[o + 3] = Math.max(0, Math.min(255, a));
     }
   }
@@ -43,10 +43,10 @@ function createWindow() {
   if (!engine) return;
   const origin = new URL(engine.url).origin;
   win = new BrowserWindow({
-    width: 1040,
-    height: 780,
-    minWidth: 420,
-    minHeight: 480,
+    width: 1280,
+    height: 820,
+    minWidth: 900,
+    minHeight: 560,
     title: "ArgusOps",
     icon: icon(64),
     autoHideMenuBar: true,
@@ -79,7 +79,7 @@ async function smoke() {
   if (!w) return app.exit(2);
   await new Promise<void>((r) => w.webContents.once("did-finish-load", () => r()));
   await new Promise((r) => setTimeout(r, 2500));
-  const info = await w.webContents.executeJavaScript(`JSON.stringify({ title: document.title, conn: document.getElementById("conn").textContent, tabs: document.querySelectorAll("#tabs button").length, text: document.getElementById("main").textContent.slice(0, 80), node: typeof require, process: typeof process, url: location.href })`);
+  const info = await w.webContents.executeJavaScript(`JSON.stringify({ title: document.title, conn: document.getElementById("conn").textContent, sections: document.querySelectorAll("#side-top [data-page]").length, text: document.getElementById("main").textContent.slice(0, 600), node: typeof require, process: typeof process, url: location.href })`);
   process.stdout.write(`SMOKE ${info}\n`);
   quitting = true;
   app.quit();

@@ -13,10 +13,6 @@
 # testing
 /coverage
 
-# next.js
-/.next/
-/out/
-
 # production
 /build
 
@@ -33,17 +29,10 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
-# vercel
-.vercel
-
 # typescript
 *.tsbuildinfo
-next-env.d.ts
 
 .env
-*.db
-*.db-journal
-stitch-export/
 
 # runtime state written by the local daemon
 .argus-mutex.json
@@ -55,9 +44,6 @@ stitch-export/
 # built extension and packages
 /packages/vscode/out/
 *.vsix
-
-# the website serves this installer
-!public/downloads/argusops-vscode.vsix
 
 # local AI-agent tooling and scaffolding, not part of the product
 /.agent/
@@ -78,3 +64,6 @@ stitch-export/
 # desktop app
 /packages/desktop/node_modules/
 /packages/desktop/dist/
+
+# local design mockups from the old website
+stitch-export/

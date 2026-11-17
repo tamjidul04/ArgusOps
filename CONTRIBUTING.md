@@ -9,7 +9,7 @@ npm install
 npm test
 ```
 
-Node 20 or newer. The engine is in `packages/core`, commands and the terminal app in `packages/cli`, the web page in `packages/ui`, the desktop app in `packages/desktop` (it has its own `package.json`; run `npm install` there, and unset `ELECTRON_RUN_AS_NODE` if your editor sets it). `src/` is the older hosted website and is not used.
+Node 20 or newer. The engine is in `packages/core`, commands and the terminal app in `packages/cli`, the app's screens in `packages/ui`, the desktop app in `packages/desktop` (it has its own `package.json`; run `npm install` there, and unset `ELECTRON_RUN_AS_NODE` if your editor sets it). There is no website; the old hosted version is the git tag `hosted-v1`.
 
 ## Ground rules
 
