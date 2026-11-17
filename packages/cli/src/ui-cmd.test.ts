@@ -32,6 +32,14 @@ describe("argus app", () => {
     expect(findDesktopApp(root, { ARGUSOPS_DESKTOP: exe })).toEqual({ command: exe, args: [] });
     expect(findDesktopApp(path.join(root, "nowhere", "dist"), {})).toBeNull();
 
+    // where the Windows installer puts it
+    const local = path.join(root, "local");
+    fs.mkdirSync(path.join(local, "Programs", "ArgusOps"), { recursive: true });
+    expect(findDesktopApp(path.join(root, "nowhere", "dist"), { LOCALAPPDATA: local })).toBeNull();
+    const installed = path.join(local, "Programs", "ArgusOps", "ArgusOps.exe");
+    fs.writeFileSync(installed, "");
+    expect(findDesktopApp(path.join(root, "nowhere", "dist"), { LOCALAPPDATA: local })).toEqual({ command: installed, args: [] });
+
     // packages/cli/dist (where the built CLI sits) -> ../../desktop
     const desktop = path.join(root, "packages", "desktop");
     fs.mkdirSync(path.join(desktop, "node_modules", "electron", "dist"), { recursive: true });

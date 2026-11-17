@@ -7,12 +7,48 @@
   "license": "MIT",
   "scripts": {
     "build": "node build.mjs",
-    "start": "node build.mjs && electron ."
+    "start": "node build.mjs && electron .",
+    "dist": "node make-icon.mjs && node build.mjs && electron-builder --win nsis --publish never"
   },
   "engines": {
     "node": ">=20"
   },
   "devDependencies": {
-    "electron": "^45.3.3"
+    "electron": "^45.3.3",
+    "electron-builder": "^26.18.0"
+  },
+  "author": "MD.Tamjidul Islam",
+  "build": {
+    "appId": "io.github.tamjidul04.argusops",
+    "productName": "ArgusOps",
+    "copyright": "Copyright (c) 2026 MD.Tamjidul Islam",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "artifactName": "ArgusOps-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "ArgusOps"
+    }
   }
 }

@@ -22,11 +22,13 @@ export interface DesktopApp {
 
 /**
  * Where the desktop app is on this computer: the program named by ARGUSOPS_DESKTOP, or the one in a source checkout
- * (packages/desktop with its Electron installed). Installers will add a third place later.
+ * (packages/desktop with its Electron installed), or the place the Windows installer puts it.
  */
 export function findDesktopApp(from: string = path.dirname(fileURLToPath(import.meta.url)), env: NodeJS.ProcessEnv = process.env): DesktopApp | null {
   const named = env.ARGUSOPS_DESKTOP;
   if (named && fs.existsSync(named)) return { command: named, args: [] };
+  const installed = env.LOCALAPPDATA ? path.join(env.LOCALAPPDATA, "Programs", "ArgusOps", "ArgusOps.exe") : "";
+  if (installed && fs.existsSync(installed)) return { command: installed, args: [] };
   for (const dir of [path.resolve(from, "..", "..", "desktop"), path.resolve(from, "..", "desktop")]) {
     const marker = path.join(dir, "node_modules", "electron", "path.txt");
     if (!fs.existsSync(marker) || !fs.existsSync(path.join(dir, "package.json"))) continue;
@@ -59,6 +61,7 @@ export async function appCommand(argv: string[], io: { out(t: string): void; err
     io.err(
       [
         "The ArgusOps desktop app is not installed on this computer yet.",
+        "  Windows: download ArgusOps-Setup from the GitHub Releases page of the ArgusOps repository, then run  argus app",
         "  From a source checkout:  npm install in packages/desktop, then  npm run desktop:start",
         "  In the terminal instead:  argus tui   (the same screens)   or   argus status",
       ].join("\n")

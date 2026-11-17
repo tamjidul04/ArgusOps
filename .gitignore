@@ -64,6 +64,8 @@ yarn-error.log*
 # desktop app
 /packages/desktop/node_modules/
 /packages/desktop/dist/
+/packages/desktop/release/
+/packages/desktop/build/
 
 # local design mockups from the old website
 stitch-export/
