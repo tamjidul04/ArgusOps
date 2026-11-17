@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseRunArgs } from "./args";
+import { DEFAULT_PROXY_PORT, parseProxyArgs, parseRunArgs } from "./args";
 
 const ok = (argv: string[], env: Record<string, string> = {}) => {
   const r = parseRunArgs(argv, env);
@@ -51,5 +51,37 @@ describe("argus run", () => {
     expect(bad(["--name"])).toContain("needs a value");
     expect(bad(["--name", "--offline", "claude"])).toContain("needs a value");
     expect(bad(["--provider", "openai", "--", "x"])).toContain("isn't supported yet");
+  });
+});
+
+describe("argus proxy", () => {
+  const okp = (argv: string[], env: Record<string, string> = {}) => {
+    const r = parseProxyArgs(argv, env);
+    if (!r.ok) throw new Error(r.error);
+    return r.spec;
+  };
+  const badp = (argv: string[], env: Record<string, string> = {}) => {
+    const r = parseProxyArgs(argv, env);
+    if (r.ok) throw new Error("expected an error");
+    return r.error;
+  };
+
+  it("has sensible defaults: a fixed unusual port and a name for the IDE", () => {
+    expect(okp([])).toMatchObject({ port: DEFAULT_PROXY_PORT, label: "Claude Code (IDE)", type: "CLAUDE", provider: "anthropic", offline: false, baseUrlEnv: "ANTHROPIC_BASE_URL", upstream: "https://api.anthropic.com" });
+    expect(DEFAULT_PROXY_PORT).toBe(47821);
+  });
+
+  it("accepts a port, name, offline and upstream", () => {
+    const s = okp(["--port", "50123", "--name=VS Code", "--offline", "--upstream", "http://127.0.0.1:9000/"]);
+    expect(s).toMatchObject({ port: 50123, label: "VS Code", offline: true, upstream: "http://127.0.0.1:9000" });
+    expect(okp([], { ARGUS_UPSTREAM_ANTHROPIC: "http://localhost:8787" }).upstream).toBe("http://localhost:8787");
+  });
+
+  it("rejects a bad port, an unknown option and anything that is not an option", () => {
+    for (const p of ["80", "70000", "abc", "1.5", "-1"]) expect(badp(["--port", p])).toMatch(/port/i);
+    expect(badp(["--port"])).toMatch(/needs a value/);
+    expect(badp(["--nope"])).toMatch(/Unknown option/);
+    expect(badp(["claude"])).toMatch(/argus run claude/);
+    expect(badp(["--upstream", "ftp://x"])).toMatch(/valid URL/);
   });
 });

@@ -52,7 +52,7 @@ export default function HowItWorksPage() {
       <Container className="py-20 md:py-28">
         <ol className="space-y-6">
           {STEPS.map((s, i) => (
-            <li data-reveal key={s.title} className="grid gap-6 md:grid-cols-[4rem_1fr] md:gap-10">
+            <li data-reveal suppressHydrationWarning key={s.title} className="grid gap-6 md:grid-cols-[4rem_1fr] md:gap-10">
               <span className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white font-mono text-xs text-slate-500">{i + 1}</span>
               <div className="grid gap-6 border-b border-slate-200 pb-10 lg:grid-cols-2 lg:gap-10">
                 <div>
@@ -67,7 +67,7 @@ export default function HowItWorksPage() {
       </Container>
 
       <section className="bg-white py-20 md:py-28" aria-labelledby="data-title">
-        <Container data-reveal>
+        <Container data-reveal suppressHydrationWarning>
           <SectionHeading
             id="data-title"
             eyebrow="Data"

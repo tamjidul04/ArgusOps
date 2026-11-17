@@ -12,6 +12,12 @@ import type { ControlState } from "./state";
  *  - meters real token usage from the provider's response
  */
 
+/**
+ * What a stopped agent is told. It must be a FINAL error (403): a 503 "overloaded" makes Claude Code retry for a long
+ * time, which in an editor panel looks like endless spinning. 403 stops it at once and shows this message.
+ */
+export const STOPPED_MESSAGE = "ArgusOps: this agent was stopped. Start a new session to continue.";
+
 export interface UsageOut {
   provider: string;
   model: string;
@@ -40,6 +46,8 @@ export interface ProxyOptions {
   onIncident: (e: IncidentOut) => void;
   onNotice?: (message: string) => void;
   maxBodyBytes?: number;
+  /** Listen on this port instead of a random free one (used by `argus proxy`). */
+  port?: number;
 }
 
 export interface RunningProxy {
@@ -134,7 +142,7 @@ export function startProxy(opts: ProxyOptions): Promise<RunningProxy> {
   }
 
   async function handle(req: http.IncomingMessage, res: http.ServerResponse) {
-    if (opts.state.isKilled()) return send(res, 503, "overloaded_error", "ArgusOps: this agent was stopped.");
+    if (opts.state.isKilled()) return send(res, 403, "permission_error", STOPPED_MESSAGE);
 
     const isMessages = req.method === "POST" && MESSAGES_PATH.test(req.url ?? "");
     if (!isMessages) return forward(req, res, null, "");
@@ -187,7 +195,7 @@ export function startProxy(opts: ProxyOptions): Promise<RunningProxy> {
       } catch {
         return; // the agent disconnected while waiting
       }
-      if (opts.state.isKilled()) return send(res, 503, "overloaded_error", "ArgusOps: this agent was stopped.");
+      if (opts.state.isKilled()) return send(res, 403, "permission_error", STOPPED_MESSAGE);
       if (body) opts.detector.markResumed(body); // don't re-pause for history the operator already reviewed
       opts.onNotice?.("Resumed.");
     }
@@ -209,8 +217,10 @@ export function startProxy(opts: ProxyOptions): Promise<RunningProxy> {
   server.keepAliveTimeout = 60_000;
 
   return new Promise((resolve, reject) => {
-    server.once("error", reject);
-    server.listen(0, "127.0.0.1", () => {
+    server.once("error", (e: NodeJS.ErrnoException) =>
+      reject(e.code === "EADDRINUSE" ? new Error(`Port ${opts.port} is already in use. Is another \`argus proxy\` running? Pick another with --port.`) : e)
+    );
+    server.listen(opts.port ?? 0, "127.0.0.1", () => {
       const addr = server.address();
       if (!addr || typeof addr === "string") return reject(new Error("proxy failed to bind"));
       resolve({

@@ -104,7 +104,7 @@ export default function FeaturesPage() {
 
           <div className="divide-y divide-slate-200">
             {FEATURES.map((f) => (
-              <section data-reveal key={f.id} id={f.id} aria-labelledby={`${f.id}-title`} className="py-12 first:pt-0 last:pb-0">
+              <section data-reveal suppressHydrationWarning key={f.id} id={f.id} aria-labelledby={`${f.id}-title`} className="py-12 first:pt-0 last:pb-0">
                 <Eyebrow>{f.eyebrow}</Eyebrow>
                 <h2 id={`${f.id}-title`} className="mt-3 text-balance text-2xl font-semibold leading-tight tracking-[-0.02em] text-slate-900 md:text-3xl">
                   {f.title}

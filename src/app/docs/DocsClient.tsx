@@ -58,6 +58,18 @@ const SECTIONS: DocSection[] = [
           That starts a proxy on <code className={code}>127.0.0.1</code> and launches Claude Code through it. Everything after{" "}
           <code className={code}>claude</code> is passed to Claude Code, for example <code className={code}>argus run claude --resume</code>.
         </p>
+
+        <h3 className={h3}>Using the Claude Code panel in VS Code</h3>
+        <p className={p}>
+          With the VS Code extension there is nothing to run: sign in and click <strong>Allow</strong> when it asks to watch Claude Code. Without the
+          extension, run one command in your project folder and leave it open:
+        </p>
+        <CodeBlock className="mt-4" title="terminal" code={"argus ide"} />
+        <p className={p}>
+          It signs you in if needed and points that folder&apos;s panel at ArgusOps. Run <strong>Developer: Reload Window</strong> once in VS Code,
+          then use Claude as normal. Ctrl+C stops it and undoes the setting. Sessions show up as one agent, <em>Claude Code (IDE)</em>; Stop
+          refuses further requests with a clear error.
+        </p>
       </>
     ),
   },
@@ -84,6 +96,7 @@ const SECTIONS: DocSection[] = [
                 ["argus login", "Pairs this machine with your account through the browser."],
                 ["argus run claude [args]", "Runs Claude Code under supervision. Arguments go to Claude Code."],
                 ["argus run --offline claude", "Supervises locally and reports nothing to ArgusOps."],
+                ["argus proxy [--port 47821]", "Supervises an agent you start yourself, such as the Claude Code panel in VS Code."],
                 ["--upstream <url>", "Forwards to a different provider endpoint, for testing."],
               ].map(([c, d]) => (
                 <tr key={c}>

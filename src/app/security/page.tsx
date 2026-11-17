@@ -53,7 +53,7 @@ export default function SecurityPage() {
       />
 
       <Container className="py-20 md:py-28">
-        <ul data-reveal className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <ul data-reveal suppressHydrationWarning className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {ITEMS.map((it) => (
             <Bezel as="li" key={it.title} className="">
               <it.icon className="h-5 w-5 text-slate-900" aria-hidden="true" />

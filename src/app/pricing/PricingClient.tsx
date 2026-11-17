@@ -73,7 +73,7 @@ function Cell({ v }: { v: string | boolean }) {
 export function PricingClient({ plans }: PricingClientProps) {
   return (
     <div className="space-y-24 md:space-y-32">
-      <div data-reveal className="grid items-stretch gap-4 lg:grid-cols-3">
+      <div data-reveal suppressHydrationWarning className="grid items-stretch gap-4 lg:grid-cols-3">
         {plans.map((plan) => {
           const popular = plan.plan_id === "plan_pro";
           const enterprise = plan.plan_id === "plan_enterprise";
@@ -135,7 +135,7 @@ export function PricingClient({ plans }: PricingClientProps) {
         })}
       </div>
 
-      <section data-reveal aria-labelledby="compare-title">
+      <section data-reveal suppressHydrationWarning aria-labelledby="compare-title">
         <SectionHeading id="compare-title" eyebrow="Compare" title="What’s in each plan." />
         <div className="mt-10 overflow-x-auto rounded-lg bg-white border border-slate-200">
           <table className="w-full text-left text-[13px] sm:min-w-[34rem] sm:text-sm">
@@ -177,7 +177,7 @@ export function PricingClient({ plans }: PricingClientProps) {
         </div>
       </section>
 
-      <section data-reveal aria-labelledby="faq-title" className="mx-auto max-w-3xl">
+      <section data-reveal suppressHydrationWarning aria-labelledby="faq-title" className="mx-auto max-w-3xl">
         <SectionHeading id="faq-title" eyebrow="FAQ" title="Questions, answered." align="center" />
         <div className="mt-10 space-y-3">
           {FAQS.map((f) => (
