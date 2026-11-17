@@ -36,7 +36,19 @@ function pickUpstream(provider: string, flag: string | undefined, env: Record<st
   }
 }
 
-const PRESETS: Record<string, Omit<RunSpec, "offline" | "args">> = {
+/**
+ * Codex ignores OPENAI_BASE_URL (verified with codex-cli 0.169: it went straight to api.openai.com), so it is pointed
+ * at the proxy with its own provider settings. `{ARGUSOPS_BASE_URL}` is filled in with the proxy's address at launch.
+ * It authenticates with OPENAI_API_KEY; a ChatGPT sign-in uses a different OpenAI service and is not supported yet.
+ */
+export const CODEX_PROVIDER_ARGS = [
+  "-c",
+  'model_providers.argusops={ name="ArgusOps", base_url="{ARGUSOPS_BASE_URL}", wire_api="responses", env_key="OPENAI_API_KEY" }',
+  "-c",
+  'model_provider="argusops"',
+];
+
+const PRESETS: Record<string, Omit<RunSpec, "offline" | "args"> & { presetArgs?: string[] }> = {
   claude: {
     label: "Claude Code",
     type: "CLAUDE",
@@ -52,6 +64,7 @@ const PRESETS: Record<string, Omit<RunSpec, "offline" | "args">> = {
     provider: "openai",
     upstream: OPENAI_UPSTREAM,
     baseUrlEnv: "OPENAI_BASE_URL",
+    presetArgs: CODEX_PROVIDER_ARGS,
   },
 };
 
@@ -107,7 +120,8 @@ export function parseRunArgs(argv: string[], env: Record<string, string | undefi
     if (!preset) {
       return { ok: false, error: `Unknown agent "${first}". Supported: ${Object.keys(PRESETS).join(", ")}. Or run any command with: argus run -- <command>` };
     }
-    spec = { ...preset, label: values["--name"] ?? preset.label, args: argv.slice(i + 1) };
+    const { presetArgs, ...rest } = preset;
+    spec = { ...rest, label: values["--name"] ?? preset.label, args: [...(presetArgs ?? []), ...argv.slice(i + 1)] };
   }
 
   const picked = pickUpstream(spec.provider, values["--upstream"], env);

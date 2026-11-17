@@ -19,7 +19,8 @@
     "vscode:build": "node packages/vscode/build.mjs",
     "vscode:package": "node packages/vscode/build.mjs && cd packages/vscode && npx --yes @vscode/vsce package --no-dependencies",
     "test:vscode": "node packages/vscode/build.mjs && node packages/vscode/test/e2e/run.mjs",
-    "vscode:release": "node packages/vscode/release.mjs"
+    "vscode:release": "node packages/vscode/release.mjs",
+    "test:codex": "node packages/cli/build.mjs && node packages/cli/e2e/real-codex.mjs"
   },
   "dependencies": {
     "@prisma/client": "6.19.3",

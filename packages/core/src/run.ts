@@ -231,10 +231,12 @@ export async function runAgent(opts: RunOptions): Promise<number> {
     });
   } else {
     const env = { ...process.env, [opts.baseUrlEnv]: baseUrl };
+    // agents that take the address as a setting rather than from the environment (Codex) get it filled in here
+    const args = opts.args.map((a) => a.split("{ARGUSOPS_BASE_URL}").join(baseUrl));
     const win = process.platform === "win32";
     child = win
-      ? spawn([quoteWindowsArg(opts.command!), ...opts.args.map(quoteWindowsArg)].join(" "), [], { stdio: "inherit", env, cwd: opts.cwd, shell: true })
-      : spawn(opts.command!, opts.args, { stdio: "inherit", env, cwd: opts.cwd });
+      ? spawn([quoteWindowsArg(opts.command!), ...args.map(quoteWindowsArg)].join(" "), [], { stdio: "inherit", env, cwd: opts.cwd, shell: true })
+      : spawn(opts.command!, args, { stdio: "inherit", env, cwd: opts.cwd });
     const c = child;
     exit = new Promise<number>((resolve) => {
       c.once("error", (err: NodeJS.ErrnoException) => {

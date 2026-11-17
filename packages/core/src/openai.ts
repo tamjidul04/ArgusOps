@@ -161,7 +161,9 @@ function turnToolCalls(body: unknown): string[] {
   return items.slice(from).flatMap((i) => (i.kind === "call" ? [i.sig] : []));
 }
 
-const hasTools = (body: unknown) => isObj(body) && Array.isArray(body.tools) && body.tools.length > 0;
+/** The main conversation offers tools: in `tools`, or (Codex 0.169 and later) as `additional_tools` items in the input. */
+const hasTools = (body: unknown) =>
+  isObj(body) && ((Array.isArray(body.tools) && body.tools.length > 0) || asArray(body.input).some((it) => isObj(it) && it.type === "additional_tools" && Array.isArray(it.tools) && it.tools.length > 0));
 
 /** The usage numbers differ from Anthropic's: prompt tokens INCLUDE the cached ones, so split them. */
 function usageOf(u: unknown): { input: number; output: number; cached: number } {

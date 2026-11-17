@@ -293,3 +293,22 @@ describe("starting the agent", () => {
     }
   });
 });
+
+describe("agents that take the proxy address as a setting", () => {
+  it("get {ARGUSOPS_BASE_URL} in their arguments replaced with the proxy's address", async () => {
+    const fsm = await import("node:fs");
+    const osm = await import("node:os");
+    const pathm = await import("node:path");
+    const dir = fsm.mkdtempSync(pathm.join(osm.tmpdir(), "argus-arg-"));
+    const script = pathm.join(dir, "print.mjs");
+    fsm.writeFileSync(script, 'import fs from "node:fs"; fs.writeFileSync(process.argv[3], process.argv[2]);');
+    const out = pathm.join(dir, "seen.txt");
+    try {
+      const code = await runAgent({ label: "x", type: "NODE", command: process.execPath, args: [script, "url={ARGUSOPS_BASE_URL}", out], provider: "openai", upstream: "http://127.0.0.1:1", baseUrlEnv: "OPENAI_BASE_URL", cwd: dir, hub: null, write: () => undefined });
+      expect(code).toBe(0);
+      expect(fsm.readFileSync(out, "utf8")).toMatch(/^url=http:\/\/127\.0\.0\.1:\d+\/v1$/);
+    } finally {
+      fsm.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});

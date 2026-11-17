@@ -66,7 +66,8 @@ describe("installedExtensions", () => {
 
 describe("registry", () => {
   it("only claims 'supported' for what has been proven", () => {
-    expect(BUILT_IN_AGENTS.filter((a) => a.support === "supported").map((a) => a.id)).toEqual(["claude-code"]);
+    // each of these has a real-agent test: npm run test:claude, npm run test:codex
+    expect(BUILT_IN_AGENTS.filter((a) => a.support === "supported").map((a) => a.id)).toEqual(["claude-code", "codex"]);
   });
   it("lets users add agents but never grants 'supported' or a settings-writing recipe", () => {
     const home = tmp();

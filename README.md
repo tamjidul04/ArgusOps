@@ -100,7 +100,8 @@ There is also a desktop app (a window and tray icon around the same engine): `np
 | --- | --- |
 | Claude Code in the terminal and as an editor panel (VS Code, Antigravity) | **Verified** on real runs: loop caught and resumed, sloppy runs flagged, Autopilot built a small project |
 | Model routing | **Verified** on real runs (Opus → Sonnet for a rename; escalation after a failed attempt) for the Anthropic API format only |
-| OpenAI-format agents (Codex CLI, ...) | Written and tested against a test double; **not yet run with the real Codex** |
+| OpenAI Codex CLI, with an API key (`argus run codex`) | **Verified** with the real codex-cli 0.169 (`npm run test:codex`): routed through ArgusOps, loop caught and resumed, usage recorded. Codex signed in with ChatGPT, and the Codex editor extension: **not yet supported** |
+| Other OpenAI-format agents | Written and tested against a stand-in; **not yet run for real** |
 | Roo Code, Cline | Detected and described; **not yet verified** |
 | Copilot, Gemini Code Assist, Antigravity's own agent | **Observe only** through `argus check`/`argus watch`: they offer no way to route their traffic through ArgusOps |
 | Linux and macOS | **Not yet tested.** Developed and verified on Windows; automated tests for all three systems are being set up |

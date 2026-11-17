@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { DEFAULT_PROXY_PORT, parseProxyArgs, parseRunArgs } from "./args";
+import { DEFAULT_PROXY_PORT, parseProxyArgs, parseRunArgs, CODEX_PROVIDER_ARGS } from "./args";
 
 const ok = (argv: string[], env: Record<string, string> = {}) => {
   const r = parseRunArgs(argv, env);
@@ -56,7 +56,7 @@ describe("argus run", () => {
   it("knows Codex and the OpenAI provider, with the right base-URL variable and upstream", () => {
     const codex = parseRunArgs(["codex", "exec", "fix it"], {});
     if (!codex.ok) throw new Error("expected ok");
-    expect(codex.spec).toMatchObject({ command: "codex", args: ["exec", "fix it"], provider: "openai", upstream: "https://api.openai.com", baseUrlEnv: "OPENAI_BASE_URL", type: "CODEX" });
+    expect(codex.spec).toMatchObject({ command: "codex", args: [...CODEX_PROVIDER_ARGS, "exec", "fix it"], provider: "openai", upstream: "https://api.openai.com", baseUrlEnv: "OPENAI_BASE_URL", type: "CODEX" });
     const custom = parseRunArgs(["--provider", "openai", "--", "my-agent"], {});
     if (!custom.ok) throw new Error("expected ok");
     expect(custom.spec).toMatchObject({ provider: "openai", baseUrlEnv: "OPENAI_BASE_URL", upstream: "https://api.openai.com" });
@@ -109,5 +109,20 @@ describe("argus proxy", () => {
     expect(badp(["--nope"])).toMatch(/Unknown option/);
     expect(badp(["claude"])).toMatch(/argus run claude/);
     expect(badp(["--upstream", "ftp://x"])).toMatch(/valid URL/);
+  });
+});
+
+describe("codex preset", () => {
+  it("points Codex at the proxy with its own provider setting (it ignores OPENAI_BASE_URL), before your own arguments", () => {
+    const r = parseRunArgs(["codex", "exec", "fix it"], {});
+    if (!r.ok) throw new Error("expected ok");
+    expect(r.spec.args.slice(-2)).toEqual(["exec", "fix it"]);
+    expect(r.spec.args.slice(0, 4)).toEqual(CODEX_PROVIDER_ARGS);
+    expect(r.spec.args.join(" ")).toContain('base_url="{ARGUSOPS_BASE_URL}"');
+    expect(r.spec.args.join(" ")).toContain('env_key="OPENAI_API_KEY"');
+    // a plain command after `--` gets nothing added
+    const plain = parseRunArgs(["--", "codex", "exec"], {});
+    if (!plain.ok) throw new Error("expected ok");
+    expect(plain.spec.args).toEqual(["exec"]);
   });
 });

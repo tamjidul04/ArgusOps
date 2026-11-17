@@ -229,3 +229,31 @@ describe("through the proxy", () => {
     expect(usage[0]).toMatchObject({ model: "gpt-y", input_tokens: 50, output_tokens: 5 });
   });
 });
+
+describe("Codex 0.169 request shape", () => {
+  // Codex sends its tools as an `additional_tools` input item, and its tool is a custom `exec` (JavaScript)
+  const codexBody = (calls: number) => {
+    const input: unknown[] = [
+      { type: "additional_tools", role: "developer", tools: [{ type: "namespace", name: "functions", tools: [{ type: "custom", name: "exec" }] }] },
+      respUser("run the tests until they pass"),
+    ];
+    for (let i = 0; i < calls; i++) {
+      input.push({ type: "custom_tool_call", call_id: `c${i}`, name: "exec", input: 'throw new Error("tests failed")' });
+      input.push({ type: "custom_tool_call_output", call_id: `c${i}`, output: "Script failed\nOutput: Script error: Error: tests failed" });
+    }
+    return { model: "gpt-6.1-sol", stream: true, input };
+  };
+
+  it("counts as the main conversation even though `tools` is empty", () => {
+    expect(ad.isMainRequest(codexBody(0))).toBe(true);
+    expect(ad.isMainRequest({ model: "m", input: [respUser("title this")] })).toBe(false);
+  });
+
+  it("its repeated failing exec calls are caught as a loop", () => {
+    const d = new LoopDetector(ad);
+    expect(d.check(codexBody(1)).tripped).toBe(false);
+    const v = d.check(codexBody(3));
+    expect(v.tripped).toBe(true);
+    expect(v.reason).toContain("exec");
+  });
+});
