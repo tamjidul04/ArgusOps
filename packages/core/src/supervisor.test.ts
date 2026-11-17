@@ -135,7 +135,8 @@ describe("TurnSupervisor", () => {
     const s = setup("alert");
     const sup = await s.init();
     await sup.turnStarted({ key: "t1", humanText: "one" });
-    write(s.root, "src/a.ts", "export const a = 2;\n");
+    // a different length on purpose: a same-size rewrite within one clock tick can look unchanged on a fast file system
+    write(s.root, "src/a.ts", "export const a = 2; // changed in the first turn\n");
     expect((await sup.turnEnded({ key: "t1", text: "ok", toolCalls: [] }))?.action).toBe("none");
     await sup.turnStarted({ key: "t2", humanText: "two" });
     write(s.root, "BROKEN", "x");

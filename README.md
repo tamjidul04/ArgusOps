@@ -11,7 +11,7 @@ ArgusOps sits next to Claude Code (and other agents) and does four things:
 
 Free and open source (MIT), and a desktop app: **there is no website, ArgusOps server, account or database. Everything stays on your computer.** Your prompts and code go straight to your model provider, as they do today.
 
-> **Status: early (0.6).** Verified with real Claude Code 2.1.x on Windows. See [What is verified](#what-is-verified) before relying on it.
+> **Status: early (0.7).** Verified with real Claude Code 2.1.x on Windows. See [What is verified](#what-is-verified) before relying on it.
 
 ## Install
 
@@ -21,6 +21,8 @@ You need Node.js 20 or newer.
 npm install -g argusops
 argus --help
 ```
+
+**Desktop app (Windows):** download `ArgusOps-Setup-<version>.exe` from the [Releases page](https://github.com/tamjidul04/ArgusOps/releases), run it, then open it with `argus app` or from the Start menu. The installer is not signed yet, so Windows SmartScreen will say "unknown publisher": choose *More info*, then *Run anyway*. On macOS and Linux, run the app from a source checkout for now.
 
 Or from source: `npm install && npm run cli:build`, then run `node packages/cli/dist/argus.mjs`.
 
@@ -72,7 +74,7 @@ argus route            # what it would do and what it saved
 argus route auto       # switch by itself (default is: only suggest)
 ```
 
-The desktop app is built from a source checkout for now (`npm run desktop:start`, or `argus app` once it is built); installers are not published yet. Until then, `argus tui` and the commands do everything the app does.
+The desktop app has a Windows installer (see Install); elsewhere run `npm run desktop:start` from a source checkout. `argus tui` and the commands do everything the app does.
 
 ## How it works
 

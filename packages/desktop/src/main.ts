@@ -8,7 +8,7 @@ import { agentsNeedingYou, ensureEngine, type Engine } from "./engine";
  * and can reach nothing else: no Node in the page, no other sites, no new windows. No browser is involved.
  */
 
-const VERSION = "0.6.0";
+const VERSION = "0.7.0";
 let engine: Engine | null = null;
 let win: BrowserWindow | null = null;
 let tray: Tray | null = null;

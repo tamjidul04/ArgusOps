@@ -147,6 +147,7 @@ describe("watchWorkspace", () => {
     const reports: CheckReport[] = [];
     const w = await watchWorkspace({ store, root, debounceMs: 300, runGates: false, onReport: (r) => reports.push(r) });
     try {
+      await new Promise((r) => setTimeout(r, 600)); // let the operating system's file watcher finish starting (Linux and macOS miss changes made at once)
       write(root, "src/new.ts", "// ... rest of the code stays the same\n");
       for (let i = 0; i < 100 && reports.length < 1; i++) await new Promise((r) => setTimeout(r, 100));
       expect(reports).toHaveLength(1);
