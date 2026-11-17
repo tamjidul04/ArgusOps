@@ -1,124 +1,82 @@
-import os from "node:os";
-import { spawn } from "node:child_process";
 import { parseProxyArgs, parseRunArgs } from "./args";
-import { CloudClient, CloudError } from "./api";
-import { clearToken, loadConfig, saveConfig } from "./config";
-import { runAgent } from "./run";
-import { pointWorkspaceAtProxy, snippet } from "./ide-settings";
+import { LocalHub } from "../../core/src/hub";
+import { loadPrices } from "../../core/src/prices";
+import { runAgent } from "../../core/src/run";
+import { pointWorkspaceAtProxy, snippet } from "../../core/src/ide-settings";
+import { Store } from "../../core/src/store";
+import { startControlApi } from "../../core/src/control-api";
+import { webhookNotifier } from "../../core/src/webhooks";
+import * as commands from "./commands";
+import { autopilotCommand } from "./autopilot-cmd";
+import { findUiDir, uiCommand } from "./ui-cmd";
+import { runTui } from "./tui/app";
+import { createInterface } from "node:readline/promises";
 
-export const VERSION = "0.2.0";
+export const VERSION = "0.6.0";
 
-const HELP = `argus ${VERSION}: supervise your AI coding agents
+const HELP = `argus ${VERSION}: supervise your AI coding agents, on your own machine
 
 Usage:
-  argus login [--api-url <url>] [--no-browser]   connect this machine to your ArgusOps account
   argus run [options] claude [claude args...]    run Claude Code under supervision
-  argus run [options] -- <command> [args...]     run any agent that talks to the Anthropic API
-  argus ide                                       one step for the Claude Code panel in VS Code: signs you in if needed,
-                                                  points this folder's panel at Argus, and undoes it on Ctrl+C
-  argus proxy [options]                           supervise an agent you start yourself, e.g. the Claude Code
-                                                  panel in VS Code (see "Use it from VS Code" in the docs)
-  argus whoami                                    show who you're signed in as
-  argus logout                                    forget this machine's key
-  argus status                                    check the connection
+  argus run [options] codex [codex args...]      run OpenAI Codex under supervision (OpenAI API format)
+  argus run [options] -- <command> [args...]     run any agent that talks to the Anthropic API (or OpenAI with --provider openai)
+  argus ide                                       one step for the Claude Code panel in VS Code or Antigravity:
+                                                  points this folder's panel at Argus, undoes it on Ctrl+C
+  argus proxy [options]                           supervise an agent you start yourself
+
+  argus status [--json]                           what is running, what is paused and why
+  argus resume [agent] [--approve | --hint "..."]  continue a paused agent (approve the suggested instruction, or write your own)
+  argus pause [agent]    argus stop [agent]       hold or end an agent
+  argus usage [--range 24h|7d|30d]                tokens and estimated cost
+  argus alerts [--all]                            what ArgusOps has told you
+  argus webhook [list|add <url>|remove <url>|test]  also post alerts to Slack, Discord or any URL
+  argus check [--since <ref>] [--no-checks] [--json] [--alert] [folder]
+                                                  look at what an agent changed (default: since the last commit)
+  argus watch [folder]                            check a folder automatically whenever the agent stops writing
+  argus project [status|allow|deny] [folder]      allow ArgusOps to run this project's tests, lint and build
+  argus supervisor [off|alert|redirect] [--max-turn-tokens <n>]
+                                                  how ArgusOps reacts to problems in an agent's turn (default: alert)
+  argus route [off|suggest|auto|set|pin|unpin]   run simple turns on a cheaper model (default: suggest only)
+  argus autopilot "goal" [--yes] [--model m] [--planner-model m] [--max-attempts n] [--allow-bash] [--no-questions]
+                                                  plan it, show you the plan, then build it step by step with Claude Code, checking each step
+  argus autopilot list | status [id] | pause [id] | stop [id] | resume [id] [--yes]
+  argus agents                                    the AI agents and editors on this machine, and what ArgusOps can do for each
+  argus disconnect [--force]                      remove a leftover editor setting that points at a proxy that is gone
+  argus tui                                       the same screens inside this terminal (keyboard: 1-5, arrows, ? for help)
+  argus ui [--port <n>] [--no-open]               open the ArgusOps app in your browser (agents, Autopilot, usage, alerts)
+  argus serve [--port <n>]                        run the local control API (127.0.0.1 only) for apps and editors
 
 Run options (before the agent):
-  --offline            supervise locally and report nothing to the cloud
-  --name <label>       the name shown in the dashboard
-  --upstream <url>     send model calls somewhere other than api.anthropic.com
+  --offline            save nothing to disk (no history, no outside control)
+  --name <label>       the name shown for this agent
+  --upstream <url>     send model calls somewhere other than the provider's own address
+  --provider <name>    anthropic (default) or openai: which API format the agent speaks
 
-Proxy options (argus proxy):
+Proxy options (argus proxy, argus ide):
   --port <n>           listen on this port (default 47821)
-  --offline, --name <label>, --upstream <url>   as above
+  --provider, --offline, --name <label>, --upstream <url>   as above
 
 Environment:
-  ARGUS_API_URL        ArgusOps server (default http://localhost:3000)
-  ARGUS_API_KEY        use this key instead of the saved login (CI)
+  ARGUSOPS_HOME        where ArgusOps keeps its files (default ~/.argusops)
 
-Your prompts and code go straight to the model provider. Only token counts and
-incident reports are sent to ArgusOps.`;
+Everything stays on this machine. Your prompts and code go straight to the model
+provider; nothing is sent to ArgusOps because there is no ArgusOps server.`;
 
 const out = (m: string) => process.stdout.write(m + "\n");
 const err = (m: string) => process.stderr.write(m + "\n");
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-function openBrowser(url: string) {
-  try {
-    const [cmd, args] =
-      process.platform === "win32" ? ["cmd", ["/c", "start", "", url]] : process.platform === "darwin" ? ["open", [url]] : ["xdg-open", [url]];
-    spawn(cmd, args as string[], { stdio: "ignore", detached: true }).on("error", () => undefined).unref();
-  } catch {
-    // the URL is printed too, so nothing is lost
-  }
-}
-
-async function login(argv: string[]): Promise<number> {
-  const cfg = loadConfig();
-  let apiUrl = cfg.apiUrl;
-  let browser = true;
-  for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === "--no-browser") browser = false;
-    else if (argv[i] === "--api-url" && argv[i + 1]) apiUrl = argv[++i].replace(/\/+$/, "");
-    else if (argv[i].startsWith("--api-url=")) apiUrl = argv[i].slice(10).replace(/\/+$/, "");
-    else {
-      err(`Unknown option ${argv[i]}.`);
-      return 1;
-    }
-  }
-
-  const cloud = new CloudClient(apiUrl);
-  let dc;
-  try {
-    dc = await cloud.deviceCode(os.hostname());
-  } catch (e) {
-    err(`Couldn't reach ${apiUrl}: ${e instanceof Error ? e.message : e}`);
-    return 1;
-  }
-
-  out(`\nTo connect this machine, open:\n\n  ${dc.verification_uri_complete}\n\nand confirm the code:  ${dc.user_code}\n`);
-  if (browser) openBrowser(dc.verification_uri_complete);
-  out("Waiting for approval...");
-
-  let wait = Math.max(1, dc.interval) * 1000;
-  const deadline = Date.now() + dc.expires_in * 1000;
-  while (Date.now() < deadline) {
-    await sleep(wait);
-    try {
-      const token = await cloud.pollToken(dc.device_code);
-      saveConfig({ apiUrl, token: token.access_token, user: token.user });
-      out(`\nSigned in as ${token.user.email}. Try: argus run claude`);
-      return 0;
-    } catch (e) {
-      if (!(e instanceof CloudError)) continue;
-      if (e.code === "authorization_pending") continue;
-      if (e.code === "slow_down") wait += 5000;
-      else if (e.code === "access_denied") return (err("\nThe request was denied in the browser."), 1);
-      else if (e.code === "expired_token") break;
-      else if (e.code === "network") continue;
-      else return (err(`\nSign-in failed: ${e.message}`), 1);
-    }
-  }
-  err("\nThe code expired. Run `argus login` again.");
-  return 1;
-}
-
-async function whoami(): Promise<number> {
-  const cfg = loadConfig();
-  if (!cfg.token) {
-    err("Not signed in. Run: argus login");
-    return 1;
-  }
-  try {
-    const me = await new CloudClient(cfg.apiUrl, cfg.token).me();
-    out(`${me.user.name} <${me.user.email}>`);
-    if (me.subscription) out(`Plan: ${me.subscription.plan_name} (${me.active_agents}/${me.subscription.max_agents} agents active)`);
-    out(`Server: ${cfg.apiUrl}`);
-    return 0;
-  } catch (e) {
-    if (e instanceof CloudError && e.status === 401) err("This key is no longer valid. Run: argus login");
-    else err(`Couldn't reach ${cfg.apiUrl}: ${e instanceof Error ? e.message : e}`);
-    return 1;
-  }
+/** The local store, hub and turn supervisor, or nothing when `--offline` asks for nothing to be saved. */
+function openHub(offline: boolean) {
+  if (offline) return { hub: null, supervise: undefined, routing: undefined };
+  const store = new Store();
+  void store.prune().catch(() => undefined); // old history is dropped quietly; failing to is not worth a message
+  const notify = webhookNotifier(store);
+  const prices = loadPrices(store.root);
+  return {
+    hub: new LocalHub(store, prices, { onNotification: notify }),
+    supervise: { store, root: process.cwd(), onNotification: notify },
+    routing: { config: () => store.config().routing, prices, root: process.cwd() },
+  };
 }
 
 async function run(argv: string[]): Promise<number> {
@@ -128,17 +86,6 @@ async function run(argv: string[]): Promise<number> {
     return 1;
   }
   const { spec } = parsed;
-  const cfg = loadConfig();
-
-  let cloud: CloudClient | null = null;
-  if (!spec.offline) {
-    if (!cfg.token) {
-      err("You're not signed in. Run `argus login` first, or use --offline to supervise locally.");
-      return 1;
-    }
-    cloud = new CloudClient(cfg.apiUrl, cfg.token);
-  }
-
   return runAgent({
     label: spec.label,
     type: spec.type,
@@ -148,37 +95,8 @@ async function run(argv: string[]): Promise<number> {
     upstream: spec.upstream,
     baseUrlEnv: spec.baseUrlEnv,
     cwd: process.cwd(),
-    cloud,
+    ...openHub(spec.offline),
   });
-}
-
-async function ide(argv: string[]): Promise<number> {
-  const parsed = parseProxyArgs(argv);
-  if (!parsed.ok) {
-    err(parsed.error);
-    return 1;
-  }
-  const { spec } = parsed;
-  if (!spec.offline && !loadConfig().token) {
-    const code = await login([]);
-    if (code !== 0) return code;
-  }
-  const baseUrl = `http://127.0.0.1:${spec.port}`;
-  const r = pointWorkspaceAtProxy(process.cwd(), baseUrl);
-  if ("error" in r) {
-    console.log(`${r.error} Add this to it yourself:
-
-${snippet(baseUrl)}
-`);
-  } else {
-    console.log("Set up this folder for Argus. In VS Code, run \"Developer: Reload Window\" once, then use Claude as normal.");
-    console.log("Ctrl+C here stops Argus and undoes the setting (reload the window again afterwards).");
-  }
-  try {
-    return await proxy(argv);
-  } finally {
-    if (!("error" in r)) r.undo();
-  }
 }
 
 async function proxy(argv: string[]): Promise<number> {
@@ -188,17 +106,6 @@ async function proxy(argv: string[]): Promise<number> {
     return 1;
   }
   const { spec } = parsed;
-  const cfg = loadConfig();
-
-  let cloud: CloudClient | null = null;
-  if (!spec.offline) {
-    if (!cfg.token) {
-      err("You're not signed in. Run `argus login` first, or use --offline to supervise locally.");
-      return 1;
-    }
-    cloud = new CloudClient(cfg.apiUrl, cfg.token);
-  }
-
   return runAgent({
     label: spec.label,
     type: spec.type,
@@ -207,25 +114,118 @@ async function proxy(argv: string[]): Promise<number> {
     upstream: spec.upstream,
     baseUrlEnv: spec.baseUrlEnv,
     cwd: process.cwd(),
-    cloud,
+    ...openHub(spec.offline),
     port: spec.port,
   });
+}
+
+async function ide(argv: string[]): Promise<number> {
+  const parsed = parseProxyArgs(argv);
+  if (!parsed.ok) {
+    err(parsed.error);
+    return 1;
+  }
+  const baseUrl = `http://127.0.0.1:${parsed.spec.port}`;
+  const r = pointWorkspaceAtProxy(process.cwd(), baseUrl);
+  if ("error" in r) {
+    out(`${r.error} Add this to it yourself:\n\n${snippet(baseUrl)}\n`);
+  } else {
+    out('Set up this folder for Argus. In your editor, run "Developer: Reload Window" once, then use Claude as normal.');
+    out("Ctrl+C here stops Argus and undoes the setting (reload the window again afterwards).");
+  }
+  try {
+    return await proxy(argv);
+  } finally {
+    if (!("error" in r)) r.undo();
+  }
+}
+
+const io = { out, err };
+
+async function serve(argv: string[]): Promise<number> {
+  const store = new Store();
+  let port = store.config().apiPort;
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    const v = a === "--port" ? argv[++i] : a.startsWith("--port=") ? a.slice(7) : null;
+    if (v === null) return (err(`Unknown option ${a}.`), 1);
+    port = Number(v);
+    if (!Number.isInteger(port) || port < 1024 || port > 65535) return (err("--port must be a whole number between 1024 and 65535."), 1);
+  }
+  let api;
+  try {
+    api = await startControlApi({ store, port, version: VERSION, uiDir: findUiDir() ?? undefined, onNotification: webhookNotifier(store) });
+  } catch (e) {
+    err(e instanceof Error ? e.message : String(e));
+    return 2;
+  }
+  out(`ArgusOps control API on ${api.url} (this machine only). Press Ctrl+C to stop.`);
+  out(`Programs must send the token from ${store.root}${process.platform === "win32" ? "\\" : "/"}control.token in the x-argus-token header.`);
+  await new Promise<void>((resolve) => {
+    process.once("SIGINT", () => resolve());
+    process.once("SIGTERM", () => resolve());
+  });
+  await api.close();
+  return 0;
 }
 
 export async function main(argv: string[]): Promise<number> {
   const [cmd, ...rest] = argv;
   switch (cmd) {
-    case "login":
-      return login(rest);
-    case "logout":
-      clearToken();
-      out("Signed out. (Revoke the key itself from the dashboard under Local PC Bridge.)");
-      return 0;
-    case "whoami":
-    case "status":
-      return whoami();
     case "run":
       return run(rest);
+    case "status":
+      return commands.status(new Store(), io, rest.includes("--json"));
+    case "resume":
+      return commands.resume(new Store(), io, rest);
+    case "pause":
+      return commands.pause(new Store(), io, rest);
+    case "stop":
+      return commands.stop(new Store(), io, rest);
+    case "usage":
+      return commands.usage(new Store(), io, rest);
+    case "alerts":
+      return commands.alerts(new Store(), io, rest);
+    case "webhook":
+    case "webhooks":
+      return commands.webhook(new Store(), io, rest);
+    case "check":
+      return commands.check(new Store(), io, rest);
+    case "project":
+      return commands.project(new Store(), io, rest);
+    case "watch": {
+      const stop = new AbortController();
+      process.once("SIGINT", () => stop.abort());
+      process.once("SIGTERM", () => stop.abort());
+      return commands.watch(new Store(), io, rest, stop.signal);
+    }
+    case "supervisor":
+      return commands.supervisor(new Store(), io, rest);
+    case "route":
+    case "routing":
+      return commands.route(new Store(), io, rest);
+    case "autopilot": {
+      const rl = process.stdin.isTTY ? createInterface({ input: process.stdin, output: process.stdout }) : null;
+      try {
+        return await autopilotCommand(rest, new Store(), { out, err, ask: rl ? (q) => rl.question(q) : undefined });
+      } finally {
+        rl?.close();
+      }
+    }
+    case "agents":
+      return commands.agents(io);
+    case "disconnect":
+      return commands.disconnect(io, rest);
+    case "tui":
+    case "top": {
+      if (!process.stdin.isTTY || !process.stdout.isTTY) return (err("argus tui needs a terminal. For a one-off look use: argus status"), 1);
+      return runTui({ store: new Store(), stdin: process.stdin, stdout: process.stdout });
+    }
+    case "ui":
+    case "app":
+      return uiCommand(rest, new Store(), io, { version: VERSION });
+    case "serve":
+      return serve(rest);
     case "ide":
       return ide(rest);
     case "proxy":

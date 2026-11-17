@@ -58,3 +58,23 @@ stitch-export/
 
 # the website serves this installer
 !public/downloads/argusops-vscode.vsix
+
+# local AI-agent tooling and scaffolding, not part of the product
+/.agent/
+/.agents/
+/.claude/
+/.gemini/
+/.gsd/examples/
+/.gsd/templates/
+/adapters/
+/scripts/
+/GSD-STYLE.md
+/PROJECT_RULES.md
+/skills-lock.json
+/model_capabilities.yaml
+/VERSION
+/impo.txt
+
+# desktop app
+/packages/desktop/node_modules/
+/packages/desktop/dist/

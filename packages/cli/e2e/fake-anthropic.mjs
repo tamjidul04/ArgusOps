@@ -10,7 +10,8 @@
 // per request so you can see exactly what Claude Code sends.
 import http from "node:http";
 
-const port = Number(process.argv.find((a) => /^\d+$/.test(a)) || process.env.PORT || 8787);
+const portArg = process.argv.slice(2).find((a) => /^\d+$/.test(a));
+const port = portArg !== undefined ? Number(portArg) : Number(process.env.PORT || 8787); // 0 = any free port
 const loop = process.argv.includes("--loop");
 let count = 0;
 
@@ -88,5 +89,5 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(port, "127.0.0.1", () => {
-  console.log(`[fake-anthropic] listening on http://127.0.0.1:${port}  (no real model is called; nothing is billed)`);
+  console.log(`[fake-anthropic] listening on http://127.0.0.1:${server.address().port}  (no real model is called; nothing is billed)`);
 });

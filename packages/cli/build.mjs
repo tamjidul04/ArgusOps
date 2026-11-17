@@ -1,6 +1,6 @@
-// Bundles the CLI (and the shared loop detector from src/lib) into one dependency-free file.
+// Bundles the CLI and the engine in packages/core into one dependency-free file.
 import { build } from "esbuild";
-import { chmodSync, mkdirSync } from "node:fs";
+import { chmodSync, cpSync, mkdirSync, rmSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -20,6 +20,9 @@ await build({
   banner: { js: "#!/usr/bin/env node" },
   logLevel: "info",
 });
+// the app's web page ships next to the program
+rmSync(resolve(here, "dist/ui"), { recursive: true, force: true });
+cpSync(resolve(here, "../ui"), resolve(here, "dist/ui"), { recursive: true, filter: (src) => !/\.test\.[jt]s$/.test(src) });
 try {
   chmodSync(outfile, 0o755);
 } catch {

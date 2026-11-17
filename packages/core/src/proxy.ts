@@ -1,0 +1,370 @@
+import http from "node:http";
+import https from "node:https";
+import { anthropicAdapter, type Adapter } from "./adapters";
+import { HintLedger } from "./hints";
+import type { UsageResult } from "./anthropic";
+import type { LoopDetector } from "./detect";
+import type { ControlState } from "./state";
+
+/**
+ * A small HTTP proxy that runs on the user's own machine, between the agent and the model provider.
+ * Prompts and credentials go straight to the provider; only token counts and incidents leave the machine.
+ *  - reads each request's conversation to spot a stuck agent and holds its next request (pause)
+ *  - hands the operator's hint to the agent by adding it to the request that follows a resume
+ *  - meters real token usage from the provider's response
+ */
+
+/**
+ * What a stopped agent is told. It must be a FINAL error (403): a 503 "overloaded" makes Claude Code retry for a long
+ * time, which in an editor panel looks like endless spinning. 403 stops it at once and shows this message.
+ */
+export const STOPPED_MESSAGE = "ArgusOps: this agent was stopped. Start a new session to continue.";
+
+export interface UsageOut {
+  provider: string;
+  model: string;
+  input_tokens: number;
+  output_tokens: number;
+  cache_read_tokens: number;
+  /** The part of input_tokens written to the cache. */
+  cache_write_tokens?: number;
+  latency_ms: number;
+  /** Set when ArgusOps ran this request on a different model: the model the agent asked for. */
+  routed_from?: string;
+}
+
+export interface IncidentOut {
+  kind: "LOOP";
+  loop_type: "EXACT_TOOL_LOOP";
+  action: "PAUSED";
+  score: number;
+  detail: string;
+  interception_ms: number;
+  evidence: { unit: string[]; repeats: number };
+}
+
+export interface ProxyOptions {
+  provider: string;
+  /** The provider's API format. Defaults to Anthropic. */
+  adapter?: Adapter;
+  upstream: string;
+  state: ControlState;
+  detector: LoopDetector;
+  onUsage: (e: UsageOut) => void;
+  onIncident: (e: IncidentOut) => void;
+  onNotice?: (message: string) => void;
+  maxBodyBytes?: number;
+  /** Listen on this port instead of a random free one (used by `argus proxy`). */
+  port?: number;
+  /** A new turn begins (the human sent a message). The request waits for this, up to a few seconds. */
+  onTurnStart?: (ev: { key: string; humanText: string }) => Promise<void> | void;
+  /** The agent handed back to the human. Not awaited: checks must not delay the reply. */
+  onTurnEnd?: (ev: { key: string; text: string; toolCalls: string[] }) => void;
+  /** Debug only: one line per model request. */
+  onRequest?: (info: string) => void;
+  /** Model routing: may send a request to another model. */
+  router?: RouterLike;
+  /**
+   * Testing only: ask the provider to enforce its conversation-history check on this account (Anthropic's
+   * thinking-binding beta), so a history edit fails loudly instead of passing on accounts that are not enforced yet.
+   */
+  testBinding?: "error" | "drop_block";
+}
+
+const BINDING_BETA = "thinking-binding-controls-2026-08-01";
+
+/** What the proxy needs from the model router (see routing.ts). */
+export interface RouterLike {
+  route(body: Record<string, unknown>): { body: Record<string, unknown>; from: string; to: string } | null;
+  /** The provider rejected a rerouted request; it was sent again unchanged. */
+  failed(from: string, to: string, status: number, detail: string): void;
+  /** The agent is stuck (a loop was caught) in this conversation. */
+  struggled(reason: string, body?: unknown): void;
+}
+
+/** Statuses that mean "this model can't take this request" (bad field, unknown model, no access), worth one retry unchanged. */
+const REJECTED = new Set([400, 403, 404]);
+
+const TURN_START_WAIT_MS = 10_000;
+
+export interface RunningProxy {
+  port: number;
+  close: () => Promise<void>;
+}
+
+const HOP_BY_HOP = new Set(["connection", "keep-alive", "proxy-connection", "transfer-encoding", "upgrade", "te", "trailer", "host", "content-length"]);
+
+function errorBody(type: string, message: string) {
+  return JSON.stringify({ type: "error", error: { type, message } });
+}
+
+export function startProxy(opts: ProxyOptions): Promise<RunningProxy> {
+  const ad = opts.adapter ?? anthropicAdapter;
+  const target = new URL(opts.upstream);
+  const lib = target.protocol === "https:" ? https : http;
+  const basePath = target.pathname.replace(/\/$/, "");
+  const maxBody = opts.maxBodyBytes ?? 64 * 1024 * 1024;
+
+  const send = (res: http.ServerResponse, status: number, type: string, message: string) => {
+    if (res.headersSent) {
+      res.destroy();
+      return;
+    }
+    res.writeHead(status, { "content-type": "application/json" });
+    res.end(errorBody(type, message));
+  };
+
+  let turnKey = "";
+  // notes ArgusOps delivered stay in the conversation from then on (see hints.ts): Anthropic models check the history
+  const ledger = ad.id === "anthropic" ? new HintLedger() : null;
+
+  interface Reroute {
+    from: string;
+    to: string;
+    /** The request as it was before routing, sent instead if the routed one is rejected. */
+    original: Buffer;
+  }
+
+  function forward(req: http.IncomingMessage, res: http.ServerResponse, body: Buffer | null, requestModel: string, onDone?: (u: UsageResult | null) => void, reroute?: Reroute, extraBeta?: string) {
+    const started = Date.now();
+    const headers: http.OutgoingHttpHeaders = {};
+    for (const [k, v] of Object.entries(req.headers)) if (!HOP_BY_HOP.has(k.toLowerCase())) headers[k] = v;
+    headers.host = target.host;
+    headers["accept-encoding"] = "identity"; // so token usage can be read from the response
+    if (body) headers["content-length"] = String(body.length);
+    if (extraBeta) {
+      const cur = headers["anthropic-beta"];
+      headers["anthropic-beta"] = cur ? `${Array.isArray(cur) ? cur.join(",") : cur},${extraBeta}` : extraBeta;
+    }
+
+    const upReq = lib.request(
+      {
+        protocol: target.protocol,
+        hostname: target.hostname,
+        port: target.port || undefined,
+        method: req.method,
+        path: basePath + (req.url ?? "/"),
+        headers,
+      },
+      (upRes) => {
+        if (reroute && REJECTED.has(upRes.statusCode ?? 0)) {
+          // the other model refused this request: say so, then send the agent's own request instead (the agent never sees the failure)
+          const parts: Buffer[] = [];
+          upRes.on("data", (c: Buffer) => {
+            if (parts.length < 64) parts.push(c);
+          });
+          upRes.on("end", () => {
+            opts.router?.failed(reroute.from, reroute.to, upRes.statusCode ?? 0, Buffer.concat(parts).toString("utf8").slice(0, 500));
+            if (!res.destroyed) forward(req, res, reroute.original, requestModel, onDone, undefined, extraBeta);
+          });
+          upRes.resume();
+          return;
+        }
+        const outHeaders: http.OutgoingHttpHeaders = {};
+        for (const [k, v] of Object.entries(upRes.headers)) if (!["connection", "keep-alive", "transfer-encoding"].includes(k.toLowerCase())) outHeaders[k] = v;
+        res.writeHead(upRes.statusCode ?? 502, outHeaders);
+        if ((upRes.statusCode ?? 0) >= 400 && opts.onRequest) {
+          const errParts: Buffer[] = [];
+          upRes.on("data", (c: Buffer) => {
+            if (errParts.length < 16) errParts.push(c);
+          });
+          upRes.on("end", () => opts.onRequest?.(`upstream error ${upRes.statusCode}: ${Buffer.concat(errParts).toString("utf8").slice(0, 600)}`));
+        }
+
+        const type = String(upRes.headers["content-type"] ?? "");
+        const sse = type.includes("text/event-stream") ? ad.newTap() : null;
+        const jsonParts: Buffer[] = [];
+        let jsonSize = 0;
+        const readJson = type.includes("application/json") && !sse;
+
+        upRes.on("data", (chunk: Buffer) => {
+          if (sse) sse.push(chunk);
+          else if (readJson && jsonSize < 5_000_000) {
+            jsonParts.push(chunk);
+            jsonSize += chunk.length;
+          }
+        });
+        upRes.on("end", () => {
+          const ok = (upRes.statusCode ?? 0) >= 200 && (upRes.statusCode ?? 0) < 300;
+          let usage: UsageResult | null = null;
+          if (ok && sse) usage = sse.result();
+          else if (ok && readJson) usage = ad.usageFromJson(Buffer.concat(jsonParts).toString("utf8"));
+          if (usage && (usage.inputTokens > 0 || usage.outputTokens > 0 || usage.cacheReadTokens > 0)) {
+            opts.onUsage({
+              provider: opts.provider,
+              model: usage.model !== "unknown" ? usage.model : requestModel || "unknown",
+              input_tokens: usage.inputTokens,
+              output_tokens: usage.outputTokens,
+              cache_read_tokens: usage.cacheReadTokens,
+              cache_write_tokens: usage.cacheWriteTokens,
+              latency_ms: Date.now() - started,
+              ...(reroute ? { routed_from: reroute.from } : {}),
+            });
+          }
+          onDone?.(usage);
+        });
+        upRes.pipe(res);
+      }
+    );
+
+    upReq.on("error", (e) => send(res, 502, "api_error", `ArgusOps proxy could not reach the provider: ${e.message}`));
+    res.on("close", () => {
+      if (!res.writableEnded) upReq.destroy(); // the agent gave up, so stop the upstream call too
+    });
+
+    if (body) upReq.end(body);
+    else req.pipe(upReq);
+  }
+
+  async function handle(req: http.IncomingMessage, res: http.ServerResponse) {
+    if (opts.state.isKilled()) return send(res, 403, "permission_error", STOPPED_MESSAGE);
+
+    const isMessages = ad.isModelRequest(req.method ?? "", req.url ?? "");
+    if (!isMessages) return forward(req, res, null, "");
+
+    // read the whole request so the conversation can be inspected
+    const chunks: Buffer[] = [];
+    let size = 0;
+    for await (const c of req) {
+      size += (c as Buffer).length;
+      if (size > maxBody) return send(res, 413, "request_too_large", "Request is too large for the ArgusOps proxy.");
+      chunks.push(c as Buffer);
+    }
+    let raw = Buffer.concat(chunks);
+
+    let body: Record<string, unknown> | null = null;
+    try {
+      const parsed = JSON.parse(raw.toString("utf8"));
+      if (parsed && typeof parsed === "object") body = parsed as Record<string, unknown>;
+    } catch {
+      body = null; // not JSON: forward untouched
+    }
+    // 0. put back notes delivered earlier in this conversation, exactly where they were
+    const replayed = body && ledger ? ledger.replay(body) : null;
+    if (replayed) {
+      body = replayed;
+      raw = Buffer.from(JSON.stringify(body), "utf8");
+      opts.onRequest?.("replayed earlier operator notes");
+    }
+
+    const gone = new AbortController();
+    res.on("close", () => {
+      if (!res.writableEnded) gone.abort();
+    });
+
+    // 1. is the agent stuck?
+    if (body && opts.state.desired === "RUN") {
+      const verdict = opts.detector.check(body);
+      if (verdict.tripped) {
+        opts.state.pauseLocally(verdict.reason);
+        opts.onIncident({
+          kind: "LOOP",
+          loop_type: verdict.loopType,
+          action: "PAUSED",
+          score: verdict.score,
+          detail: verdict.reason,
+          interception_ms: verdict.interceptionMs,
+          evidence: verdict.evidence,
+        });
+        opts.onNotice?.(`Paused: ${verdict.reason}. Resume it with "argus resume" or end it with "argus stop".`);
+        opts.router?.struggled(verdict.reason, body);
+      }
+    }
+
+    // 2. hold the request while paused
+    if (opts.state.desired === "PAUSE") {
+      try {
+        await opts.state.waitUntilNotPaused(gone.signal);
+      } catch {
+        return; // the agent disconnected while waiting
+      }
+      if (opts.state.isKilled()) return send(res, 403, "permission_error", STOPPED_MESSAGE);
+      if (body) opts.detector.markResumed(body); // don't re-pause for history the operator already reviewed
+      opts.onNotice?.("Resumed.");
+    }
+
+    // 3. pass on the operator's hint, once
+    let out = raw;
+    const model = typeof body?.model === "string" ? (body.model as string) : "";
+    let current = body;
+    const hint = opts.state.takeHint();
+    if (hint && body) {
+      current = ledger ? ledger.deliver(body, hint) : ad.applyHint(body, hint);
+      out = Buffer.from(JSON.stringify(current), "utf8");
+      opts.onNotice?.("Delivered your hint to the agent.");
+    }
+    // 3b. a change the adapter needs to be able to read usage (never changes what the model is asked)
+    if (current) {
+      const prepared = ad.prepare(current);
+      if (prepared) {
+        current = prepared;
+        out = Buffer.from(JSON.stringify(current), "utf8");
+      }
+    }
+    // 3c. model routing: maybe run this request on another model
+    let reroute: Reroute | undefined;
+    const routed = current && opts.router ? opts.router.route(current) : null;
+    if (routed) {
+      reroute = { from: routed.from, to: routed.to, original: out };
+      out = Buffer.from(JSON.stringify(routed.body), "utf8");
+      opts.onRequest?.(`routed ${routed.from} -> ${routed.to}`);
+    }
+
+    // 3d. testing only: opt this request into the provider's history check
+    let extraBeta: string | undefined;
+    if (opts.testBinding && ad.id === "anthropic") {
+      const b = JSON.parse(out.toString("utf8")) as Record<string, unknown>;
+      const th = (b.thinking ?? { type: "adaptive" }) as Record<string, unknown>;
+      if (th.type === "adaptive") {
+        b.thinking = { ...th, block_binding: { prefix_mismatch_behavior: opts.testBinding } };
+        out = Buffer.from(JSON.stringify(b), "utf8");
+        extraBeta = BINDING_BETA;
+      }
+    }
+
+    // 4. turns: a snapshot before the agent can touch anything, a check once it hands back
+    let onDone: ((u: UsageResult | null) => void) | undefined;
+    if (opts.onRequest && body) {
+      const msgs = Array.isArray(body.messages) ? (body.messages as unknown[]) : [];
+      const thinking = msgs.reduce<number>((n, m) => n + (Array.isArray((m as { content?: unknown }).content) ? ((m as { content: Array<{ type?: string }> }).content.filter((c) => c?.type === "thinking" || c?.type === "redacted_thinking").length) : 0), 0);
+      opts.onRequest(`request: main=${ad.isMainRequest(body)} messages=${msgs.length} thinkingBlocks=${thinking} model=${model} turnStart=${ad.turnStartOf(body)?.key ?? "no"} last=${JSON.stringify(msgs[msgs.length - 1] ?? null).slice(0, 160)}`);
+    }
+    if (body && ad.isMainRequest(body) && (opts.onTurnStart || opts.onTurnEnd)) {
+      const start = ad.turnStartOf(body);
+      if (start && start.key !== turnKey) {
+        turnKey = start.key;
+        if (opts.onTurnStart) await Promise.race([Promise.resolve(opts.onTurnStart(start)).catch(() => undefined), new Promise((r) => setTimeout(r, TURN_START_WAIT_MS))]);
+      }
+      const key = turnKey;
+      const calls = ad.turnToolCalls(body);
+      onDone = (u) => {
+        opts.onRequest?.(`response: stop=${u?.stopReason ?? "?"} textLen=${u?.text?.length ?? 0}`);
+        if (u?.stopReason === "end_turn" && key) opts.onTurnEnd?.({ key, text: u.text ?? "", toolCalls: calls });
+      };
+    }
+    forward(req, res, out, model, onDone, reroute, extraBeta);
+  }
+
+  const server = http.createServer((req, res) => {
+    handle(req, res).catch((e) => send(res, 500, "api_error", `ArgusOps proxy error: ${e instanceof Error ? e.message : "unknown"}`));
+  });
+  server.keepAliveTimeout = 60_000;
+
+  return new Promise((resolve, reject) => {
+    server.once("error", (e: NodeJS.ErrnoException) =>
+      reject(e.code === "EADDRINUSE" ? new Error(`Port ${opts.port} is already in use. Is another \`argus proxy\` running? Pick another with --port.`) : e)
+    );
+    server.listen(opts.port ?? 0, "127.0.0.1", () => {
+      const addr = server.address();
+      if (!addr || typeof addr === "string") return reject(new Error("proxy failed to bind"));
+      resolve({
+        port: addr.port,
+        close: () =>
+          new Promise<void>((r) => {
+            server.closeAllConnections?.();
+            server.close(() => r());
+          }),
+      });
+    });
+  });
+}

@@ -1,7 +1,7 @@
 {
   "name": "argusops",
-  "version": "0.2.0",
-  "license": "UNLICENSED",
+  "version": "0.5.0",
+  "license": "MIT",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -9,16 +9,18 @@
     "start": "next start",
     "lint": "eslint",
     "seed": "tsx prisma/seed.ts",
-    "daemon": "node daemon/argus-daemon.mjs",
     "test": "vitest run",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "cli:build": "node packages/cli/build.mjs",
-    "test:e2e": "node packages/cli/build.mjs && node packages/cli/e2e/run-e2e.cjs",
-    "test:claude": "node packages/cli/build.mjs && node packages/cli/e2e/real-claude.cjs",
+    "desktop:start": "node packages/desktop/build.mjs && packages/desktop/node_modules/.bin/electron packages/desktop",
+    "test:desktop": "node packages/desktop/test/smoke.mjs",
+    "test:e2e": "node packages/cli/build.mjs && node packages/cli/e2e/run-e2e.mjs",
+    "test:claude": "node packages/cli/build.mjs && node packages/cli/e2e/real-claude.mjs",
     "vscode:build": "node packages/vscode/build.mjs",
     "vscode:package": "node packages/vscode/build.mjs && cd packages/vscode && npx --yes @vscode/vsce package --no-dependencies",
     "test:vscode": "node packages/vscode/build.mjs && node packages/vscode/test/e2e/run.mjs",
-    "vscode:release": "node packages/vscode/release.mjs"
+    "vscode:release": "node packages/vscode/release.mjs",
+    "test:codex": "node packages/cli/build.mjs && node packages/cli/e2e/real-codex.mjs"
   },
   "dependencies": {
     "@prisma/client": "6.19.3",
@@ -31,12 +33,14 @@
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "^4",
+    "@types/jsdom": "^30.0.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/vscode": "^1.85.0",
     "eslint": "^9",
     "eslint-config-next": "16.4.3",
+    "jsdom": "^26.1.0",
     "prisma": "6.19.3",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
