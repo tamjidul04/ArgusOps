@@ -33,5 +33,5 @@ jobs:
       - run: npm run cli:build
       - name: CLI starts
         run: node packages/cli/dist/argus.mjs version
-      - name: End-to-end test (free: fake agent and fake model)
+      - name: "End-to-end test (free, with a fake agent and a fake model)"
         run: node packages/cli/e2e/run-e2e.mjs
