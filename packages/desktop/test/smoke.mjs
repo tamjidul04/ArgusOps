@@ -14,6 +14,8 @@ const build = spawnSync(process.execPath, [path.join(root, "build.mjs")], { stdi
 if (build.status !== 0) process.exit(1);
 
 const home = fs.mkdtempSync(path.join(os.tmpdir(), "argus-desktop-smoke-"));
+// its own engine port too, so an ArgusOps you have open (on the usual port) is left alone
+fs.writeFileSync(path.join(home, "config.json"), JSON.stringify({ apiPort: 47000 + Math.floor(Math.random() * 900) }));
 const env = { ...process.env, ARGUSOPS_HOME: home, ARGUSOPS_DESKTOP_SMOKE: "1" };
 delete env.ELECTRON_RUN_AS_NODE; // some editors set it, which makes Electron behave as plain Node
 const r = spawnSync(exe, ["."], { cwd: root, env, encoding: "utf8", timeout: 60_000 });
@@ -27,6 +29,7 @@ if (info.title !== "ArgusOps") problems.push(`title is ${info.title}`);
 if (info.conn !== "connected") problems.push(`not connected: ${info.conn}`);
 if (info.sections < 4) problems.push(`expected the sidebar sections, saw ${info.sections}`);
 if (info.node !== "undefined" || info.process !== "undefined") problems.push("the page can reach Node");
+if (info.bridge !== "pickFolder") problems.push(`the page should see only the folder picker, saw: ${info.bridge}`);
 if (info.url.includes("#")) problems.push("the token is still in the address");
 if (!info.text.includes("No agent")) problems.push(`unexpected first view: ${info.text}`);
 if (problems.length) {

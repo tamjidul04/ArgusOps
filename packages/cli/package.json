@@ -1,6 +1,6 @@
 {
   "name": "argusops",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Supervise AI coding agents on your own computer: catch loops, check the work, Autopilot, and cheaper models for small tasks. No server, no account.",
   "type": "module",
   "bin": {

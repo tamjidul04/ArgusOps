@@ -21,7 +21,8 @@ import { diffSnapshots, takeSnapshot, type Snapshot } from "./workspace";
  * stops and asks you. Everything is saved, so a run can be inspected, paused, resumed or stopped from another terminal.
  */
 
-export type RunStatus = "awaiting-approval" | "running" | "paused" | "needs-you" | "done" | "stopped" | "failed";
+/** planning and awaiting-answers happen before there is a plan (a run started from the app); the rest as before. */
+export type RunStatus = "planning" | "awaiting-answers" | "awaiting-approval" | "running" | "paused" | "needs-you" | "done" | "stopped" | "failed";
 export type StepStatus = "pending" | "running" | "passed" | "failed" | "skipped";
 
 export interface StepState {
@@ -54,6 +55,8 @@ export interface AutopilotRun {
   /** The agent's conversation, so a resumed run can continue it. */
   sessionId: string | null;
   log: Array<{ ts: number; message: string }>;
+  /** The planner's questions, while the run waits for your answers (runs started from the app). */
+  questions?: string[];
 }
 
 /** What Autopilot needs from the agent: send an instruction, get the turn's result. */

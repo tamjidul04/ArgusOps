@@ -11,7 +11,7 @@ ArgusOps sits next to Claude Code (and other agents) and does four things:
 
 Free and open source (MIT), and a desktop app: **there is no website, ArgusOps server, account or database. Everything stays on your computer.** Your prompts and code go straight to your model provider, as they do today.
 
-> **Status: early (0.7).** Verified with real Claude Code 2.1.x on Windows. See [What is verified](#what-is-verified) before relying on it.
+> **Status: early (0.8).** Verified with real Claude Code 2.1.x on Windows. See [What is verified](#what-is-verified) before relying on it.
 
 ## Install
 
@@ -41,7 +41,7 @@ argus run claude
 argus ide          # in your project folder; Ctrl+C undoes the setting
 ```
 
-Then run "Developer: Reload Window" once and use Claude as normal.
+Then run "Developer: Reload Window" once and use Claude as normal. In the desktop app, **Editors** does the same with a Connect button.
 
 **See and control everything**
 
@@ -65,7 +65,7 @@ argus supervisor redirect   # tell me, and tell the agent what to fix
 argus autopilot "a command-line todo app in Node, with tests"
 ```
 
-You review the plan and every command it may run. Nothing starts until you approve.
+You review the plan and every command it may run. Nothing starts until you approve. In the desktop app, **Autopilot → New run** takes the goal and the project folder, asks its questions on a form, shows the plan for approval, and shows progress.
 
 **Cheaper models for small tasks**
 

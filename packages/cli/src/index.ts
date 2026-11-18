@@ -9,10 +9,12 @@ import { webhookNotifier } from "../../core/src/webhooks";
 import * as commands from "./commands";
 import { autopilotCommand } from "./autopilot-cmd";
 import { appCommand } from "./ui-cmd";
+import { AutopilotJobs } from "../../core/src/autopilot-jobs";
+import { EditorConnections } from "../../core/src/editor-connections";
 import { runTui } from "./tui/app";
 import { createInterface } from "node:readline/promises";
 
-export const VERSION = "0.7.0";
+export const VERSION = "0.8.0";
 
 const HELP = `argus ${VERSION}: supervise your AI coding agents, on your own machine
 
@@ -153,8 +155,11 @@ async function serve(argv: string[]): Promise<number> {
     if (!Number.isInteger(port) || port < 1024 || port > 65535) return (err("--port must be a whole number between 1024 and 65535."), 1);
   }
   let api;
+  const autopilot = new AutopilotJobs({ store });
+  const editors = new EditorConnections({ store });
   try {
-    api = await startControlApi({ store, port, version: VERSION, onNotification: webhookNotifier(store) });
+    await editors.cleanupStale().catch(() => undefined);
+    api = await startControlApi({ store, port, version: VERSION, onNotification: webhookNotifier(store), autopilot, editors });
   } catch (e) {
     err(e instanceof Error ? e.message : String(e));
     return 2;
@@ -165,6 +170,8 @@ async function serve(argv: string[]): Promise<number> {
     process.once("SIGINT", () => resolve());
     process.once("SIGTERM", () => resolve());
   });
+  await editors.close();
+  await autopilot.close();
   await api.close();
   return 0;
 }

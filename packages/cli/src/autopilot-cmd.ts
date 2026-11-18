@@ -1,13 +1,7 @@
-import { execFileSync } from "node:child_process";
-import path from "node:path";
-import { executePlan, formatRun, newRun, planCommands, type AutopilotRun } from "../../core/src/autopilot";
-import { ClaudeSession } from "../../core/src/claude-session";
+import { formatRun, newRun, planCommands, type AutopilotRun } from "../../core/src/autopilot";
+import { claudeProgram, executeRun, gitState } from "../../core/src/autopilot-runner";
 import { consentState, detectGates } from "../../core/src/gates";
-import { agentIdFor, LocalHub } from "../../core/src/hub";
 import { askQuestions, claudePlanner, makePlan, projectContext } from "../../core/src/planner";
-import { loadPrices } from "../../core/src/prices";
-import { runAgent } from "../../core/src/run";
-import type { RouteHint } from "../../core/src/routing";
 import type { Store } from "../../core/src/store";
 import { describeCheck } from "../../core/src/acceptance";
 
@@ -31,18 +25,6 @@ interface Options {
   plannerModel?: string;
   maxAttempts: number;
   allowBash: boolean;
-}
-
-/** The agent program: ARGUSOPS_CLAUDE (and, for tests, ARGUSOPS_CLAUDE_ARGS as a JSON list) or `claude` on PATH. */
-function claudeProgram(env: NodeJS.ProcessEnv): { command: string; prefix: string[] } {
-  let prefix: string[] = [];
-  try {
-    const parsed = JSON.parse(env.ARGUSOPS_CLAUDE_ARGS ?? "[]");
-    if (Array.isArray(parsed)) prefix = parsed.filter((x) => typeof x === "string");
-  } catch {
-    prefix = [];
-  }
-  return { command: env.ARGUSOPS_CLAUDE || "claude", prefix };
 }
 
 function parse(argv: string[]): { ok: true; o: Options } | { ok: false; error: string } {
@@ -74,14 +56,6 @@ function parse(argv: string[]): { ok: true; o: Options } | { ok: false; error: s
   return { ok: true, o };
 }
 
-function gitState(root: string): "clean" | "dirty" | "none" {
-  try {
-    return execFileSync("git", ["status", "--porcelain"], { cwd: root, stdio: ["ignore", "pipe", "ignore"], windowsHide: true }).toString().trim() ? "dirty" : "clean";
-  } catch {
-    return "none";
-  }
-}
-
 function showPlan(io: AutopilotIo, run: AutopilotRun, store: Store) {
   io.out(`\nPlan: ${run.plan.summary || run.goal}`);
   run.plan.steps.forEach((s, i) => {
@@ -104,66 +78,10 @@ function showPlan(io: AutopilotIo, run: AutopilotRun, store: Store) {
 
 /** Starts the proxy and the agent, runs the plan, and cleans up. */
 async function execute(run: AutopilotRun, o: Pick<Options, "model" | "maxAttempts" | "allowBash">, store: Store, io: AutopilotIo, env: NodeJS.ProcessEnv): Promise<number> {
-  const name = `Autopilot · ${path.basename(run.root) || "project"}`;
-  const stop = new AbortController();
-  let baseUrl = "";
-  let routeHint: RouteHint | null = null;
-  const prices = loadPrices(store.root);
-  const proxyDone = runAgent({
-    label: name,
-    type: "CLAUDE",
-    args: [],
-    provider: "anthropic",
-    upstream: env.ARGUS_UPSTREAM_ANTHROPIC || "https://api.anthropic.com",
-    baseUrlEnv: "ANTHROPIC_BASE_URL",
-    cwd: run.root,
-    hub: new LocalHub(store, prices),
-    routing: { config: () => store.config().routing, prices, root: run.root, hint: () => routeHint },
-    stopSignal: stop.signal,
-    onReady: (u) => (baseUrl = u),
-    write: () => undefined, // Autopilot reports progress itself
-  });
-  for (let i = 0; i < 100 && !baseUrl; i++) await new Promise((r) => setTimeout(r, 50));
-  if (!baseUrl) {
-    stop.abort();
-    await proxyDone;
-    io.err("Could not start the ArgusOps proxy.");
-    return 2;
-  }
-
-  // what the agent may do: edit files in this folder, and run only the commands you approved
-  const gates = detectGates(run.root);
-  const allowedGates = gates.length && consentState(store, run.root, gates) === "allowed" ? gates.map((g) => g.command) : [];
-  const bash = o.allowBash ? ["Bash"] : [...new Set([...planCommands(run.plan), ...allowedGates])].map((c) => `Bash(${c})`);
-  const { command, prefix } = claudeProgram(env);
-  const session = ClaudeSession.start({
-    command,
-    args: [
-      ...prefix,
-      "--permission-mode",
-      "acceptEdits",
-      "--allowedTools",
-      "Read",
-      "Edit",
-      "Write",
-      "Glob",
-      "Grep",
-      "TodoWrite",
-      ...bash,
-      ...(o.model ? ["--model", o.model] : []),
-      ...(run.sessionId ? ["--resume", run.sessionId] : []),
-    ],
-    cwd: run.root,
-    env: { ...env, ANTHROPIC_BASE_URL: baseUrl },
-  });
-
-  try {
-    const done = await executePlan(run, {
-      store,
-      agent: session,
-      agentId: agentIdFor(name),
-      route: (h) => (routeHint = h),
-      maxAttempts: o.maxAttempts,
+  const done = await executeRun(
+    run,
+    {
+      ...o,
       say: (m) => io.out(`[autopilot] ${m}`),
       decide: io.ask
         ? async (r, step) => {
@@ -176,15 +94,17 @@ async function execute(run: AutopilotRun, o: Pick<Options, "model" | "maxAttempt
             }
           }
         : undefined,
-    });
-    io.out(`\n${formatRun(done)}`);
-    if (done.status === "done") io.out("\nReview the changes (git diff) before you commit them.");
-    return done.status === "done" ? 0 : 1;
-  } finally {
-    await session.close(10_000);
-    stop.abort();
-    await proxyDone;
+    },
+    store,
+    env
+  );
+  if (!done) {
+    io.err("Could not start the ArgusOps proxy.");
+    return 2;
   }
+  io.out(`\n${formatRun(done)}`);
+  if (done.status === "done") io.out("\nReview the changes (git diff) before you commit them.");
+  return done.status === "done" ? 0 : 1;
 }
 
 export async function autopilotCommand(argv: string[], store: Store, io: AutopilotIo, env: NodeJS.ProcessEnv = process.env, cwd = process.cwd()): Promise<number> {

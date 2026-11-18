@@ -75,7 +75,7 @@ const STATUS = (a: Data["agents"][number], now: number): Seg => {
   if (a.status === "STOPPED") return seg("stopped", "red");
   return seg("finished", "dim");
 };
-const AP: Record<string, [string, Seg["s"]]> = { "awaiting-approval": ["waiting for approval", "yellow"], running: ["running", "green"], paused: ["paused", "yellow"], "needs-you": ["needs you", "yellow"], done: ["done", "green"], stopped: ["stopped", "red"], failed: ["failed", "red"] };
+const AP: Record<string, [string, Seg["s"]]> = { planning: ["planning", "teal"], "awaiting-answers": ["has questions", "yellow"], "awaiting-approval": ["waiting for approval", "yellow"], running: ["running", "green"], paused: ["paused", "yellow"], "needs-you": ["needs you", "yellow"], done: ["done", "green"], stopped: ["stopped", "red"], failed: ["failed", "red"] };
 
 /** One summary tile: a small box with a number and what it counts. */
 function tiles(items: Array<{ n: string; label: string; color: Seg["s"] }>, cols: number): Line[] {
@@ -101,7 +101,7 @@ function tiles(items: Array<{ n: string; label: string; color: Seg["s"] }>, cols
 function overviewBody(v: View, d: Data, cols: number): Line[] {
   const running = d.agents.filter((a) => a.status === "ACTIVE" && !isGone(a, d.now)).length;
   const waiting = d.agents.filter((a) => isWaiting(a, d.now));
-  const asking = d.runs.filter((r) => r.status === "needs-you" || r.status === "awaiting-approval");
+  const asking = d.runs.filter((r) => r.status === "needs-you" || r.status === "awaiting-approval" || r.status === "awaiting-answers");
   const t = d.usage.totals;
   const out: Line[] = [plain("")];
   out.push(

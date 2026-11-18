@@ -193,3 +193,18 @@ details summary { cursor: pointer; color: var(--muted); font-size: 13px; }
   .page { padding: 20px 16px 32px; }
   .page-head { flex-direction: column; }
 }
+
+/* forms: new Autopilot run, answers, decisions, editor connection */
+.page.narrow { max-width: 760px; }
+.form .field { display: flex; flex-direction: column; gap: 6px; }
+.form .field > span:first-child { font-weight: 600; font-size: 13.5px; }
+.form .check { display: flex; align-items: center; gap: 8px; font-size: 13.5px; }
+.form .check input { width: 16px; height: 16px; accent-color: var(--accent); }
+.folder-row { flex-wrap: nowrap; }
+.folder-row input { flex: 1; min-width: 0; }
+.card-title { font-weight: 650; }
+.pre { white-space: pre-wrap; font-size: 13px; color: var(--text); margin: 2px 0 4px; }
+.lrow .d .pre { -webkit-line-clamp: unset; }
+.lrow .d:has(.pre) { display: block; overflow: visible; }
+.approve-row { margin-top: 18px; }
+.card + .notice, .form + .notice { margin-top: 12px; }

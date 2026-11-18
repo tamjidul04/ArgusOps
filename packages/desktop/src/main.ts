@@ -1,5 +1,5 @@
 import path from "node:path";
-import { app, BrowserWindow, Menu, nativeImage, session, Tray } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, session, Tray } from "electron";
 import { Store } from "../../core/src/store";
 import { agentsNeedingYou, ensureEngine, type Engine } from "./engine";
 
@@ -8,7 +8,7 @@ import { agentsNeedingYou, ensureEngine, type Engine } from "./engine";
  * and can reach nothing else: no Node in the page, no other sites, no new windows. No browser is involved.
  */
 
-const VERSION = "0.7.0";
+const VERSION = "0.8.0";
 let engine: Engine | null = null;
 let win: BrowserWindow | null = null;
 let tray: Tray | null = null;
@@ -51,7 +51,7 @@ function createWindow() {
     icon: icon(64),
     autoHideMenuBar: true,
     show: !process.env.ARGUSOPS_DESKTOP_SMOKE,
-    webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, webSecurity: true, spellcheck: false },
+    webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, webSecurity: true, spellcheck: false, preload: path.join(__dirname, "preload.cjs") },
   });
   win.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
   win.webContents.on("will-navigate", (e, url) => {
@@ -79,11 +79,14 @@ async function smoke() {
   if (!w) return app.exit(2);
   await new Promise<void>((r) => w.webContents.once("did-finish-load", () => r()));
   await new Promise((r) => setTimeout(r, 2500));
-  const info = await w.webContents.executeJavaScript(`JSON.stringify({ title: document.title, conn: document.getElementById("conn").textContent, sections: document.querySelectorAll("#side-top [data-page]").length, text: document.getElementById("main").textContent.slice(0, 600), node: typeof require, process: typeof process, url: location.href })`);
+  const info = await w.webContents.executeJavaScript(`JSON.stringify({ title: document.title, conn: document.getElementById("conn").textContent, sections: document.querySelectorAll("#side-top [data-page]").length, text: document.getElementById("main").textContent.slice(0, 600), node: typeof require, process: typeof process, bridge: Object.keys(window.argusDesktop || {}).join(","), canStart: document.getElementById("main").textContent.length > 0, url: location.href })`);
   process.stdout.write(`SMOKE ${info}\n`);
   quitting = true;
   app.quit();
 }
+
+// the self-check gets its own profile, so it runs even while your installed ArgusOps is open
+if (process.env.ARGUSOPS_DESKTOP_SMOKE && process.env.ARGUSOPS_HOME) app.setPath("userData", path.join(process.env.ARGUSOPS_HOME, "desktop-profile"));
 
 if (!app.requestSingleInstanceLock()) {
   app.quit();
@@ -101,6 +104,12 @@ if (!app.requestSingleInstanceLock()) {
 
   void app.whenReady().then(async () => {
     session.defaultSession.setPermissionRequestHandler((_wc, _perm, cb) => cb(false));
+    // the page's one request: a folder chosen by the person, and only from the app's own page
+    ipcMain.handle("argus:pick-folder", async (e) => {
+      if (!engine || !win || e.sender !== win.webContents || new URL(e.senderFrame?.url ?? "about:blank").origin !== new URL(engine.url).origin) return null;
+      const r = await dialog.showOpenDialog(win, { title: "Choose the project folder", properties: ["openDirectory"] });
+      return r.canceled || !r.filePaths[0] ? null : r.filePaths[0];
+    });
     const store = new Store();
     try {
       engine = await ensureEngine(store, { uiDir: path.join(__dirname, "ui"), version: VERSION });

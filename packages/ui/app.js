@@ -21,6 +21,8 @@ const state = {
   alertFilter: "all",
   alertQuery: "",
   cmdQuery: "",
+  canStartAutopilot: false,
+  editors: { available: false, connections: [] },
 };
 
 /* ---------------------------------- token ---------------------------------- */
@@ -97,6 +99,7 @@ const ICONS = {
   book: ["M4 19.5A2.5 2.5 0 0 1 6.5 17H20", "M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"],
   off: ["M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0-18 0", "M5.6 5.6l12.8 12.8"],
   bolt: ["M13 2 3 14h9l-1 8 10-12h-9l1-8z"],
+  plug: ["M9 2v6", "M15 2v6", "M6 8h12v4a6 6 0 0 1-12 0z", "M12 18v4"],
 };
 function icon(name) {
   const NS = "http://www.w3.org/2000/svg";
@@ -128,7 +131,7 @@ const short = (ts) => {
 };
 const STALE_MS = 30000;
 const STATUS = { ACTIVE: ["running", "ok"], PAUSED: ["paused", "warn"], STOPPED: ["stopped", "bad"], ENDED: ["finished", ""] };
-const AP_STATUS = { "awaiting-approval": ["waiting for approval", "warn"], running: ["running", "ok"], paused: ["paused", "warn"], "needs-you": ["needs you", "warn"], done: ["done", "ok"], stopped: ["stopped", "bad"], failed: ["failed", "bad"] };
+const AP_STATUS = { planning: ["planning", "accent"], "awaiting-answers": ["has questions", "warn"], "awaiting-approval": ["waiting for approval", "warn"], running: ["running", "ok"], paused: ["paused", "warn"], "needs-you": ["needs you", "warn"], done: ["done", "ok"], stopped: ["stopped", "bad"], failed: ["failed", "bad"] };
 const RANGES = [["24h", "24 hours"], ["7d", "7 days"], ["30d", "30 days"]];
 const RANGE_LABEL = Object.fromEntries(RANGES);
 const chip = (label, kind) => h("span", { class: "chip " + (kind || "") }, label);
@@ -138,7 +141,7 @@ const code = (t) => h("code", null, t);
 const isLive = (a) => (a.status === "ACTIVE" || a.status === "PAUSED") && Date.now() - a.lastSeen <= STALE_MS;
 const isGone = (a) => (a.status === "ACTIVE" || a.status === "PAUSED") && Date.now() - a.lastSeen > STALE_MS;
 const isWaiting = (a) => a.status === "PAUSED" && isLive(a);
-const runAsks = (r) => r.status === "needs-you" || r.status === "awaiting-approval";
+const runAsks = (r) => r.status === "needs-you" || r.status === "awaiting-approval" || r.status === "awaiting-answers";
 function agentStatus(a) {
   if (isGone(a)) return [a.status === "PAUSED" ? "paused (not running)" : "not running", ""];
   return STATUS[a.status] || [a.status, ""];
@@ -226,6 +229,8 @@ function openPopup(kind) {
 /* ---------------------------------- sidebar ---------------------------------- */
 const NAV = [
   ["overview", "Overview", "overview"],
+  ["autopilot", "Autopilot", "route"],
+  ["editors", "Editors", "plug"],
   ["alerts", "Alerts", "bell"],
   ["usage", "Usage", "chart"],
   ["models", "Models", "layers"],
@@ -276,7 +281,8 @@ function renderSide() {
     return b;
   });
 
-  sideTop.replaceChildren(
+  // replaceChildren turns a null into the text "null", so only real nodes go in
+  sideTop.replaceChildren(...[
     h("div", { class: "brand" }, h("span", { class: "brand-mark", "aria-hidden": "true" }), h("span", { class: "brand-name" }, "ArgusOps"), h("span", { class: "brand-tag" }, "LOCAL")),
     newBtn,
     nav,
@@ -284,7 +290,7 @@ function renderSide() {
     ...agentRows,
     runs.length ? h("div", { class: "side-head" }, h("span", null, "Autopilot"), h("span", null, String((state.autopilot || []).length))) : null,
     ...runRows
-  );
+  ].filter(Boolean));
   const waiting = (state.agents || []).filter(isWaiting).length + (state.autopilot || []).filter(runAsks).length;
   document.title = (waiting ? `(${waiting}) ` : "") + "ArgusOps";
 }
@@ -441,27 +447,190 @@ function agentPage(a) {
   return out;
 }
 
+/* ---------------------------------- Autopilot from the app ---------------------------------- */
+// Choosing a folder: the desktop app offers its own folder picker; anywhere else you type the path.
+function folderField(key, label) {
+  const inp = h("input", { type: "text", placeholder: "Full path of the project folder, for example D:\\work\\my-app", "aria-label": label });
+  inp.value = state.drafts.get(key) ?? "";
+  inp.addEventListener("input", () => state.drafts.set(key, inp.value));
+  const row = h("div", { class: "row folder-row" }, inp);
+  if (window.argusDesktop && typeof window.argusDesktop.pickFolder === "function") {
+    const browse = h("button", { class: "btn", type: "button" }, "Browse…");
+    browse.addEventListener("click", async () => {
+      const picked = await window.argusDesktop.pickFolder();
+      if (typeof picked === "string" && picked) {
+        inp.value = picked;
+        state.drafts.set(key, picked);
+      }
+    });
+    row.append(browse);
+  }
+  return { row, value: () => inp.value.trim() };
+}
+
+function autopilotPage() {
+  const runs = state.autopilot || [];
+  const actions = [];
+  if (state.canStartAutopilot) {
+    const b = h("button", { class: "btn primary", type: "button" }, icon("plus"), "New run");
+    b.addEventListener("click", () => go({ page: "autopilot-new" }));
+    actions.push(b);
+  }
+  const out = h("div", { class: "page" }, pageHead("Autopilot", "Give it a goal: it asks a few questions, shows you a plan, and builds it step by step once you approve", actions));
+  if (!state.canStartAutopilot) out.append(h("div", { class: "notice info" }, "Start Autopilot runs from the desktop app, or in a terminal: ", code('argus autopilot "your goal"'), "."));
+  if (!runs.length) {
+    const b = state.canStartAutopilot ? h("button", { class: "btn", type: "button" }, "New run") : null;
+    b?.addEventListener("click", () => go({ page: "autopilot-new" }));
+    out.append(emptyState("route", "No Autopilot runs yet.", b));
+    return out;
+  }
+  out.append(h("div", { class: "list" }, ...runs.map((r) => {
+    const [label, kind] = AP_STATUS[r.status] || [r.status, ""];
+    const done = r.steps.filter((s) => s.status === "passed" || s.status === "skipped").length;
+    const text = r.status === "planning" ? "Planning…" : r.status === "awaiting-answers" ? "Waiting for your answers" : r.status === "awaiting-approval" ? "Waiting for you to approve the plan" : `${done} of ${r.steps.length} steps · ${fmtUsd(r.costUsd)}`;
+    return lrow({ ic: "route", tone: kind, title: r.goal, tag: chip(label, kind), text, right: ago(r.updatedAt), onOpen: openRun(r.id) });
+  })));
+  return out;
+}
+
+function newRunPage() {
+  const out = h("div", { class: "page narrow" }, pageHead("New Autopilot run", "Nothing runs until you have seen the plan and approved it"));
+  const goal = h("textarea", { "aria-label": "What should Autopilot build?", placeholder: "For example: a command-line todo app in Node, with tests" });
+  goal.value = state.drafts.get("ap:goal") ?? "";
+  goal.addEventListener("input", () => state.drafts.set("ap:goal", goal.value));
+  const folder = folderField("ap:folder", "Project folder");
+  const ask = h("input", { type: "checkbox", id: "ap-questions", checked: state.drafts.get("ap:questions") !== "no" });
+  ask.addEventListener("change", () => state.drafts.set("ap:questions", ask.checked ? "yes" : "no"));
+  const start = button("Plan it", "primary", async () => {
+    const res = await api("/api/autopilot", { goal: goal.value, root: folder.value(), questions: ask.checked });
+    for (const k of ["ap:goal", "ap:folder", "ap:questions"]) state.drafts.delete(k);
+    state.view = { page: "run", id: res.id };
+  });
+  const cancel = h("button", { class: "btn", type: "button" }, "Cancel");
+  cancel.addEventListener("click", () => go({ page: "autopilot" }));
+  out.append(h("div", { class: "card stack form" },
+    h("label", { class: "field" }, h("span", null, "What should it build?"), goal),
+    h("div", { class: "field" }, h("span", null, "In which project folder?"), folder.row, h("span", { class: "muted" }, "Use a git repository, so you can review or undo what it changes.")),
+    h("label", { class: "check" }, ask, h("span", null, "Let it ask me a few questions first")),
+    h("div", { class: "row" }, start, cancel)));
+  out.append(h("p", { class: "muted" }, "Autopilot uses Claude Code with your own login. It may edit files in the folder and run only the commands listed in the plan you approve."));
+  return out;
+}
+
+function runControls(r) {
+  const out = [];
+  const stop = (label) => button(label, "danger", async () => {
+    if (confirm("Stop this Autopilot run?")) await api(`/api/autopilot/${r.id}/stop`, {});
+  }, "x");
+  if (r.status === "running" && !r.control) out.push(button("Pause", "", () => api(`/api/autopilot/${r.id}/pause`, {}), "pause"), stop("Stop"));
+  else if (r.status === "paused") {
+    if (state.canStartAutopilot) out.push(button("Continue", "primary", () => api(`/api/autopilot/${r.id}/resume`, {}), "route"));
+    out.push(stop("Stop"));
+  } else if (["planning", "awaiting-answers", "awaiting-approval", "needs-you"].includes(r.status)) out.push(stop(r.status === "awaiting-approval" ? "Discard" : "Stop"));
+  return out;
+}
+
+function answersForm(r) {
+  const box = h("div", { class: "card stack form" }, h("div", { class: "card-title" }, "A few questions before planning"), h("div", { class: "muted" }, "Leave one empty to skip it."));
+  const inputs = (r.questions || []).map((q, i) => {
+    const key = `ap:${r.id}:a${i}`;
+    const inp = h("input", { type: "text", "aria-label": q });
+    inp.value = state.drafts.get(key) ?? "";
+    inp.addEventListener("input", () => state.drafts.set(key, inp.value));
+    box.append(h("label", { class: "field" }, h("span", null, q), inp));
+    return { key, inp };
+  });
+  box.append(h("div", { class: "row" }, button("Continue", "primary", async () => {
+    await api(`/api/autopilot/${r.id}/answers`, { answers: inputs.map((x) => x.inp.value) });
+    for (const x of inputs) state.drafts.delete(x.key);
+  })));
+  return box;
+}
+
+function reviewPanel(r) {
+  const v = r.review;
+  const out = h("div");
+  if (!v) return out;
+  out.append(h("div", { class: "notice info" }, "Review the plan. Approving lets Autopilot edit files in ", code(r.root), " and run only the commands listed below."));
+  if (v.git === "none") out.append(h("div", { class: "notice" }, "This folder is not a git repository, so the changes will be hard to undo. Consider running git init first."));
+  if (v.git === "dirty") out.append(h("div", { class: "notice" }, "You have uncommitted changes. Commit or stash them first so you can review exactly what Autopilot changed."));
+  if (v.summary) out.append(h("p", null, v.summary));
+  out.append(h("h2", null, `Plan: ${v.steps.length} step${v.steps.length === 1 ? "" : "s"}`));
+  out.append(h("div", { class: "list" }, ...v.steps.map((s, i) => {
+    const text = h("div", null, h("div", { class: "pre" }, s.instructions), ...s.checks.map((c) => h("div", { class: "muted" }, "Check: " + c)));
+    return lrow({ ic: "check", tone: "accent", title: `${i + 1}. ${s.title}`, tag: s.size ? chip(s.size) : null, text });
+  })));
+  out.append(h("h2", null, "Commands it may run"));
+  out.append(v.commands.length ? h("div", { class: "card stack" }, ...v.commands.map((c) => h("div", null, code(c)))) : h("p", { class: "muted" }, "This plan's checks run no commands."));
+  if (v.projectChecks !== "none") out.append(h("p", { class: "muted" }, v.projectChecks === "allowed" ? "The project's own checks are allowed and will also run after each step." : "The project's own checks will not run (allow them with argus project allow)."));
+  if (state.canStartAutopilot) {
+    out.append(h("div", { class: "row approve-row" }, button("Approve and start", "primary", () => api(`/api/autopilot/${r.id}/approve`, { planHash: v.planHash }), "check")));
+  } else out.append(h("div", { class: "notice" }, "Approve it in a terminal: ", code(`argus autopilot resume ${r.id} --yes`)));
+  return out;
+}
+
+function decidePanel(r) {
+  const box = h("div", { class: "card stack form" }, h("div", { class: "card-title" }, "A step keeps failing"), h("div", null, r.needsYou || "Decide what to do with the step."));
+  if (!state.canStartAutopilot) {
+    box.append(h("div", { class: "muted" }, "Continue in a terminal: ", code(`argus autopilot resume ${r.id}`)));
+    return box;
+  }
+  const key = `ap:${r.id}:decide`;
+  const ta = h("textarea", { "aria-label": "What should the agent know?", placeholder: "Optional: what should the agent know or try differently?" });
+  ta.value = state.drafts.get(key) ?? "";
+  ta.addEventListener("input", () => state.drafts.set(key, ta.value));
+  box.append(ta, h("div", { class: "row" },
+    button("Try again", "primary", async () => {
+      await api(`/api/autopilot/${r.id}/decide`, { action: "retry", instruction: ta.value });
+      state.drafts.delete(key);
+    }),
+    button("Skip this step", "", () => api(`/api/autopilot/${r.id}/decide`, { action: "skip" }))));
+  return box;
+}
+
 function runPage(r) {
   const [label, kind] = AP_STATUS[r.status] || [r.status, ""];
-  const actions = [];
-  if ((r.status === "running" || r.status === "paused") && !r.control) {
-    actions.push(button("Pause", "", () => api(`/api/autopilot/${r.id}/pause`, {}), "pause"), button("Stop", "danger", async () => {
-      if (confirm("Stop this Autopilot run?")) await api(`/api/autopilot/${r.id}/stop`, {});
-    }, "x"));
-  }
-  const out = h("div", { class: "page" }, pageHead(r.goal, `${r.root} · ${fmtUsd(r.costUsd)} · updated ${ago(r.updatedAt)}`, actions, chip(label, kind)));
+  const out = h("div", { class: "page" }, pageHead(r.goal, `${r.root} · ${fmtUsd(r.costUsd)} · updated ${ago(r.updatedAt)}`, runControls(r), chip(label, kind)));
   if (r.control) out.append(h("div", { class: "notice info" }, r.control === "pause" ? "Will pause after the current turn." : "Will stop after the current turn."));
-  if (r.needsYou) out.append(h("div", { class: "notice" }, r.needsYou, " Continue with ", code(`argus autopilot resume ${r.id}`), "."));
-  if (r.status === "awaiting-approval") out.append(h("div", { class: "notice" }, "Review the plan and approve it in a terminal: ", code(`argus autopilot resume ${r.id} --yes`)));
-  out.append(h("h2", null, "Steps"));
-  const list = h("div", { class: "list" });
-  r.steps.forEach((s, i) => {
-    const [ic, tone] = s.status === "passed" ? ["check", "ok"] : s.status === "failed" ? ["x", "bad"] : s.status === "running" ? ["clock", "accent"] : s.status === "skipped" ? ["off", ""] : ["clock", ""];
-    const extra = [s.attempts > 1 ? `${s.attempts} attempts` : "", s.status === "failed" && s.problems[0] ? s.problems[0] : ""].filter(Boolean).join(" · ");
-    list.append(lrow({ ic, tone, title: `${i + 1}. ${s.title}`, text: extra || s.status, right: s.size || "" }));
-  });
-  out.append(list);
+  if (r.status === "planning") out.append(h("div", { class: "notice info" }, "Planning with Claude Code. This usually takes under a minute."));
+  if (r.status === "awaiting-answers") out.append(answersForm(r));
+  if (r.status === "awaiting-approval") out.append(reviewPanel(r));
+  if (r.status === "needs-you") out.append(decidePanel(r));
+  if (r.status === "failed" && r.log.length) out.append(h("div", { class: "notice" }, r.log[r.log.length - 1].message));
+  if (r.steps.length && r.status !== "awaiting-approval") {
+    out.append(h("h2", null, "Steps"));
+    const list = h("div", { class: "list" });
+    r.steps.forEach((s, i) => {
+      const [ic, tone] = s.status === "passed" ? ["check", "ok"] : s.status === "failed" ? ["x", "bad"] : s.status === "running" ? ["clock", "accent"] : s.status === "skipped" ? ["off", ""] : ["clock", ""];
+      const extra = [s.attempts > 1 ? `${s.attempts} attempts` : "", s.status === "failed" && s.problems[0] ? s.problems[0] : ""].filter(Boolean).join(" · ");
+      list.append(lrow({ ic, tone, title: `${i + 1}. ${s.title}`, text: extra || s.status, right: s.size || "" }));
+    });
+    out.append(list);
+  }
   if (r.log.length) out.append(h("h2", null, "Activity"), h("div", { class: "card stack" }, ...r.log.slice(-30).map((l) => h("div", { class: "muted" }, `${ago(l.ts)}: ${l.message}`))));
+  return out;
+}
+
+/* ---------------------------------- editors ---------------------------------- */
+function editorsPage() {
+  const out = h("div", { class: "page" }, pageHead("Editors", "Supervise the Claude Code panel in VS Code, Antigravity or Cursor"));
+  const conns = state.editors.connections || [];
+  if (state.editors.available) {
+    const folder = folderField("ed:folder", "Project folder to connect");
+    out.append(h("div", { class: "card stack form" },
+      h("div", { class: "field" }, h("span", null, "Project folder open in your editor"), folder.row),
+      h("div", { class: "row" }, button("Connect", "primary", async () => {
+        await api("/api/editors/connect", { folder: folder.value() });
+        state.drafts.delete("ed:folder");
+      }, "plus"))));
+    out.append(h("div", { class: "notice info" }, "After connecting, run ", h("strong", null, "Developer: Reload Window"), " in that editor once. Reloading restarts the Claude panel, so connect before you start a chat. Disconnecting (or closing ArgusOps) undoes the setting."));
+  } else out.append(h("div", { class: "notice info" }, "Connect editors from the desktop app, or run ", code("argus ide"), " in the project folder."));
+  out.append(h("h2", null, "Connected"));
+  out.append(conns.length
+    ? h("div", { class: "list" }, ...conns.map((c) => lrow({ ic: "terminal", tone: "ok", title: c.folder, tag: chip("connected", "ok"), text: `Supervising through ${c.url} since ${ago(c.since)}`, right: button("Disconnect", "small", () => api("/api/editors/disconnect", { folder: c.folder })) })))
+    : h("p", { class: "muted" }, "No editor is connected."));
+  const panels = (state.agents || []).filter((a) => /\((IDE|editor)\)/.test(a.name));
+  if (panels.length) out.append(h("h2", null, "Editor agents seen"), h("div", { class: "list" }, ...panels.map(agentRow)));
   return out;
 }
 
@@ -591,7 +760,10 @@ function currentPage() {
   } else if (v.page === "run") {
     const r = (state.autopilot || []).find((x) => x.id === v.id);
     if (r) return runPage(r);
-  } else if (v.page === "alerts") return alertsPage();
+  } else if (v.page === "autopilot") return autopilotPage();
+  else if (v.page === "autopilot-new") return state.canStartAutopilot ? newRunPage() : autopilotPage();
+  else if (v.page === "editors") return editorsPage();
+  else if (v.page === "alerts") return alertsPage();
   else if (v.page === "usage") return usagePage();
   else if (v.page === "models") return modelsPage();
   else if (v.page === "commands") return commandsPage();
@@ -600,6 +772,20 @@ function currentPage() {
 }
 
 /* ---------------------------------- popup ---------------------------------- */
+function startShortcuts() {
+  const rows = [];
+  const open = (label, text, ic, view) => {
+    const b = h("button", { class: "btn small", type: "button" }, "Open");
+    b.addEventListener("click", () => {
+      state.open = null;
+      go(view);
+    });
+    rows.push(lrow({ ic, tone: "accent", title: label, text, right: b }));
+  };
+  if (state.canStartAutopilot) open("New Autopilot run", "Give it a goal here in the app", "route", { page: "autopilot-new" });
+  if (state.editors.available) open("Connect your editor", "Supervise the Claude Code panel in VS Code or Antigravity", "plug", { page: "editors" });
+  return rows;
+}
 function closePopup() {
   state.open = null;
   lastShown = "";
@@ -618,6 +804,7 @@ function renderModal() {
   const dlg = h("div", { class: "dialog", role: "dialog", "aria-modal": "true", "aria-label": "Start an agent", tabindex: "-1" },
     h("div", { class: "dialog-head" }, h("span", { class: "title" }, "Start an agent"), close),
     h("div", { class: "dialog-body" }, h("p", { class: "muted", style: "margin-top:0" }, "Run one of these in your project folder. The agent shows up here as soon as it starts."), h("div", { class: "list" },
+      ...startShortcuts(),
       cmdRow("argus run claude", "Claude Code in a terminal", "agent"),
       cmdRow("argus run codex", "The Codex CLI with an API key", "agent"),
       cmdRow("argus ide", "The Claude Code panel in your editor", "terminal"),
@@ -658,7 +845,7 @@ function render(force) {
   // do not wipe something the person is typing
   const a = document.activeElement;
   const typing = a && (main.contains(a) || modal.contains(a)) && (a.tagName === "TEXTAREA" || (a.tagName === "INPUT" && a.type === "text"));
-  const snapshot = JSON.stringify([state.agents, state.alerts, state.autopilot, state.usage, state.routing, state.range, state.view, state.open, state.menu, state.alertFilter]);
+  const snapshot = JSON.stringify([state.agents, state.alerts, state.autopilot, state.usage, state.routing, state.range, state.view, state.open, state.menu, state.alertFilter, state.canStartAutopilot, state.editors]);
   if (!force && (typing || snapshot === lastShown)) return;
   lastShown = snapshot;
   renderSide();
@@ -669,7 +856,9 @@ function render(force) {
 async function refresh() {
   if (!token) return render(true);
   try {
-    const [ag, al, ap, rt, us] = await Promise.all([api("/api/agents"), api("/api/alerts?limit=50"), api("/api/autopilot"), api("/api/routing"), api("/api/usage?range=" + state.range)]);
+    const [ag, al, ap, rt, us, ed] = await Promise.all([api("/api/agents"), api("/api/alerts?limit=50"), api("/api/autopilot"), api("/api/routing"), api("/api/usage?range=" + state.range), api("/api/editors").catch(() => ({ available: false, connections: [] }))]);
+    state.canStartAutopilot = !!ap.canStart;
+    state.editors = { available: !!ed.available, connections: ed.connections || [] };
     state.agents = ag.agents;
     state.alerts = al.alerts ?? al.notifications ?? [];
     state.autopilot = ap.runs;

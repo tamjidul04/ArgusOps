@@ -5,6 +5,17 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
+// the window's preload: the folder picker bridge, nothing else
+await build({
+  entryPoints: [resolve(here, "src/preload.ts")],
+  outfile: resolve(here, "dist/preload.cjs"),
+  bundle: true,
+  platform: "node",
+  format: "cjs",
+  target: "node20",
+  external: ["electron"],
+  logLevel: "info",
+});
 await build({
   entryPoints: [resolve(here, "src/main.ts")],
   outfile: resolve(here, "dist/main.cjs"),

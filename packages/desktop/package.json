@@ -1,6 +1,6 @@
 {
   "name": "argusops-desktop",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "private": true,
   "description": "ArgusOps desktop app: a window and tray icon around the local ArgusOps engine.",
   "main": "dist/main.cjs",

@@ -277,3 +277,98 @@ describe("styles under the page's security policy", () => {
     expect(bars.map((b) => b.style.height)).toEqual(["50%", "100%"]);
   });
 });
+
+describe("the sidebar", () => {
+  it("never shows the word null (a missing Autopilot heading must not become text)", async () => {
+    const { doc } = start({ stored: "t" });
+    await flush();
+    expect(doc.getElementById("side-top")!.textContent).not.toContain("null");
+  });
+});
+
+describe("Autopilot from the app", () => {
+  const draft = (over: Record<string, unknown>) => ({ id: "ap_9", goal: "a todo app", root: "D:/work/todo", createdAt: 1, updatedAt: Date.now(), costUsd: 0, control: null, needsYou: null, steps: [], log: [], live: true, ...over });
+
+  it("New run: goal and folder go to the engine, and nothing else is sent", async () => {
+    const { doc, calls } = start({ stored: "t", routes: { "/api/autopilot": { runs: [], canStart: true } } });
+    await flush();
+    nav(doc, "autopilot");
+    btn(doc, "New run").click();
+    const goal = doc.querySelector("#main textarea") as HTMLTextAreaElement;
+    goal.value = "a todo app";
+    goal.dispatchEvent(new (doc.defaultView as any).Event("input"));
+    const folder = doc.querySelector('#main input[type="text"]') as HTMLInputElement;
+    folder.value = "D:/work/todo";
+    folder.dispatchEvent(new (doc.defaultView as any).Event("input"));
+    btn(doc, "Plan it").click();
+    await flush();
+    const post = calls.find((c) => c.method === "POST" && c.path === "/api/autopilot")!;
+    expect(post.body).toEqual({ goal: "a todo app", root: "D:/work/todo", questions: true });
+  });
+
+  it("without an engine that can build, it says how to start from a terminal and offers no New run", async () => {
+    const { doc } = start({ stored: "t", routes: { "/api/autopilot": { runs: [], canStart: false } } });
+    await flush();
+    nav(doc, "autopilot");
+    expect(mainText(doc)).toContain('argus autopilot "your goal"');
+    expect(btn(doc, "New run")).toBeUndefined();
+  });
+
+  it("answers the planner's questions", async () => {
+    const { doc, calls } = start({ stored: "t", routes: { "/api/autopilot": { runs: [draft({ status: "awaiting-answers", questions: ["Which language?", "Tests?"] })], canStart: true } } });
+    await flush();
+    sideAgent(doc, "a todo app");
+    const inputs = Array.from(doc.querySelectorAll('#main input[type="text"]')) as HTMLInputElement[];
+    expect(inputs).toHaveLength(2);
+    inputs[0].value = "JavaScript";
+    inputs[0].dispatchEvent(new (doc.defaultView as any).Event("input"));
+    btn(doc, "Continue").click();
+    await flush();
+    expect(calls.find((c) => c.path === "/api/autopilot/ap_9/answers")!.body).toEqual({ answers: ["JavaScript", ""] });
+  });
+
+  it("shows the whole plan and every command before approval, and approves that exact plan", async () => {
+    const review = { planHash: "abc123", summary: "Build it", steps: [{ title: "Set up", size: "small", instructions: "Create package.json", checks: ['"npm test" succeeds'] }], commands: ["npm test"], git: "dirty", projectChecks: "none", answers: [] };
+    const { doc, calls } = start({ stored: "t", routes: { "/api/autopilot": { runs: [draft({ status: "awaiting-approval", review, steps: [{ title: "Set up", status: "pending", attempts: 0, problems: [] }] })], canStart: true } } });
+    await flush();
+    sideAgent(doc, "a todo app");
+    const text = mainText(doc);
+    expect(text).toContain("Create package.json");
+    expect(text).toContain("npm test");
+    expect(text).toContain("uncommitted changes");
+    btn(doc, "Approve and start").click();
+    await flush();
+    expect(calls.find((c) => c.path === "/api/autopilot/ap_9/approve")!.body).toEqual({ planHash: "abc123" });
+  });
+
+  it("a step that keeps failing: try again with your words, or skip it", async () => {
+    const { doc, calls } = start({ stored: "t", routes: { "/api/autopilot": { runs: [draft({ status: "needs-you", needsYou: "Step 1 still fails after 3 attempts.", steps: [{ title: "Set up", status: "failed", attempts: 3, problems: ["npm test fails"] }] })], canStart: true } } });
+    await flush();
+    sideAgent(doc, "a todo app");
+    const ta = doc.querySelector("#main textarea") as HTMLTextAreaElement;
+    ta.value = "read the error first";
+    ta.dispatchEvent(new (doc.defaultView as any).Event("input"));
+    btn(doc, "Try again").click();
+    await flush();
+    expect(calls.find((c) => c.path === "/api/autopilot/ap_9/decide")!.body).toEqual({ action: "retry", instruction: "read the error first" });
+  });
+});
+
+describe("Editors", () => {
+  it("connects a folder and disconnects it", async () => {
+    const { doc, calls } = start({ stored: "t", routes: { "/api/editors": { available: true, connections: [{ folder: "D:/work/shop", url: "http://127.0.0.1:5000", since: Date.now() }] } } });
+    await flush();
+    nav(doc, "editors");
+    expect(mainText(doc)).toContain("Reload Window");
+    expect(mainText(doc)).toContain("D:/work/shop");
+    const folder = doc.querySelector('#main input[type="text"]') as HTMLInputElement;
+    folder.value = "D:/work/app";
+    folder.dispatchEvent(new (doc.defaultView as any).Event("input"));
+    btn(doc, "Connect").click();
+    await flush();
+    expect(calls.find((c) => c.path === "/api/editors/connect")!.body).toEqual({ folder: "D:/work/app" });
+    btn(doc, "Disconnect").click();
+    await flush();
+    expect(calls.find((c) => c.path === "/api/editors/disconnect")!.body).toEqual({ folder: "D:/work/shop" });
+  });
+});

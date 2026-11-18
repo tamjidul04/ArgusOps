@@ -2,7 +2,12 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import http from "node:http";
 import nodePath from "node:path";
-import type { AutopilotRun } from "./autopilot";
+import { planCommands, type AutopilotRun } from "./autopilot";
+import { JobError, type AutopilotJobs } from "./autopilot-jobs";
+import { gitState, planHash } from "./autopilot-runner";
+import { describeCheck } from "./acceptance";
+import type { EditorConnections } from "./editor-connections";
+import { consentState, detectGates } from "./gates";
 import { Controls } from "./control";
 import { loadPrices } from "./prices";
 import type { NotificationRow, Store } from "./store";
@@ -35,6 +40,10 @@ export interface ControlApiOptions {
   maxBodyBytes?: number;
   /** A folder with the app's web page (index.html, app.js, style.css). When given, GET / serves it. */
   uiDir?: string;
+  /** Autopilot runs started from the app. Only an engine that can build them (the desktop app, argus serve) passes this. */
+  autopilot?: AutopilotJobs;
+  /** Editor connections made from the app. */
+  editors?: EditorConnections;
 }
 
 /** The only files the page is served from; nothing else on disk is reachable by name. */
@@ -120,6 +129,20 @@ const optionalString = (body: Record<string, unknown>, key: string): string | un
   if (typeof v !== "string") throw new HttpError(400, `"${key}" must be text.`);
   return v;
 };
+
+/** Everything you need to approve a plan: each step with its checks, every command it may run, and the folder's state. */
+function review(r: AutopilotRun, store: Store) {
+  const gates = detectGates(r.root);
+  return {
+    planHash: planHash(r.plan),
+    summary: r.plan.summary,
+    steps: r.plan.steps.map((s) => ({ title: s.title, size: s.size ?? null, instructions: s.instructions.slice(0, 4000), checks: s.acceptance.map(describeCheck) })),
+    commands: planCommands(r.plan),
+    git: gitState(r.root),
+    projectChecks: gates.length ? (consentState(store, r.root, gates) as string) : "none",
+    answers: r.answers,
+  };
+}
 
 export function startControlApi(opts: ControlApiOptions): Promise<RunningControlApi> {
   const { store } = opts;
@@ -240,16 +263,56 @@ export function startControlApi(opts: ControlApiOptions): Promise<RunningControl
         needsYou: r.needsYou,
         steps: r.plan.steps.map((st, i) => ({ title: st.title, size: st.size ?? null, status: r.steps[i]?.status ?? "pending", attempts: r.steps[i]?.attempts ?? 0, problems: r.steps[i]?.problems ?? [] })),
         log: r.log.slice(-12),
+        questions: r.status === "awaiting-answers" ? r.questions ?? [] : undefined,
+        live: opts.autopilot?.isLive(r.id) ?? false,
+        review: r.status === "awaiting-approval" ? review(r, store) : undefined,
       }));
-      return send(res, 200, { runs });
+      return send(res, 200, { runs, canStart: !!opts.autopilot });
     }
     const ap = method === "POST" ? /^\/api\/autopilot\/([A-Za-z0-9_-]{1,64})\/(pause|stop)$/.exec(path) : null;
     if (ap) {
       const run = store.autopilotRun<AutopilotRun>(ap[1]);
       if (!run) throw new HttpError(404, `No Autopilot run "${ap[1]}".`);
       if (run.status === "done" || run.status === "stopped" || run.status === "failed") throw new HttpError(409, `That run is already ${run.status}.`);
+      if (ap[2] === "stop" && opts.autopilot && run.status !== "running" && run.status !== "paused") {
+        opts.autopilot.cancel(run.id);
+        return send(res, 200, { ok: true, message: "Stopped." });
+      }
+      if (ap[2] === "pause" && run.status !== "running") throw new HttpError(409, "Only a run that is building can be paused.");
       store.saveAutopilotRun({ ...run, control: ap[2] as "pause" | "stop" });
       return send(res, 200, { ok: true, message: ap[2] === "pause" ? "Autopilot will pause after the agent's current turn." : "Autopilot will stop after the agent's current turn." });
+    }
+
+    // starting and steering Autopilot from the app
+    if (post("/api/autopilot")) {
+      if (!opts.autopilot) throw new HttpError(501, 'This ArgusOps cannot start Autopilot. Use the desktop app, or: argus autopilot "goal"');
+      const run = opts.autopilot.start({ goal: body.goal, root: body.root, questions: body.questions });
+      return send(res, 201, { ok: true, id: run.id });
+    }
+    const apx = method === "POST" ? /^\/api\/autopilot\/([A-Za-z0-9_-]{1,64})\/(answers|approve|decide|resume)$/.exec(path) : null;
+    if (apx) {
+      if (!opts.autopilot) throw new HttpError(501, "This ArgusOps cannot steer Autopilot runs. Use the desktop app or argus autopilot.");
+      const [, id, action] = apx;
+      const run =
+        action === "answers"
+          ? opts.autopilot.answer(id, body.answers)
+          : action === "approve"
+            ? opts.autopilot.approve(id, body.planHash)
+            : action === "decide"
+              ? opts.autopilot.decide(id, { action: body.action, instruction: body.instruction })
+              : opts.autopilot.resume(id);
+      return send(res, 200, { ok: true, id: run.id, status: run.status });
+    }
+
+    // the Claude Code panel in an editor
+    if (get("/api/editors")) {
+      return send(res, 200, { available: !!opts.editors, connections: opts.editors?.list() ?? [] });
+    }
+    if (post("/api/editors/connect") || post("/api/editors/disconnect")) {
+      if (!opts.editors) throw new HttpError(501, "This ArgusOps cannot connect editors. Use the desktop app, or argus ide in the project folder.");
+      if (path.endsWith("/connect")) return send(res, 200, { ok: true, connection: await opts.editors.connect(body.folder) });
+      await opts.editors.disconnect(body.folder);
+      return send(res, 200, { ok: true });
     }
     if (get("/api/routing")) {
       const since = Date.now() - 7 * 86_400_000;
@@ -291,7 +354,7 @@ export function startControlApi(opts: ControlApiOptions): Promise<RunningControl
   const server = http.createServer((req, res) => {
     route(req, res).catch((e) => {
       if (res.headersSent) return res.destroy();
-      if (e instanceof HttpError) return send(res, e.status, { ok: false, error: e.message });
+      if (e instanceof HttpError || e instanceof JobError) return send(res, e.status, { ok: false, error: e.message });
       send(res, 500, { ok: false, error: "Something went wrong inside ArgusOps." });
     });
   });
